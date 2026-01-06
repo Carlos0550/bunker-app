@@ -1,0 +1,209 @@
+import { Readable } from "stream";
+import { minioClient, getDefaultBucket } from "@/config/minio";
+import { v4 as uuid } from "uuid";
+
+
+export async function uploadFile(
+  fileName: string,
+  buffer: Buffer,
+  contentType: string,
+  bucket?: string
+): Promise<string> {
+  const targetBucket = bucket || getDefaultBucket();
+  const size = buffer.length;
+
+  await minioClient.putObject(targetBucket, fileName, buffer, size, {
+    "Content-Type": contentType,
+  });
+
+  return fileName;
+}
+
+
+export async function uploadFileWithUniqueId(
+  originalName: string,
+  buffer: Buffer,
+  contentType: string,
+  folder?: string,
+  bucket?: string
+): Promise<string> {
+  const extension = originalName.split(".").pop() || "";
+  const uniqueName = `${uuid()}.${extension}`;
+  const fileName = folder ? `${folder}/${uniqueName}` : uniqueName;
+
+  return uploadFile(fileName, buffer, contentType, bucket);
+}
+
+
+export async function getFile(
+  fileName: string,
+  bucket?: string
+): Promise<Readable> {
+  const targetBucket = bucket || getDefaultBucket();
+  return minioClient.getObject(targetBucket, fileName);
+}
+
+
+export async function getFileBuffer(
+  fileName: string,
+  bucket?: string
+): Promise<Buffer> {
+  const stream = await getFile(fileName, bucket);
+  const chunks: Buffer[] = [];
+
+  return new Promise((resolve, reject) => {
+    stream.on("data", (chunk: Buffer) => chunks.push(chunk));
+    stream.on("error", reject);
+    stream.on("end", () => resolve(Buffer.concat(chunks)));
+  });
+}
+
+
+export async function getFileUrl(
+  fileName: string,
+  expirySeconds: number = 3600,
+  bucket?: string
+): Promise<string> {
+  const targetBucket = bucket || getDefaultBucket();
+  return minioClient.presignedGetObject(targetBucket, fileName, expirySeconds);
+}
+
+
+export async function getUploadUrl(
+  fileName: string,
+  expirySeconds: number = 3600,
+  bucket?: string
+): Promise<string> {
+  const targetBucket = bucket || getDefaultBucket();
+  return minioClient.presignedPutObject(targetBucket, fileName, expirySeconds);
+}
+
+
+export async function deleteFile(
+  fileName: string,
+  bucket?: string
+): Promise<void> {
+  const targetBucket = bucket || getDefaultBucket();
+  await minioClient.removeObject(targetBucket, fileName);
+}
+
+
+export async function deleteFiles(
+  fileNames: string[],
+  bucket?: string
+): Promise<void> {
+  const targetBucket = bucket || getDefaultBucket();
+  await minioClient.removeObjects(targetBucket, fileNames);
+}
+
+
+export async function fileExists(
+  fileName: string,
+  bucket?: string
+): Promise<boolean> {
+  const targetBucket = bucket || getDefaultBucket();
+
+  try {
+    await minioClient.statObject(targetBucket, fileName);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+
+export async function getFileInfo(
+  fileName: string,
+  bucket?: string
+): Promise<{
+  size: number;
+  contentType: string;
+  lastModified: Date;
+  etag: string;
+} | null> {
+  const targetBucket = bucket || getDefaultBucket();
+
+  try {
+    const stat = await minioClient.statObject(targetBucket, fileName);
+    return {
+      size: stat.size,
+      contentType: stat.metaData?.["content-type"] || "application/octet-stream",
+      lastModified: stat.lastModified,
+      etag: stat.etag,
+    };
+  } catch {
+    return null;
+  }
+}
+
+
+export async function listFiles(
+  prefix?: string,
+  bucket?: string,
+  recursive: boolean = true
+): Promise<
+  Array<{
+    name: string;
+    size: number;
+    lastModified: Date;
+  }>
+> {
+  const targetBucket = bucket || getDefaultBucket();
+  const files: Array<{ name: string; size: number; lastModified: Date }> = [];
+
+  return new Promise((resolve, reject) => {
+    const stream = minioClient.listObjects(targetBucket, prefix || "", recursive);
+
+    stream.on("data", (obj) => {
+      if (obj.name) {
+        files.push({
+          name: obj.name,
+          size: obj.size || 0,
+          lastModified: obj.lastModified || new Date(),
+        });
+      }
+    });
+
+    stream.on("error", reject);
+    stream.on("end", () => resolve(files));
+  });
+}
+
+
+export async function copyFile(
+  srcFileName: string,
+  destFileName: string,
+  srcBucket?: string,
+  destBucket?: string
+): Promise<void> {
+  const sourceBucket = srcBucket || getDefaultBucket();
+  const targetBucket = destBucket || getDefaultBucket();
+
+  await minioClient.copyObject(
+    targetBucket,
+    destFileName,
+    `/${sourceBucket}/${srcFileName}`
+  );
+}
+
+
+export async function moveFile(
+  srcFileName: string,
+  destFileName: string,
+  srcBucket?: string,
+  destBucket?: string
+): Promise<void> {
+  await copyFile(srcFileName, destFileName, srcBucket, destBucket);
+  await deleteFile(srcFileName, srcBucket);
+}
+
+
+export async function ensureBucket(bucketName: string): Promise<void> {
+  const exists = await minioClient.bucketExists(bucketName);
+
+  if (!exists) {
+    await minioClient.makeBucket(bucketName);
+  }
+}
+
+

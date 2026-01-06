@@ -1,0 +1,63 @@
+import Redis from "ioredis";
+import { env } from "@/config/env";
+
+
+const globalForRedis = globalThis as unknown as {
+  redis: Redis | undefined;
+};
+
+function createRedisClient(): Redis {
+  const client = new Redis(env.REDIS_URL, {
+    maxRetriesPerRequest: 3,
+    retryStrategy(times) {
+      const delay = Math.min(times * 50, 2000);
+      console.log(`🔄 Reintentando conexión a Redis... intento ${times}`);
+      return delay;
+    },
+    reconnectOnError(err) {
+      const targetError = "READONLY";
+      if (err.message.includes(targetError)) {
+        return true;
+      }
+      return false;
+    },
+  });
+
+  client.on("connect", () => {
+    console.log("✅ Conectado a Redis");
+  });
+
+  client.on("error", (err) => {
+    console.error("❌ Error de Redis:", err.message);
+  });
+
+  client.on("close", () => {
+    console.log("🔌 Conexión a Redis cerrada");
+  });
+
+  return client;
+}
+
+export const redis = globalForRedis.redis ?? createRedisClient();
+
+if (process.env.NODE_ENV !== "production") {
+  globalForRedis.redis = redis;
+}
+
+
+export async function testRedisConnection(): Promise<void> {
+  try {
+    await redis.ping();
+    console.log("✅ Conexión a Redis verificada");
+  } catch (error) {
+    console.error("❌ Error al conectar con Redis:", error);
+    throw error;
+  }
+}
+
+
+export async function disconnectRedis(): Promise<void> {
+  await redis.quit();
+}
+
+
