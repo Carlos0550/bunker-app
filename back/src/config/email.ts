@@ -1,0 +1,202 @@
+import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
+import { env } from './env';
+
+ 
+export interface IEmailProvider {
+  sendEmail(options: EmailOptions): Promise<EmailResult>;
+}
+
+export interface EmailOptions {
+  to: string | string[];
+  subject: string;
+  html: string;
+  from?: string;
+  replyTo?: string;
+  attachments?: Array<{
+    filename: string;
+    content: Buffer | string;
+    contentType?: string;
+  }>;
+}
+
+export interface EmailResult {
+  success: boolean;
+  messageId?: string;
+  error?: string;
+  previewUrl?: string;  
+}
+
+ 
+class ResendProvider implements IEmailProvider {
+  private client: Resend;
+  private fromEmail: string;
+
+  constructor() {
+    this.client = new Resend(env.RESEND_API_KEY);
+    this.fromEmail = env.EMAIL_FROM || 'noreply@bunkerapp.com';
+  }
+
+  async sendEmail(options: EmailOptions): Promise<EmailResult> {
+    try {
+      const result = await this.client.emails.send({
+        from: options.from || this.fromEmail,
+        to: Array.isArray(options.to) ? options.to : [options.to],
+        subject: options.subject,
+        html: options.html,
+        replyTo: options.replyTo,
+        attachments: options.attachments?.map(att => ({
+          filename: att.filename,
+          content: att.content,
+        })),
+      });
+
+      return {
+        success: true,
+        messageId: result.data?.id,
+      };
+    } catch (error: any) {
+      console.error('Error sending email with Resend:', error);
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  }
+}
+
+ 
+class EtherealProvider implements IEmailProvider {
+  private transporter: nodemailer.Transporter | null = null;
+  private initialized = false;
+
+  async initialize() {
+    if (this.initialized) return;
+
+    try {
+       
+      const testAccount = await nodemailer.createTestAccount();
+
+      this.transporter = nodemailer.createTransport({
+        host: 'smtp.ethereal.email',
+        port: 587,
+        secure: false,
+        auth: {
+          user: testAccount.user,
+          pass: testAccount.pass,
+        },
+        tls: {
+          rejectUnauthorized: false,
+        },
+      });
+
+      this.initialized = true;
+      console.log('✅ Ethereal email transporter configurado');
+      console.log(`📧 Usuario de prueba: ${testAccount.user}`);
+    } catch (error) {
+      console.error('❌ Error al configurar Ethereal:', error);
+      throw error;
+    }
+  }
+
+  async sendEmail(options: EmailOptions): Promise<EmailResult> {
+    if (!this.transporter) {
+      await this.initialize();
+    }
+
+    if (!this.transporter) {
+      return {
+        success: false,
+        error: 'Email transporter not initialized',
+      };
+    }
+
+    try {
+      const info = await this.transporter.sendMail({
+        from: options.from || '"Bunker App" <noreply@bunkerapp.com>',
+        to: Array.isArray(options.to) ? options.to.join(', ') : options.to,
+        subject: options.subject,
+        html: options.html,
+        replyTo: options.replyTo,
+        attachments: options.attachments,
+      });
+
+      const previewUrl = nodemailer.getTestMessageUrl(info);
+
+      console.log('📧 Email enviado (Ethereal)');
+      console.log(`📬 Preview URL: ${previewUrl}`);
+
+      return {
+        success: true,
+        messageId: info.messageId,
+        previewUrl: previewUrl || undefined,
+      };
+    } catch (error: any) {
+      console.error('Error sending email with Ethereal:', error);
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  }
+}
+
+ 
+class NodemailerProvider implements IEmailProvider {
+  private transporter: nodemailer.Transporter;
+
+  constructor() {
+    this.transporter = nodemailer.createTransport({
+      host: env.SMTP_HOST,
+      port: env.SMTP_PORT,
+      secure: env.SMTP_SECURE,
+      auth: {
+        user: env.SMTP_USER,
+        pass: env.SMTP_PASS,
+      },
+    });
+  }
+
+  async sendEmail(options: EmailOptions): Promise<EmailResult> {
+    try {
+      const info = await this.transporter.sendMail({
+        from: options.from || env.EMAIL_FROM,
+        to: Array.isArray(options.to) ? options.to.join(', ') : options.to,
+        subject: options.subject,
+        html: options.html,
+        replyTo: options.replyTo,
+        attachments: options.attachments,
+      });
+
+      return {
+        success: true,
+        messageId: info.messageId,
+      };
+    } catch (error: any) {
+      console.error('Error sending email with Nodemailer:', error);
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  }
+}
+
+ 
+export function createEmailProvider(): IEmailProvider {
+  const emailProvider = env.EMAIL_PROVIDER || 'ethereal';
+
+  switch (emailProvider) {
+    case 'resend':
+      return new ResendProvider();
+    case 'nodemailer':
+      return new NodemailerProvider();
+    case 'ethereal':
+    default:
+      return new EtherealProvider();
+  }
+}
+
+ 
+export const emailProvider = createEmailProvider();
+

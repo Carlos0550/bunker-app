@@ -3,7 +3,7 @@ import cors from "cors";
 import helmet from "helmet";
 import pino from "pino";
 import createHttpError, { HttpError } from "http-errors";
-
+import userRouter from "@/routes/user.routes";
 
 export const logger = pino({
   transport:
@@ -20,14 +20,7 @@ export const logger = pino({
   level: process.env.NODE_ENV === "production" ? "info" : "debug",
 });
 
-
 const app: Application = express();
-
-
-
-
-
-
 app.use(
   helmet({
     contentSecurityPolicy: process.env.NODE_ENV === "production",
@@ -47,19 +40,9 @@ app.use(
   })
 );
 
-
-
-
-
-
 app.use(express.json({ limit: "10mb" }));
 
-
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
-
-
-
-
 
 app.use((req: Request, _res: Response, next: NextFunction) => {
   logger.info({
@@ -71,10 +54,6 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
   next();
 });
 
-
-
-
-
 app.get("/health", (_req: Request, res: Response) => {
   res.json({
     status: "ok",
@@ -82,6 +61,9 @@ app.get("/health", (_req: Request, res: Response) => {
     uptime: process.uptime(),
   });
 });
+
+app.use("/users", userRouter);
+
 
 
 
