@@ -10,13 +10,13 @@ export function AuthLayout() {
         visibleFrom="md"
         style={{
           flex: 1,
-          background: `linear-gradient(135deg, ${theme.colors.red[9]} 0%, ${theme.colors.red[8]} 100%)`,
+          background: `linear-gradient(135deg, ${theme.colors.red[7]} 0%, ${theme.colors.red[6]} 100%)`,
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'center',
           alignItems: 'center',
           padding: '4rem',
-          color: 'white',
+          color: theme.colors.dark[0],
           position: 'relative',
           overflow: 'hidden',
         }}
@@ -27,7 +27,7 @@ export function AuthLayout() {
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundImage: 'radial-gradient(circle at 20% 50%, rgba(255, 255, 255, 0.1) 0%, transparent 50%)',
+          backgroundImage: 'radial-gradient(circle at 20% 50%, rgba(0, 0, 0, 0.1) 0%, transparent 50%)',
           pointerEvents: 'none',
         }} />
         
@@ -50,13 +50,14 @@ export function AuthLayout() {
       <Flex
         align="center"
         justify="center"
+        bg="dark.0"
         style={{
           flex: 1,
-          backgroundColor: 'var(--mantine-color-body)',
+          
           position: 'relative',
         }}
       >
-        <Box w="100%" maw={480} p="md">
+        <Box w="100%" maw={480} p="md" >
           <Outlet />
         </Box>
       </Flex>

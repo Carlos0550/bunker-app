@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { TextInput, PasswordInput, Button, Title, Text, Stack, Checkbox } from '@mantine/core';
+import { TextInput, PasswordInput, Button, Title, Text, Stack, Anchor, Checkbox } from '@mantine/core';
 import { useRegister } from '../hooks';
 
 export function RegisterPage() {
@@ -18,10 +18,10 @@ export function RegisterPage() {
   return (
     <Stack gap="xl" px="md">
       <Stack gap="xs" align="center">
-        <Title order={2} size={32} fw={800} ta="center">
+        <Title order={2} size={32} fw={800} ta="center" c="dark.9">
           Crear una cuenta
         </Title>
-        <Text c="dimmed" size="sm" ta="center">
+        <Text size="sm" ta="center" c="dark.9">
           Únete a Bunker App y gestiona tu negocio
         </Text>
       </Stack>
@@ -62,20 +62,20 @@ export function RegisterPage() {
             onChange={(event) => setTerms(event.currentTarget.checked)}
             size="xs"
             mt="xs"
-            color="red"
+            c="dark.9"
           />
 
-          <Button type="submit" fullWidth loading={isPending} size="md" radius="md" mt="sm" disabled={!terms} color="red">
+          <Button type="submit" fullWidth loading={isPending} size="md" radius="md" mt="sm" disabled={!terms}>
             Registrarse
           </Button>
         </Stack>
       </form>
 
-      <Text c="dimmed" size="sm" ta="center">
+      <Text size="sm" ta="center" c="dark.9">
         ¿Ya tienes una cuenta?{' '}
-        <Link to="/login" style={{ color: 'var(--mantine-color-red-filled)', fontWeight: 500, textDecoration: 'none' }}>
+        <Anchor component={Link} to="/login" fw={500}>
           Inicia sesión
-        </Link>
+        </Anchor>
       </Text>
     </Stack>
   );

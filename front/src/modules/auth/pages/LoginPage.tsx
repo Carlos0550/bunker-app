@@ -16,10 +16,10 @@ export function LoginPage() {
   return (
     <Stack gap="xl" px="md">
       <Stack gap="xs" align="center">
-        <Title order={2} size={32} fw={800} ta="center">
+        <Title order={2} size={32} fw={800} ta="center" c="dark.9">
           Bienvenido de nuevo
         </Title>
-        <Text c="dimmed" size="sm" ta="center">
+        <Text size="sm" ta="center" c="dark.9">
           Ingresa tus credenciales para acceder a tu cuenta
         </Text>
       </Stack>
@@ -47,14 +47,14 @@ export function LoginPage() {
               radius="md"
             />
             <Group justify="space-between">
-              <Checkbox label="Recordarme" size="xs" color="red" />
-              <Anchor component="button" type="button" size="xs" c="red">
+              <Checkbox label="Recordarme" size="xs" c="dark.9"/>
+              <Anchor component="button" type="button" size="xs">
                 ¿Olvidaste tu contraseña?
               </Anchor>
             </Group>
           </Stack>
 
-          <Button type="submit" fullWidth loading={isPending} size="md" radius="md" mt="sm" color="red">
+          <Button type="submit" fullWidth loading={isPending} size="md" radius="md" mt="sm">
             Iniciar sesión
           </Button>
         </Stack>
@@ -62,9 +62,9 @@ export function LoginPage() {
 
       <Text c="dimmed" size="sm" ta="center">
         ¿No tienes una cuenta?{' '}
-        <Link to="/register" style={{ color: 'var(--mantine-color-red-filled)', fontWeight: 500, textDecoration: 'none' }}>
+        <Anchor component={Link} to="/register" fw={500}>
           Regístrate gratis
-        </Link>
+        </Anchor>
       </Text>
     </Stack>
   );

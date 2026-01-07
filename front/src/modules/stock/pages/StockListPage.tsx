@@ -67,16 +67,19 @@ export function StockListPage() {
                     <Table.Td>{formatCurrency(product.price)}</Table.Td>
                     <Table.Td>{product.stock}</Table.Td>
                     <Table.Td>
-                      <Badge color={product.stock > 10 ? 'green' : product.stock > 0 ? 'yellow' : 'red'}>
+                      <Badge 
+                        variant={product.stock > 10 ? 'light' : product.stock > 0 ? 'filled' : 'filled'}
+                        color="red"
+                      >
                         {product.stock > 10 ? 'En stock' : product.stock > 0 ? 'Bajo' : 'Agotado'}
                       </Badge>
                     </Table.Td>
                     <Table.Td>
                       <Group gap="xs">
-                        <ActionIcon variant="light" color="blue">
+                        <ActionIcon variant="light">
                           ✏️
                         </ActionIcon>
-                        <ActionIcon variant="light" color="red" onClick={() => handleDelete(product.id)}>
+                        <ActionIcon variant="light" onClick={() => handleDelete(product.id)}>
                           🗑️
                         </ActionIcon>
                       </Group>
