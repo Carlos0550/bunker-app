@@ -16,7 +16,7 @@ export function validateQuery<T extends ZodSchema>(schema: T) {
       }
 
       
-      req.query = result.data;
+      (req as any).query = result.data;
       next();
     } catch (error) {
       next(error);

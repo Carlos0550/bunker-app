@@ -40,7 +40,7 @@ export function authenticate(req: Request, _res: Response, next: NextFunction): 
 }
 
 
-export function authorize(...allowedRoles: string[]) {
+export function authorize(...allowedRoles: number[]) {
   return (req: Request, _res: Response, next: NextFunction): void => {
     if (!req.user) {
       return next(createHttpError(401, "Usuario no autenticado"));
@@ -87,7 +87,7 @@ export function verifyTenant(req: Request, _res: Response, next: NextFunction): 
   const tenantIdFromUser = req.user.tenantId;
 
   
-  if (req.user.role === "superadmin") {
+  if (req.user.role === 3) {
     return next();
   }
 

@@ -4,7 +4,7 @@ import { env } from "@/config/env";
 export interface TokenPayload {
   userId: string;
   email: string;
-  role: string;
+  role: number;
   tenantId?: string; 
 }
 
@@ -16,7 +16,7 @@ export function generateToken(
   options?: Partial<SignOptions>
 ): string {
   const signOptions: SignOptions = {
-    expiresIn: env.JWT_EXPIRES_IN,
+    expiresIn: env.JWT_EXPIRES_IN as SignOptions["expiresIn"],
     algorithm: "HS256",
     ...options,
   };
