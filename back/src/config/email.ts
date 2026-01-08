@@ -1,32 +1,7 @@
 import { Resend } from 'resend';
 import nodemailer from 'nodemailer';
 import { env } from './env';
-
- 
-export interface IEmailProvider {
-  sendEmail(options: EmailOptions): Promise<EmailResult>;
-}
-
-export interface EmailOptions {
-  to: string | string[];
-  subject: string;
-  html: string;
-  from?: string;
-  replyTo?: string;
-  attachments?: Array<{
-    filename: string;
-    content: Buffer | string;
-    contentType?: string;
-  }>;
-}
-
-export interface EmailResult {
-  success: boolean;
-  messageId?: string;
-  error?: string;
-  previewUrl?: string;  
-}
-
+import { EmailOptions, EmailResult, IEmailProvider } from '@/types';
  
 class ResendProvider implements IEmailProvider {
   private client: Resend;

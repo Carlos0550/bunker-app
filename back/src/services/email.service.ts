@@ -1,22 +1,7 @@
-import { emailProvider, EmailOptions, EmailResult } from '@/config/email';
+import { emailProvider } from '@/config/email';
+import { EmailOptions, EmailResult, EmailTemplateData, SendEmailWithTemplateOptions } from '@/types';
 import { readFileSync } from 'fs';
 import { join } from 'path';
-
-export interface EmailTemplateData {
-  email: string;  
-  name?: string;
-  [key: string]: any;  
-}
-
-export interface SendEmailWithTemplateOptions {
-  to: string | string[];
-  subject: string;
-  templateName: string;
-  data: EmailTemplateData;
-  from?: string;
-  replyTo?: string;
-  attachments?: EmailOptions['attachments'];
-}
 
 class EmailService {
   private templatesPath: string;

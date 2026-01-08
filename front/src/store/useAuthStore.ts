@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { User } from '@/types';
+import { useCartStore } from "@/store/useCartStore";
 
 interface AuthState {
   token: string | null;
@@ -19,8 +20,8 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       login: (token, user) => set({ token, user, isAuthenticated: true }),
       logout: () => {
-        // Limpiar también el localStorage del navegador si fuera necesario manualmente
         localStorage.removeItem('auth-storage');
+        useCartStore.getState().clearCart()
         set({ token: null, user: null, isAuthenticated: false });
       },
       updateUser: (updatedData) =>

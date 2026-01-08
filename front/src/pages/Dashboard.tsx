@@ -5,10 +5,13 @@ import { TopProducts } from "@/components/dashboard/TopProducts";
 import { RecentSales } from "@/components/dashboard/RecentSales";
 import { LowStockAlert } from "@/components/dashboard/LowStockAlert";
 import { mockDashboardStats } from "@/data/mockData";
-import { DollarSign, ShoppingBag, Package, AlertTriangle, TrendingUp, Calendar } from "lucide-react";
+import { DollarSign, ShoppingBag, Package, AlertTriangle, Calendar } from "lucide-react";
+import { useAuthStore  } from "@/store/useAuthStore";
+import { capitalizeString } from "@/hooks/use-utils";
 
 export default function Dashboard() {
   const stats = mockDashboardStats;
+  const { user } = useAuthStore((state) => state);
 
   return (
     <MainLayout title="Dashboard">
@@ -17,7 +20,7 @@ export default function Dashboard() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl lg:text-3xl font-bold text-foreground">
-              Bienvenido a <span className="text-gradient">BUNKER</span>
+              Hola {capitalizeString(user.name) || 'Usuario'} 👋
             </h1>
             <p className="text-muted-foreground mt-1">
               Aquí está el resumen de tu negocio hoy

@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { mockProducts, mockCustomers } from "@/data/mockData";
-import { CartItem, Product } from "@/types";
+import { Product } from "@/types";
+import { useCartStore } from "@/store/useCartStore";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -29,7 +30,7 @@ import {
 
 export default function POS() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [cart, setCart] = useState<CartItem[]>([]);
+  const { items: cart, addItem, removeItem, updateQuantity, clearCart, getTotal } = useCartStore();
   const [selectedCustomer, setSelectedCustomer] = useState<string>("");
   const [discount, setDiscount] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "card" | "transfer">("cash");
@@ -41,64 +42,41 @@ export default function POS() {
       p.barcode?.includes(searchTerm)
   );
 
-  const addToCart = (product: Product) => {
+  const handleAddToCart = (product: Product) => {
     if (product.stock === 0) {
       toast.error("Producto sin stock disponible");
       return;
     }
 
-    setCart((prev) => {
-      const existing = prev.find((item) => item.productId === product.id);
-      if (existing) {
-        if (existing.quantity >= product.stock) {
-          toast.error("Stock insuficiente");
-          return prev;
-        }
-        return prev.map((item) =>
-          item.productId === product.id
-            ? { ...item, quantity: item.quantity + 1, total: (item.quantity + 1) * item.price }
-            : item
-        );
+    const existingItem = cart.find((item) => item.id === product.id);
+    if (existingItem) {
+      if (existingItem.quantity >= product.stock) {
+        toast.error("Stock insuficiente");
+        return;
       }
-      return [
-        ...prev,
-        {
-          productId: product.id,
-          productName: product.name,
-          quantity: 1,
-          price: product.price,
-          total: product.price,
-        },
-      ];
-    });
+    }
+
+    addItem(product);
     toast.success(`${product.name} agregado`);
   };
 
-  const updateQuantity = (productId: string, delta: number) => {
-    setCart((prev) =>
-      prev
-        .map((item) => {
-          if (item.productId === productId) {
-            const newQty = item.quantity + delta;
-            if (newQty <= 0) return null;
-            const product = mockProducts.find((p) => p.id === productId);
-            if (product && newQty > product.stock) {
-              toast.error("Stock insuficiente");
-              return item;
-            }
-            return { ...item, quantity: newQty, total: newQty * item.price };
-          }
-          return item;
-        })
-        .filter(Boolean) as CartItem[]
-    );
+  const handleUpdateQuantity = (productId: string, delta: number) => {
+    const item = cart.find((i) => i.id === productId);
+    if (!item) return;
+
+    const newQty = item.quantity + delta;
+    if (newQty <= 0) return;
+
+    const product = mockProducts.find((p) => p.id === productId);
+    if (product && newQty > product.stock) {
+      toast.error("Stock insuficiente");
+      return;
+    }
+
+    updateQuantity(productId, newQty);
   };
 
-  const removeFromCart = (productId: string) => {
-    setCart((prev) => prev.filter((item) => item.productId !== productId));
-  };
-
-  const subtotal = cart.reduce((sum, item) => sum + item.total, 0);
+  const subtotal = getTotal();
   const discountAmount = (subtotal * discount) / 100;
   const tax = (subtotal - discountAmount) * 0.16;
   const total = subtotal - discountAmount + tax;
@@ -111,7 +89,7 @@ export default function POS() {
     toast.success("¡Venta procesada exitosamente!", {
       description: `Total: $${total.toFixed(2)}`,
     });
-    setCart([]);
+    clearCart();
     setDiscount(0);
     setSelectedCustomer("");
   };
@@ -138,7 +116,7 @@ export default function POS() {
               {filteredProducts.map((product) => (
                 <button
                   key={product.id}
-                  onClick={() => addToCart(product)}
+                  onClick={() => handleAddToCart(product)}
                   disabled={product.stock === 0}
                   className="bunker-card p-4 text-left transition-all hover:border-primary/50 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed group"
                 >
@@ -205,12 +183,12 @@ export default function POS() {
             ) : (
               cart.map((item) => (
                 <div
-                  key={item.productId}
+                  key={item.id}
                   className="flex items-center gap-3 p-3 rounded-lg bg-secondary/30"
                 >
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground truncate">
-                      {item.productName}
+                      {item.name}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       ${item.price.toFixed(2)} c/u
@@ -221,7 +199,7 @@ export default function POS() {
                       size="icon"
                       variant="ghost"
                       className="h-7 w-7"
-                      onClick={() => updateQuantity(item.productId, -1)}
+                      onClick={() => handleUpdateQuantity(item.id, -1)}
                     >
                       <Minus className="w-3 h-3" />
                     </Button>
@@ -230,19 +208,19 @@ export default function POS() {
                       size="icon"
                       variant="ghost"
                       className="h-7 w-7"
-                      onClick={() => updateQuantity(item.productId, 1)}
+                      onClick={() => handleUpdateQuantity(item.id, 1)}
                     >
                       <Plus className="w-3 h-3" />
                     </Button>
                   </div>
                   <p className="text-sm font-bold text-foreground w-20 text-right">
-                    ${item.total.toFixed(2)}
+                    ${(item.price * item.quantity).toFixed(2)}
                   </p>
                   <Button
                     size="icon"
                     variant="ghost"
                     className="h-7 w-7 text-destructive hover:text-destructive"
-                    onClick={() => removeFromCart(item.productId)}
+                    onClick={() => removeItem(item.id)}
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>

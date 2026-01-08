@@ -36,3 +36,59 @@ model User {
   @@index([status])
   @@index([name])
 }
+
+model Categories {
+  id String @id @default(uuid())
+  name String
+}
+
+enum ProductState {
+  ACTIVE
+  DISABLED
+  DELETED
+  OUT_OF_STOCK
+}
+
+enum ProviderStatus {
+  ACTIVE
+  INACTIVE
+  BLOCKED
+}
+
+model Providers {
+  id            String         @id @default(uuid())
+  name          String
+  contact_name  String?
+  phone         String?
+  email         String?
+  address       String?
+  payment_terms String?        // "30 días", "contado"
+  delivery_days Int?           // demora promedio
+  minimum_order Float?
+  status        ProviderStatus @default(ACTIVE)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model Products {
+  id             String       @id @default(uuid())
+  name           String
+  stock          Int
+  bar_code       String?
+  image          String?
+  category_id    String?
+  description    String?
+  state          ProductState @default(ACTIVE)
+  sku            String?      // Código interno
+  supplier_id    String?      // Proveedor
+  cost_price     Float?       // Precio de costo
+  sale_price     Float?       // Precio de venta
+  min_stock      Int?         // Stock mínimo
+  reserved_stock Int?         // Reservas
+  notes          String?
+  system_message String?
+  multipliers    Json?        // Multiplicadores de precio de venta
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  deletedAt      DateTime?
+}
