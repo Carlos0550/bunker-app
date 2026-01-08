@@ -62,7 +62,7 @@ app.get("/health", (_req: Request, res: Response) => {
   });
 });
 
-app.use("/users", userRouter);
+app.use("/api", userRouter);
 
 
 
