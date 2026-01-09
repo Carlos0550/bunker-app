@@ -4,19 +4,26 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useBusinessStore } from "@/store/useBusinessStore";
 import { 
   Building2, 
   Bell, 
   Shield, 
-  Palette, 
   Database,
   Printer,
   Mail,
   Save
 } from "lucide-react";
 import { toast } from "sonner";
+import { useEffect } from "react";
 
 export default function Configuracion() {
+  const { businessData, fetchBusinessData } = useBusinessStore();
+
+  useEffect(() => {
+    fetchBusinessData();
+  }, [fetchBusinessData]);
+
   const handleSave = () => {
     toast.success("Configuración guardada");
   };
@@ -61,39 +68,19 @@ export default function Configuracion() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="company-name">Nombre de la Empresa</Label>
-                  <Input id="company-name" defaultValue="Mi Empresa SA de CV" />
-                </div>
-                <div>
-                  <Label htmlFor="rfc">RFC</Label>
-                  <Input id="rfc" defaultValue="XAXX010101000" />
+                  <Input id="company-name" value={businessData?.name || ""} />
                 </div>
                 <div className="md:col-span-2">
-                  <Label htmlFor="address">Dirección Fiscal</Label>
-                  <Input id="address" defaultValue="Av. Principal 123, CDMX" />
+                  <Label htmlFor="address">Dirección Física</Label>
+                  <Input id="address" value={businessData?.address || ""} />
                 </div>
                 <div>
                   <Label htmlFor="phone">Teléfono</Label>
-                  <Input id="phone" defaultValue="+52 555 123 4567" />
+                  <Input id="phone" value={businessData?.contact_phone || ""} />
                 </div>
                 <div>
                   <Label htmlFor="email">Email de Contacto</Label>
-                  <Input id="email" type="email" defaultValue="contacto@miempresa.com" />
-                </div>
-              </div>
-            </div>
-
-            <div className="bunker-card p-6">
-              <h3 className="text-lg font-semibold text-foreground mb-4">
-                Moneda y Región
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="currency">Moneda</Label>
-                  <Input id="currency" defaultValue="MXN - Peso Mexicano" />
-                </div>
-                <div>
-                  <Label htmlFor="tax-rate">Tasa de IVA (%)</Label>
-                  <Input id="tax-rate" type="number" defaultValue="16" />
+                  <Input id="email" type="email" value={businessData?.contact_email || ""} />
                 </div>
               </div>
             </div>

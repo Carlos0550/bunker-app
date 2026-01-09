@@ -1,3 +1,4 @@
+import { BusinessPlan } from "@prisma/client";
 
 export interface EmailOptions {
   to: string | string[];
@@ -16,7 +17,7 @@ export interface EmailResult {
   success: boolean;
   messageId?: string;
   error?: string;
-  previewUrl?: string;  
+  previewUrl?: string;
 }
 
 export interface IEmailProvider {
@@ -24,9 +25,9 @@ export interface IEmailProvider {
 }
 
 export interface EmailTemplateData {
-  email: string;  
+  email: string;
   name?: string;
-  [key: string]: any;  
+  [key: string]: any;
 }
 
 export interface SendEmailWithTemplateOptions {
@@ -37,4 +38,16 @@ export interface SendEmailWithTemplateOptions {
   from?: string;
   replyTo?: string;
   attachments?: EmailOptions['attachments'];
+}
+
+export interface BusinessResponse {
+  id: string;
+  name: string;
+  address: string;
+  contact_phone: string;
+  contact_email: string;
+  business_page: string;
+  businessPlan: BusinessPlan;
+  createdAt: Date;
+  updatedAt: Date;
 }

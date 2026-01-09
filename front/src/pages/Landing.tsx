@@ -151,7 +151,7 @@ const Landing = () => {
             <Link to="/login">
               <Button variant="ghost" size="sm">Iniciar Sesión</Button>
             </Link>
-            <Link to="/login">
+            <Link to="/register">
               <Button size="sm" className="bg-primary hover:bg-primary/90">
                 Prueba Gratis
               </Button>
@@ -182,7 +182,7 @@ const Landing = () => {
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
-              <Link to="/login">
+              <Link to="/register">
                 <Button size="lg" className="bg-primary hover:bg-primary/90 text-lg px-8 h-14">
                   Comienza Gratis
                   <ArrowRight className="w-5 h-5 ml-2" />
@@ -428,10 +428,10 @@ const Landing = () => {
               </h2>
               <p className="text-muted-foreground mb-8">
                 Únete a más de 2,500 negocios que ya optimizaron sus operaciones con Bunker. 
-                Comienza tu prueba gratuita de 14 días hoy.
+                Comienza tu prueba gratuita de 7 días hoy.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                <Link to="/login">
+                <Link to="/register">
                   <Button size="lg" className="bg-primary hover:bg-primary/90 text-lg px-8 h-14">
                     Empezar Prueba Gratis
                     <ArrowRight className="w-5 h-5 ml-2" />

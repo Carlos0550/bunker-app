@@ -87,38 +87,6 @@ class EmailService {
     });
   }
 
-  async sendPasswordResetEmail(to: string, name: string, resetLink: string): Promise<EmailResult> {
-    return this.sendEmailWithTemplate({
-      to,
-      subject: 'Recuperación de contraseña',
-      templateName: 'password-reset',
-      data: { email: to, name, resetLink },
-    });
-  }
-
-  async sendVerificationEmail(to: string, name: string, verificationLink: string): Promise<EmailResult> {
-    return this.sendEmailWithTemplate({
-      to,
-      subject: 'Verifica tu cuenta',
-      templateName: 'verification',
-      data: { email: to, name, verificationLink },
-    });
-  }
-
-  async sendNotificationEmail(
-    to: string,
-    name: string, 
-    title: string,
-    message: string
-  ): Promise<EmailResult> {
-    return this.sendEmailWithTemplate({
-      to,
-      subject: title,
-      templateName: 'notification',
-      data: { email: to, name, title, message },
-    });
-  }
-
   previewTemplate(templateName: string, data: EmailTemplateData): string {
     return this.loadTemplate(templateName, data);
   }

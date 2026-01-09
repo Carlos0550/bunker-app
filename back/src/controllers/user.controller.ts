@@ -29,8 +29,6 @@ export class UserController {
 
   async logout(req: Request, res: Response, next: NextFunction) {
     try {
-       
-       
       res.status(200).json({
         success: true,
         message: "Sesión cerrada correctamente",
@@ -60,14 +58,7 @@ export class UserController {
 
   async updateUser(req: Request, res: Response, next: NextFunction) {
     try {
-       
-       
-       
-       
-       
-       
-       
-      
+
       const userId = req.user?.userId;
       
       if (!userId) {
@@ -100,6 +91,32 @@ export class UserController {
       res.status(200).json({
         success: true,
         data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async recoverPassword(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { email } = req.query;
+      await userService.recoverPassword(email as string);
+      res.status(200).json({
+        success: true,
+        message: "Se ha enviado un correo electrónico con las instrucciones para recuperar la contraseña",
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async resetPassword(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { token, newPassword } = req.body;
+      await userService.resetPassword(token, newPassword);
+      res.status(200).json({
+        success: true,
+        message: "Contraseña actualizada correctamente",
       });
     } catch (error) {
       next(error);

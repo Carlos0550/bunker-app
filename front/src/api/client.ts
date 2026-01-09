@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { useAuthStore } from '@/store/useAuthStore';
 
 // Configuración base de Axios
 // Cambia baseURL por la URL de tu backend real cuando esté listo
@@ -13,7 +14,7 @@ const client = axios.create({
 // Interceptor para añadir el token de autenticación a cada petición
 client.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    const token = useAuthStore.getState().token;
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }

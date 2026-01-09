@@ -3,7 +3,6 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Package, Eye, EyeOff, Loader2 } from "lucide-react";
 import { authApi } from "@/api/services/auth";
 import { useAuthStore } from "@/store/useAuthStore";
@@ -19,9 +18,35 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isRecovering, setIsRecovering] = useState(false);
 
   // Recuperar la ruta a la que el usuario intentaba ir
   const from = location.state?.from?.pathname || "/dashboard";
+
+  const handleRecoverPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      await authApi.recoverPassword(email);
+      
+      toast({
+        title: "Correo enviado",
+        description: "Si el correo existe, recibirás instrucciones para restablecer tu contraseña.",
+      });
+      
+      setIsRecovering(false);
+    } catch (error: any) {
+      console.error(error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.response?.data?.error?.message || error.message || "Error al enviar el correo",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -127,14 +152,18 @@ export default function Login() {
 
           {/* Header */}
           <div className="text-center lg:text-left">
-            <h2 className="text-3xl font-bold text-foreground">Bienvenido</h2>
+            <h2 className="text-3xl font-bold text-foreground">
+              {isRecovering ? "Recuperar Contraseña" : "Bienvenido"}
+            </h2>
             <p className="mt-2 text-muted-foreground">
-              Ingresa tus credenciales para acceder al sistema
+              {isRecovering 
+                ? "Ingresa tu correo para recibir instrucciones" 
+                : "Ingresa tus credenciales para acceder al sistema"}
             </p>
           </div>
 
           {/* Form */}
-          <form onSubmit={handleLogin} className="space-y-6">
+          <form onSubmit={isRecovering ? handleRecoverPassword : handleLogin} className="space-y-6">
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Correo Electrónico</Label>
@@ -148,54 +177,75 @@ export default function Login() {
                   required
                 />
               </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Contraseña</Label>
-                  <a href="#" className="text-sm font-medium text-primary hover:text-primary/80">
-                    ¿Olvidaste tu contraseña?
-                  </a>
-                </div>
-                <div className="relative">
-                  <Input 
-                    id="password" 
-                    type={showPassword ? "text" : "password"} 
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="h-11 pr-10"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-            </div>
 
-            <div className="flex items-center space-x-2">
-              <Checkbox id="remember" />
-              <Label htmlFor="remember" className="font-normal">
-                Recordar mi sesión
-              </Label>
-            </div>
-
-            <Button 
-              type="submit" 
-              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-11 text-base font-medium transition-all duration-200 shadow-lg shadow-primary/20 hover:shadow-primary/30 hover:-translate-y-0.5"
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Ingresando...
-                </>
-              ) : (
-                "Iniciar Sesión"
+              {!isRecovering && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="password">Contraseña</Label>
+                    <button 
+                      type="button"
+                      onClick={() => setIsRecovering(true)}
+                      className="text-sm font-medium text-primary hover:text-primary/80"
+                    >
+                      ¿Olvidaste tu contraseña?
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <Input 
+                      id="password" 
+                      type={showPassword ? "text" : "password"} 
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="h-11 pr-10"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
               )}
-            </Button>
+            </div>
+
+            <div className="space-y-4">
+              <Button 
+                type="submit" 
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-11 text-base font-medium transition-all duration-200 shadow-lg shadow-primary/20 hover:shadow-primary/30 hover:-translate-y-0.5"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  isRecovering ? "Enviar Instrucciones" : "Iniciar Sesión"
+                )}
+              </Button>
+
+              {isRecovering && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="w-full"
+                  onClick={() => setIsRecovering(false)}
+                  disabled={isLoading}
+                >
+                  Volver al inicio de sesión
+                </Button>
+              )}
+            </div>
+
+            <div className="text-center text-sm">
+              <span className="text-muted-foreground">¿No tienes cuenta? </span>
+              <a href="/register" className="font-medium text-primary hover:underline">
+                Regístrate y prueba gratis
+              </a>
+            </div>
           </form>
         </div>
       </div>

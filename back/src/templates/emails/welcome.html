@@ -7,39 +7,43 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333333; background-color: #f4f4f4; }
-        .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 20px; text-align: center; }
-        .header h1 { color: #ffffff; font-size: 28px; margin: 0; }
-        .content { padding: 40px 20px; }
+        .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .header { background-color: #14181f; padding: 40px 20px; text-align: center; }
+        .header-logo { font-size: 28px; font-weight: bold; color: #ffffff; text-decoration: none; }
+        .header-logo span { color: #ffc405; font-weight: 300; }
+        .content { padding: 40px 30px; }
         .content p { margin-bottom: 16px; font-size: 16px; color: #555555; }
-        .content h2 { color: #333333; margin-bottom: 20px; }
-        .button { display: inline-block; padding: 14px 32px; background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 6px; font-weight: 600; margin: 20px 0; }
+        .content h2 { color: #14181f; margin-bottom: 20px; font-size: 24px; }
+        .button { display: inline-block; padding: 14px 32px; background-color: #ffc405; color: #14181f !important; text-decoration: none; border-radius: 6px; font-weight: 700; margin: 20px 0; transition: background-color 0.3s; }
+        .button:hover { background-color: #e6b000; }
+        .features-list { margin-left: 0; list-style: none; margin-bottom: 20px; }
+        .features-list li { margin-bottom: 10px; padding-left: 24px; position: relative; color: #555555; }
+        .features-list li::before { content: "✓"; color: #ffc405; font-weight: bold; position: absolute; left: 0; }
         .footer { background-color: #f9f9f9; padding: 30px 20px; text-align: center; border-top: 1px solid #e0e0e0; }
         .footer p { font-size: 14px; color: #888888; margin-bottom: 10px; }
         @media only screen and (max-width: 600px) {
-            .container { width: 100% !important; }
-            .header h1 { font-size: 24px; }
-            .content { padding: 20px 15px; }
+            .container { width: 100% !important; border-radius: 0; }
+            .content { padding: 30px 20px; }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>¡Bienvenido a Bunker App!</h1>
+            <div class="header-logo">BUNKER <span>APP</span></div>
         </div>
         
         <div class="content">
-            <h2>Hola {{name}}! 👋</h2>
+            <h2>¡Bienvenido, {{name}}! 👋</h2>
             
             <p>Estamos emocionados de que te hayas unido a <strong>Bunker App</strong>. Tu cuenta ha sido creada exitosamente.</p>
             
-            <p>Con Bunker App puedes:</p>
-            <ul style="margin-left: 20px; margin-bottom: 20px; color: #555555;">
-                <li>Gestionar tu inventario de forma eficiente</li>
-                <li>Realizar seguimiento de ventas en tiempo real</li>
-                <li>Generar reportes detallados</li>
-                <li>Y mucho más...</li>
+            <p>Con Bunker App tienes el control total de tu negocio:</p>
+            <ul class="features-list">
+                <li>Gestiona tu inventario en tiempo real</li>
+                <li>Punto de venta intuitivo y rápido</li>
+                <li>Reportes avanzados para mejores decisiones</li>
+                <li>Control total desde cualquier lugar</li>
             </ul>
             
             <p>Tu cuenta está asociada al correo: <strong>{{email}}</strong></p>
@@ -48,14 +52,14 @@
                 <a href="{{appUrl}}" class="button">Comenzar Ahora</a>
             </div>
             
-            <p>Si tienes alguna pregunta, no dudes en contactarnos. Estamos aquí para ayudarte.</p>
+            <p>Si tienes alguna pregunta, nuestro equipo de soporte está listo para ayudarte.</p>
         </div>
         
         <div class="footer">
             <p>&copy; 2026 Bunker App. Todos los derechos reservados.</p>
             <p>Este es un correo automático, por favor no respondas.</p>
+            <p style="font-size: 12px; margin-top: 10px;">Enviado con ❤️ para impulsar tu negocio</p>
         </div>
     </div>
 </body>
 </html>
-

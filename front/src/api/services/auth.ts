@@ -42,5 +42,14 @@ export const authApi = {
       },
     });
     return response.data.data;
-  }
+  },
+
+  recoverPassword: async (email: string): Promise<void> => {
+    const qp = new URLSearchParams({ email });
+    await client.post(`/auth/recover-password?${qp}`);
+  },
+
+  resetPassword: async (token: string, newPassword: string): Promise<void> => {
+    await client.post('/auth/reset-password', { token, newPassword });
+  },
 };

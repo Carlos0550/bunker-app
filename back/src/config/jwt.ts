@@ -8,6 +8,11 @@ export interface TokenPayload {
   tenantId?: string; 
 }
 
+export interface RecoverPswTokenPayload {
+  email: string;
+  password: string;
+}
+
 export interface DecodedToken extends TokenPayload, JwtPayload {}
 
 
@@ -62,6 +67,16 @@ export function extractTokenFromHeader(authHeader?: string): string | null {
     return null;
   }
   return authHeader.slice(7);
+}
+
+export function generateRecoverPswToken(payload:RecoverPswTokenPayload, options?: Partial<SignOptions>):string {
+  const signOptions: SignOptions = {
+    expiresIn: env.JWT_EXPIRES_IN as SignOptions["expiresIn"],
+    algorithm: "HS256",
+    ...options,
+  };
+
+  return jwt.sign(payload, env.JWT_SECRET, signOptions);
 }
 
 

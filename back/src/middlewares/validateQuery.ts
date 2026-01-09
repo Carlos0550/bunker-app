@@ -16,7 +16,8 @@ export function validateQuery<T extends ZodSchema>(schema: T) {
       }
 
       
-      (req as any).query = result.data;
+      // (req as any).query = result.data; // Esto falla si req.query es read-only
+      Object.assign(req.query, result.data);
       next();
     } catch (error) {
       next(error);

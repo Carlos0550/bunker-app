@@ -4,6 +4,7 @@ import helmet from "helmet";
 import pino from "pino";
 import createHttpError, { HttpError } from "http-errors";
 import userRouter from "@/routes/user.routes";
+import businessRouter from "@/routes/business.routes";
 
 export const logger = pino({
   transport:
@@ -63,6 +64,7 @@ app.get("/health", (_req: Request, res: Response) => {
 });
 
 app.use("/api", userRouter);
+app.use("/api/business", businessRouter)
 
 
 

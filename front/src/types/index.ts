@@ -65,7 +65,7 @@ export interface DashboardStats {
   todaySales: number;
   todayRevenue: number;
   monthlyGrowth: number;
-  
+
 }
 
 export interface CartItem extends SaleItem {
@@ -90,9 +90,31 @@ export interface RegisterData {
   name: string;
   email: string;
   password: string;
+  businessName: string;
+  businessAddress: string;
+  businessPhone?: string;
+  businessEmail?: string;
 }
 
 export interface AuthResponse {
   token: string;
   user: User;
+}
+
+export interface BusinessPlan {
+  name: string
+  price: number;
+  features: string[];
+}
+
+export interface BusinessData {
+  id: string;
+  name: string;
+  address: string;
+  contact_phone: string;
+  contact_email: string;
+  business_page: string;
+  businessPlan: BusinessPlan;
+  createdAt: Date;
+  updatedAt: Date;
 }

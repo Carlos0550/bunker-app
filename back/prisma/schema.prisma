@@ -18,14 +18,67 @@ enum UserStatus {
   DELETED
 }
 
+model BusinessPlan {
+  id       String   @id @default(uuid())
+  name     String   @unique
+  price    Float
+  features String[]
+
+  businesses Business[]
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+}
+
+model PaymentHistory {
+  id     String   @id @default(uuid())
+  amount Float
+  status PaymentStatus @default(PAID)
+  date   DateTime @default(now())
+  nextPaymentDate DateTime? 
+  isTrial Boolean @default(false)
+
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
+}
+
+model Business {
+  id            String   @id @default(uuid())
+  name          String
+  address       String
+  contact_phone String?
+  contact_email String?
+  business_page String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relaciones
+  businessPlanId String?
+  businessPlan   BusinessPlan? @relation(fields: [businessPlanId], references: [id])
+
+  paymentHistory PaymentHistory[]
+
+  users      User[]
+  categories Categories[]
+  providers  Providers[]
+  products   Products[]
+}
+
 model User {
-  id String @id @default(uuid())
-  name String
-  email String
-  password String
-  status UserStatus @default(ACTIVE)
-  role Int @default(2)
+  id           String     @id @default(uuid())
+  name         String
+  email        String
+  password     String
+  status       UserStatus @default(ACTIVE)
+  role         Int        @default(2)
   profileImage String?
+
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -38,8 +91,11 @@ model User {
 }
 
 model Categories {
-  id String @id @default(uuid())
+  id   String @id @default(uuid())
   name String
+
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
 }
 
 enum ProductState {
@@ -62,12 +118,16 @@ model Providers {
   phone         String?
   email         String?
   address       String?
-  payment_terms String?        // "30 días", "contado"
-  delivery_days Int?           // demora promedio
+  payment_terms String? // "30 días", "contado"
+  delivery_days Int? // demora promedio
   minimum_order Float?
   status        ProviderStatus @default(ACTIVE)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Products {
@@ -79,16 +139,20 @@ model Products {
   category_id    String?
   description    String?
   state          ProductState @default(ACTIVE)
-  sku            String?      // Código interno
-  supplier_id    String?      // Proveedor
-  cost_price     Float?       // Precio de costo
-  sale_price     Float?       // Precio de venta
-  min_stock      Int?         // Stock mínimo
-  reserved_stock Int?         // Reservas
+  sku            String? // Código interno
+  supplier_id    String? // Proveedor
+  cost_price     Float? // Precio de costo
+  sale_price     Float? // Precio de venta
+  min_stock      Int? // Stock mínimo
+  reserved_stock Int? // Reservas
   notes          String?
   system_message String?
-  multipliers    Json?        // Multiplicadores de precio de venta
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  deletedAt      DateTime?
+  multipliers    Json? // Multiplicadores de precio de venta
+
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 }
