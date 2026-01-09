@@ -1,24 +1,3 @@
-# Etapa de construcción
-FROM node:20-alpine AS builder
-
-WORKDIR /app
-
-# Copiar archivos de configuración de dependencias
-COPY package*.json ./
-COPY prisma ./prisma/
-
-# Instalar dependencias (incluyendo devDependencies para el build)
-RUN npm install
-
-# Generar cliente de Prisma
-RUN npm run prisma:generate
-
-# Copiar el código fuente
-COPY . .
-
-# Construir la aplicación
-RUN npm run build
-
 # Etapa de producción
 FROM node:20-alpine AS production
 
