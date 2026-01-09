@@ -1,5 +1,5 @@
-import { emailService, EmailTemplateData } from '@/services/email.service';
-import { EmailResult } from '@/config/email';
+import { emailService } from '@/services/email.service';
+import { EmailResult, EmailTemplateData } from '@/types';
 
  
 
