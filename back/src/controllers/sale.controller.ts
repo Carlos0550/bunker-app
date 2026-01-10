@@ -191,6 +191,30 @@ class SaleController {
     }
   };
 
+  updateManualProduct = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) throw createHttpError(401, "Usuario no autenticado");
+
+      const businessId = await this.getBusinessId(userId);
+      const { name, quantity, price, status } = req.body;
+
+      const updated = await saleService.updateManualProduct(req.params.id, businessId, {
+        name,
+        quantity,
+        price,
+        status,
+      });
+
+      res.status(200).json({
+        success: true,
+        data: updated,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   parseManualProductText = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { text } = req.body;

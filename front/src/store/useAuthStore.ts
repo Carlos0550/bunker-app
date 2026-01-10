@@ -21,6 +21,8 @@ export const useAuthStore = create<AuthState>()(
       login: (token, user) => set({ token, user, isAuthenticated: true }),
       logout: () => {
         localStorage.removeItem('auth-storage');
+        localStorage.removeItem('business-storage');
+        localStorage.removeItem('cart-storage');
         useCartStore.getState().clearCart()
         set({ token: null, user: null, isAuthenticated: false });
       },

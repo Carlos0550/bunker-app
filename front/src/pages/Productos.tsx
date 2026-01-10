@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Product, Category, productsApi } from "@/api/services/products";
+import { salesApi, ManualProduct } from "@/api/services/sales";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +21,7 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -48,9 +50,20 @@ import {
   ArrowUpCircle,
   RotateCcw,
   Loader2,
+  Link2,
+  PackagePlus,
+  Ban,
+  HelpCircle,
+  FileQuestion,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
 
 export default function Productos() {
   const queryClient = useQueryClient();
@@ -63,23 +76,37 @@ export default function Productos() {
   const [stockOperation, setStockOperation] = useState<"add" | "subtract" | "set">("add");
   const [stockQuantity, setStockQuantity] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
-  const [activeTab, setActiveTab] = useState("catalogo");
+  const [activeTab, setActiveTab] = useState("inventario");
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   
   // Estados para el tab de Inventario (independientes del catálogo)
   const [inventorySearch, setInventorySearch] = useState("");
   const [inventoryPage, setInventoryPage] = useState(1);
+  const [inventoryLowStock, setInventoryLowStock] = useState<boolean | undefined>(undefined);
+  const [inventorySortBy, setInventorySortBy] = useState<"price_asc" | "price_desc" | "stock_asc" | "stock_desc" | "name_asc" | "name_desc" | undefined>(undefined);
+  const [inventoryState, setInventoryState] = useState<"all" | "ACTIVE" | "OUT_OF_STOCK" | "DISABLED">("all");
+  const [inventoryCategory, setInventoryCategory] = useState<string>("all");
+  
+  // Estados para productos manuales
+  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
+  const [editManualDialogOpen, setEditManualDialogOpen] = useState(false);
+  const [selectedManualProduct, setSelectedManualProduct] = useState<ManualProduct | null>(null);
+  const [selectedLinkProductId, setSelectedLinkProductId] = useState<string>("");
+  const [linkProductSearch, setLinkProductSearch] = useState("");
+  const [editManualForm, setEditManualForm] = useState({
+    name: "",
+    quantity: 0,
+    price: 0,
+    status: "PENDING" as "PENDING" | "LINKED" | "CONVERTED" | "IGNORED",
+  });
 
-  // Queries
-  const { data: productsData, isLoading: loadingProducts } = useQuery({
-    queryKey: ["products", currentPage, searchTerm, selectedCategory],
+  // Query para estadísticas (todos los productos sin filtros)
+  const { data: statsData } = useQuery({
+    queryKey: ["productsStats"],
     queryFn: () =>
       productsApi.getProducts(
-        {
-          search: searchTerm || undefined,
-          categoryId: selectedCategory !== "all" ? selectedCategory : undefined,
-        },
-        { page: currentPage, limit: 20 }
+        {},
+        { page: 1, limit: 10000 } // Obtener todos los productos para estadísticas
       ),
   });
 
@@ -100,20 +127,77 @@ export default function Productos() {
 
   // Query separada para el tab de Inventario
   const { data: inventoryData, isLoading: loadingInventory } = useQuery({
-    queryKey: ["inventory", inventoryPage, inventorySearch],
-    queryFn: () =>
-      productsApi.getProducts(
-        { search: inventorySearch || undefined },
-        { page: inventoryPage, limit: 15 }
-      ),
+    queryKey: ["inventory", inventoryPage, inventorySearch, inventoryLowStock, inventorySortBy, inventoryState, inventoryCategory],
+    queryFn: () => {
+      const filters: any = {
+        search: inventorySearch || undefined,
+        lowStock: inventoryLowStock,
+        state: inventoryState !== "all" ? inventoryState : undefined,
+        categoryId: inventoryCategory !== "all" ? inventoryCategory : undefined,
+      };
+      
+      // Determinar ordenamiento
+      let sortBy: string | undefined;
+      let sortOrder: "asc" | "desc" | undefined;
+      
+      if (inventorySortBy) {
+        if (inventorySortBy === "price_asc") {
+          sortBy = "sale_price";
+          sortOrder = "asc";
+        } else if (inventorySortBy === "price_desc") {
+          sortBy = "sale_price";
+          sortOrder = "desc";
+        } else if (inventorySortBy === "stock_asc") {
+          sortBy = "stock";
+          sortOrder = "asc";
+        } else if (inventorySortBy === "stock_desc") {
+          sortBy = "stock";
+          sortOrder = "desc";
+        } else if (inventorySortBy === "name_asc") {
+          sortBy = "name";
+          sortOrder = "asc";
+        } else if (inventorySortBy === "name_desc") {
+          sortBy = "name";
+          sortOrder = "desc";
+        }
+      }
+      
+      return productsApi.getProducts(
+        filters,
+        { page: inventoryPage, limit: 15, sortBy, sortOrder }
+      );
+    },
     enabled: activeTab === "inventario",
   });
+
+  // Query para productos manuales (del POS)
+  const { data: manualProducts = [], isLoading: loadingManualProducts } = useQuery({
+    queryKey: ["manualProducts"],
+    queryFn: () => salesApi.getManualProducts(),
+    enabled: activeTab === "manuales",
+  });
+
+  // Query para productos disponibles para vincular (con búsqueda)
+  const { data: linkProductsData, isLoading: loadingLinkProducts } = useQuery({
+    queryKey: ["linkProducts", linkProductSearch],
+    queryFn: () =>
+      productsApi.getProducts(
+        { search: linkProductSearch || undefined, state: "ACTIVE" },
+        { page: 1, limit: 100 }
+      ),
+    enabled: linkDialogOpen,
+  });
+
+  // Filtrar productos manuales pendientes
+  const pendingManualProducts = manualProducts.filter(mp => mp.status === "PENDING");
 
   // Mutations
   const createMutation = useMutation({
     mutationFn: (data: any) => productsApi.createProduct(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["productsStats"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory"] });
       toast.success("Producto creado exitosamente");
       setIsDialogOpen(false);
       setEditingProduct(null);
@@ -128,6 +212,8 @@ export default function Productos() {
       productsApi.updateProduct(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["productsStats"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory"] });
       queryClient.invalidateQueries({ queryKey: ["lowStockProducts"] });
       toast.success("Producto actualizado");
       setIsDialogOpen(false);
@@ -142,6 +228,8 @@ export default function Productos() {
     mutationFn: (id: string) => productsApi.deleteProduct(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["productsStats"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory"] });
       queryClient.invalidateQueries({ queryKey: ["deletedProducts"] });
       toast.success("Producto movido a papelera");
     },
@@ -154,6 +242,8 @@ export default function Productos() {
     mutationFn: (id: string) => productsApi.restoreProduct(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["productsStats"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory"] });
       queryClient.invalidateQueries({ queryKey: ["deletedProducts"] });
       toast.success("Producto restaurado");
     },
@@ -171,6 +261,8 @@ export default function Productos() {
     }) => productsApi.updateStock(id, quantity, operation),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["productsStats"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory"] });
       queryClient.invalidateQueries({ queryKey: ["lowStockProducts"] });
       toast.success("Stock actualizado");
       setIsStockDialogOpen(false);
@@ -179,6 +271,59 @@ export default function Productos() {
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.error?.message || "Error al actualizar stock");
+    },
+  });
+
+  // Mutations para productos manuales
+  const linkManualMutation = useMutation({
+    mutationFn: ({ manualId, productId }: { manualId: string; productId: string }) =>
+      salesApi.linkManualProduct(manualId, productId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["manualProducts"] });
+      toast.success("Producto vinculado exitosamente");
+      setLinkDialogOpen(false);
+      setSelectedManualProduct(null);
+      setSelectedLinkProductId("");
+      setLinkProductSearch("");
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error?.message || "Error al vincular producto");
+    },
+  });
+
+  const convertManualMutation = useMutation({
+    mutationFn: (id: string) => salesApi.convertManualProduct(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["manualProducts"] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      toast.success("Producto convertido y agregado al catálogo");
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error?.message || "Error al convertir producto");
+    },
+  });
+
+  const ignoreManualMutation = useMutation({
+    mutationFn: (id: string) => salesApi.ignoreManualProduct(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["manualProducts"] });
+      toast.success("Producto ignorado");
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error?.message || "Error al ignorar producto");
+    },
+  });
+
+  const updateManualMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => salesApi.updateManualProduct(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["manualProducts"] });
+      toast.success("Producto manual actualizado");
+      setEditManualDialogOpen(false);
+      setSelectedManualProduct(null);
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error?.message || "Error al actualizar producto");
     },
   });
 
@@ -215,10 +360,12 @@ export default function Productos() {
     }
   };
 
-  const products = productsData?.data || [];
-  const pagination = productsData?.pagination;
-  const deletedProducts = deletedProductsData?.data || [];
+  // Datos para estadísticas
+  const statsProducts = statsData?.data || [];
+  const statsPagination = statsData?.pagination;
   
+  const deletedProducts = deletedProductsData?.data || [];
+
   // Datos del inventario
   const inventoryProducts = inventoryData?.data || [];
   const inventoryPagination = inventoryData?.pagination;
@@ -244,7 +391,7 @@ export default function Productos() {
           <div>
             <h1 className="text-2xl font-bold text-foreground">Gestión de Productos</h1>
             <p className="text-muted-foreground">
-              {pagination?.total || 0} productos en inventario
+              {statsPagination?.total || 0} productos en inventario
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -389,7 +536,7 @@ export default function Productos() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Total Productos</p>
-                <p className="text-2xl font-bold text-foreground">{pagination?.total || 0}</p>
+                <p className="text-2xl font-bold text-foreground">{statsPagination?.total || 0}</p>
               </div>
             </div>
           </div>
@@ -401,7 +548,7 @@ export default function Productos() {
               <div>
                 <p className="text-sm text-muted-foreground">Activos</p>
                 <p className="text-2xl font-bold text-foreground">
-                  {products.filter((p) => p.state === "ACTIVE" && p.stock > 0).length}
+                  {statsProducts.filter((p) => p.state === "ACTIVE" && p.stock > 0).length}
                 </p>
               </div>
             </div>
@@ -425,7 +572,7 @@ export default function Productos() {
               <div>
                 <p className="text-sm text-muted-foreground">Sin Stock</p>
                 <p className="text-2xl font-bold text-destructive">
-                  {products.filter((p) => p.stock <= 0).length}
+                  {statsProducts.filter((p) => p.stock <= 0).length}
                 </p>
               </div>
             </div>
@@ -435,7 +582,6 @@ export default function Productos() {
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList className="bg-secondary/50">
-            <TabsTrigger value="catalogo">Catálogo</TabsTrigger>
             <TabsTrigger value="inventario">Inventario</TabsTrigger>
             <TabsTrigger value="alertas">
               Alertas
@@ -446,170 +592,21 @@ export default function Productos() {
               )}
             </TabsTrigger>
             <TabsTrigger value="papelera">Papelera ({deletedProducts.length})</TabsTrigger>
-          </TabsList>
-
-          {/* Catálogo Tab */}
-          <TabsContent value="catalogo" className="space-y-4">
-            {/* Search and Filters */}
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar productos..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9 bg-card"
-                />
-              </div>
-              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Categoría" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas las categorías</SelectItem>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Products Table */}
-            <div className="bunker-card overflow-hidden">
-              {loadingProducts ? (
-                <div className="flex items-center justify-center p-12">
-                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-border hover:bg-transparent">
-                      <TableHead className="text-muted-foreground">Producto</TableHead>
-                      <TableHead className="text-muted-foreground">SKU</TableHead>
-                      <TableHead className="text-muted-foreground">Categoría</TableHead>
-                      <TableHead className="text-muted-foreground text-right">Precio</TableHead>
-                      <TableHead className="text-muted-foreground text-right">Costo</TableHead>
-                      <TableHead className="text-muted-foreground text-center">Stock</TableHead>
-                      <TableHead className="text-muted-foreground">Estado</TableHead>
-                      <TableHead className="text-muted-foreground text-right">Acciones</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {products.map((product) => (
-                      <TableRow key={product.id} className="border-border">
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center overflow-hidden">
-                              {product.imageUrl ? (
-                                <img
-                                  src={product.imageUrl}
-                                  alt={product.name}
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <Package className="w-5 h-5 text-muted-foreground" />
-                              )}
-                            </div>
-                            <span className="font-medium text-foreground">{product.name}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="font-mono text-sm text-muted-foreground">
-                          {product.sku || "-"}
-                        </TableCell>
-                        <TableCell>
-                          {product.category ? (
-                            <Badge variant="secondary">{product.category.name}</Badge>
-                          ) : (
-                            <span className="text-muted-foreground">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right font-semibold text-foreground">
-                          {product.sale_price
-                            ? `$${product.sale_price.toLocaleString()}`
-                            : "-"}
-                        </TableCell>
-                        <TableCell className="text-right text-muted-foreground">
-                          {product.cost_price
-                            ? `$${product.cost_price.toLocaleString()}`
-                            : "-"}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Badge
-                            variant={product.stock <= (product.min_stock || 5) ? "destructive" : "outline"}
-                            className="cursor-pointer"
-                            onClick={() => {
-                              setStockProduct(product);
-                              setIsStockDialogOpen(true);
-                            }}
-                          >
-                            {product.stock}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {getStateBadge(product.state, product.stock, product.min_stock || 5)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() => {
-                                setEditingProduct(product);
-                                setIsDialogOpen(true);
-                              }}
-                            >
-                              <Edit2 className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-destructive hover:text-destructive"
-                              onClick={() => deleteMutation.mutate(product.id)}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+            <TabsTrigger value="manuales">
+              Manuales
+              {pendingManualProducts.length > 0 && (
+                <Badge variant="secondary" className="ml-2 bg-blue-500/20 text-blue-400">
+                  {pendingManualProducts.length}
+                </Badge>
               )}
-            </div>
-
-            {/* Pagination */}
-            {pagination && pagination.totalPages > 1 && (
-              <div className="flex justify-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={currentPage === 1}
-                  onClick={() => setCurrentPage((p) => p - 1)}
-                >
-                  Anterior
-                </Button>
-                <span className="flex items-center px-4 text-sm text-muted-foreground">
-                  Página {currentPage} de {pagination.totalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={currentPage === pagination.totalPages}
-                  onClick={() => setCurrentPage((p) => p + 1)}
-                >
-                  Siguiente
-                </Button>
-              </div>
-            )}
-          </TabsContent>
+            </TabsTrigger>
+          </TabsList>
 
           {/* Inventario Tab */}
           <TabsContent value="inventario" className="space-y-4">
-            {/* Buscador de Inventario */}
-            <div className="flex flex-col sm:flex-row gap-4">
+            {/* Buscador y Filtros de Inventario */}
+            <div className="space-y-4">
+              {/* Búsqueda principal */}
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
@@ -622,17 +619,138 @@ export default function Productos() {
                   className="pl-9 bg-card"
                 />
               </div>
-              {inventorySearch && (
-                <Button 
-                  variant="ghost" 
+
+              {/* Filtros */}
+              <div className="flex flex-wrap gap-3 items-center">
+                <div className="flex items-center gap-2">
+                  <Filter className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm font-medium text-muted-foreground">Filtros:</span>
+                </div>
+
+                {/* Filtro Stock Bajo */}
+                <Button
+                  variant={inventoryLowStock === true ? "default" : "outline"}
+                  size="sm"
                   onClick={() => {
-                    setInventorySearch("");
+                    setInventoryLowStock(inventoryLowStock === true ? undefined : true);
                     setInventoryPage(1);
                   }}
                 >
-                  Limpiar
+                  <AlertTriangle className={`w-4 h-4 mr-1 ${inventoryLowStock === true ? "" : "text-warning"}`} />
+                  Stock Bajo
                 </Button>
-              )}
+
+                {/* Filtro Estado */}
+                <Select
+                  value={inventoryState}
+                  onValueChange={(value: any) => {
+                    setInventoryState(value);
+                    setInventoryPage(1);
+                  }}
+                >
+                  <SelectTrigger className="w-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos los estados</SelectItem>
+                    <SelectItem value="ACTIVE">Activos</SelectItem>
+                    <SelectItem value="OUT_OF_STOCK">Sin Stock</SelectItem>
+                    <SelectItem value="DISABLED">Deshabilitados</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {/* Filtro Categoría */}
+                <Select
+                  value={inventoryCategory}
+                  onValueChange={(value) => {
+                    setInventoryCategory(value);
+                    setInventoryPage(1);
+                  }}
+                >
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="Categoría" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas las categorías</SelectItem>
+                    {categories.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {/* Ordenar por */}
+                <Select
+                  value={inventorySortBy || "none"}
+                  onValueChange={(value: any) => {
+                    setInventorySortBy(value === "none" ? undefined : value);
+                    setInventoryPage(1);
+                  }}
+                >
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="Ordenar por..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sin ordenar</SelectItem>
+                    <SelectItem value="price_desc">
+                      <div className="flex items-center gap-2">
+                        <ArrowDown className="w-4 h-4" />
+                        Precio: Mayor a Menor
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="price_asc">
+                      <div className="flex items-center gap-2">
+                        <ArrowUp className="w-4 h-4" />
+                        Precio: Menor a Mayor
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="stock_desc">
+                      <div className="flex items-center gap-2">
+                        <ArrowDown className="w-4 h-4" />
+                        Stock: Mayor a Menor
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="stock_asc">
+                      <div className="flex items-center gap-2">
+                        <ArrowUp className="w-4 h-4" />
+                        Stock: Menor a Mayor
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="name_asc">
+                      <div className="flex items-center gap-2">
+                        <ArrowUp className="w-4 h-4" />
+                        Nombre: A-Z
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="name_desc">
+                      <div className="flex items-center gap-2">
+                        <ArrowDown className="w-4 h-4" />
+                        Nombre: Z-A
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {/* Botón limpiar filtros */}
+                {(inventorySearch || inventoryLowStock !== undefined || inventoryState !== "all" || inventoryCategory !== "all" || inventorySortBy) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setInventorySearch("");
+                      setInventoryLowStock(undefined);
+                      setInventoryState("all");
+                      setInventoryCategory("all");
+                      setInventorySortBy(undefined);
+                      setInventoryPage(1);
+                    }}
+                  >
+                    <X className="w-4 h-4 mr-1" />
+                    Limpiar Filtros
+                  </Button>
+                )}
+              </div>
             </div>
 
             <div className="bunker-card overflow-hidden">
@@ -656,6 +774,7 @@ export default function Productos() {
                     <TableRow className="border-border hover:bg-transparent">
                       <TableHead className="text-muted-foreground">Producto</TableHead>
                       <TableHead className="text-muted-foreground">SKU</TableHead>
+                      <TableHead className="text-muted-foreground text-right">Precio</TableHead>
                       <TableHead className="text-muted-foreground text-center">Stock Actual</TableHead>
                       <TableHead className="text-muted-foreground text-center">Stock Mínimo</TableHead>
                       <TableHead className="text-muted-foreground text-center">Reservado</TableHead>
@@ -689,6 +808,11 @@ export default function Productos() {
                         </TableCell>
                         <TableCell className="font-mono text-sm text-muted-foreground">
                           {product.sku || "-"}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <span className="font-semibold text-foreground">
+                            {product.sale_price ? `$${product.sale_price.toLocaleString()}` : "-"}
+                          </span>
                         </TableCell>
                         <TableCell className="text-center">
                           <span className={`font-bold ${product.stock <= 0 ? "text-destructive" : product.stock <= (product.min_stock || 5) ? "text-warning" : "text-foreground"}`}>
@@ -870,7 +994,394 @@ export default function Productos() {
               </div>
             )}
           </TabsContent>
+
+          {/* Tab Productos Manuales */}
+          <TabsContent value="manuales" className="space-y-4">
+            <div className="bunker-card p-4 bg-blue-500/5 border-blue-500/20">
+              <div className="flex items-start gap-3">
+                <HelpCircle className="w-5 h-5 text-blue-400 mt-0.5" />
+                <div>
+                  <h4 className="font-medium text-foreground">¿Qué son los productos manuales?</h4>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Son productos agregados manualmente en el Punto de Venta que no existían en el catálogo. 
+                    Puedes vincularlos a productos existentes, convertirlos en nuevos productos, o ignorarlos.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {loadingManualProducts ? (
+              <div className="flex items-center justify-center p-12">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              </div>
+            ) : manualProducts.length === 0 ? (
+              <div className="bunker-card p-12 text-center">
+                <FileQuestion className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                <p className="text-lg font-medium text-foreground">Sin productos manuales</p>
+                <p className="text-muted-foreground">
+                  Los productos agregados manualmente en el POS aparecerán aquí
+                </p>
+              </div>
+            ) : (
+              <div className="bunker-card overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-border hover:bg-transparent">
+                      <TableHead className="text-muted-foreground">Producto</TableHead>
+                      <TableHead className="text-muted-foreground text-right">Precio</TableHead>
+                      <TableHead className="text-muted-foreground text-center">Cantidad</TableHead>
+                      <TableHead className="text-muted-foreground">Fecha</TableHead>
+                      <TableHead className="text-muted-foreground">Estado</TableHead>
+                      <TableHead className="text-muted-foreground text-right">Acciones</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {manualProducts.map((mp) => (
+                      <TableRow key={mp.id} className="border-border">
+                        <TableCell>
+                          <div>
+                            <p className="font-medium text-foreground">{mp.name}</p>
+                            <p className="text-xs text-muted-foreground font-mono">{mp.originalText}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right font-semibold text-foreground">
+                          ${mp.price.toLocaleString()}
+                        </TableCell>
+                        <TableCell className="text-center text-muted-foreground">
+                          {mp.quantity}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {format(new Date(mp.createdAt), "dd MMM, HH:mm", { locale: es })}
+                        </TableCell>
+                        <TableCell>
+                          {mp.status === "PENDING" && (
+                            <Badge variant="outline" className="border-blue-500 text-blue-400">
+                              Pendiente
+                            </Badge>
+                          )}
+                          {mp.status === "LINKED" && (
+                            <Badge variant="outline" className="border-success text-success">
+                              Vinculado
+                            </Badge>
+                          )}
+                          {mp.status === "CONVERTED" && (
+                            <Badge variant="outline" className="border-primary text-primary">
+                              Convertido
+                            </Badge>
+                          )}
+                          {mp.status === "IGNORED" && (
+                            <Badge variant="secondary">Ignorado</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {mp.status === "PENDING" && (
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedManualProduct(mp);
+                                  setEditManualForm({
+                                    name: mp.name,
+                                    quantity: mp.quantity,
+                                    price: mp.price,
+                                    status: mp.status,
+                                  });
+                                  setEditManualDialogOpen(true);
+                                }}
+                                title="Editar producto"
+                              >
+                                <Edit2 className="w-4 h-4 mr-1" />
+                                Editar
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedManualProduct(mp);
+                                  setLinkDialogOpen(true);
+                                }}
+                                title="Vincular a producto existente"
+                              >
+                                <Link2 className="w-4 h-4 mr-1" />
+                                Vincular
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => convertManualMutation.mutate(mp.id)}
+                                disabled={convertManualMutation.isPending}
+                                title="Crear nuevo producto"
+                              >
+                                <PackagePlus className="w-4 h-4 mr-1" />
+                                Convertir
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => ignoreManualMutation.mutate(mp.id)}
+                                disabled={ignoreManualMutation.isPending}
+                                className="text-muted-foreground hover:text-destructive"
+                                title="Ignorar"
+                              >
+                                <Ban className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          )}
+                          {mp.status !== "PENDING" && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedManualProduct(mp);
+                                setEditManualForm({
+                                  name: mp.name,
+                                  quantity: mp.quantity,
+                                  price: mp.price,
+                                  status: mp.status,
+                                });
+                                setEditManualDialogOpen(true);
+                              }}
+                              title="Editar producto manual"
+                            >
+                              <Edit2 className="w-4 h-4 mr-1" />
+                              Editar
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </TabsContent>
         </Tabs>
+
+        {/* Dialog para vincular producto manual */}
+        <Dialog 
+          open={linkDialogOpen} 
+          onOpenChange={(open) => {
+            setLinkDialogOpen(open);
+            if (!open) {
+              setLinkProductSearch("");
+              setSelectedLinkProductId("");
+            }
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Vincular Producto</DialogTitle>
+              <DialogDescription>
+                Vincula "{selectedManualProduct?.name}" a un producto existente en tu catálogo
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="p-3 bg-secondary/50 rounded-lg">
+                <p className="text-sm text-muted-foreground">Producto manual:</p>
+                <p className="font-medium">{selectedManualProduct?.name}</p>
+                <p className="text-sm text-muted-foreground">
+                  Precio: ${selectedManualProduct?.price.toLocaleString()} | Cantidad: {selectedManualProduct?.quantity}
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label>Seleccionar producto del catálogo</Label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar producto por nombre, SKU o código de barras..."
+                    value={linkProductSearch}
+                    onChange={(e) => setLinkProductSearch(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+                {loadingLinkProducts ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                  </div>
+                ) : (
+                  <div className="border rounded-lg max-h-[300px] overflow-auto">
+                    {linkProductsData?.data && linkProductsData.data.length > 0 ? (
+                      <div className="divide-y">
+                        {linkProductsData.data.map((p) => (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => setSelectedLinkProductId(p.id)}
+                            className={`w-full text-left p-3 hover:bg-secondary/50 transition-colors ${
+                              selectedLinkProductId === p.id ? "bg-primary/10 border-l-2 border-primary" : ""
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1">
+                                <p className="font-medium text-foreground">{p.name}</p>
+                                <div className="flex items-center gap-3 mt-1">
+                                  {p.sku && (
+                                    <span className="text-xs text-muted-foreground font-mono">SKU: {p.sku}</span>
+                                  )}
+                                  {p.bar_code && (
+                                    <span className="text-xs text-muted-foreground font-mono">Código: {p.bar_code}</span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="text-right ml-4">
+                                <p className="font-semibold text-foreground">
+                                  ${p.sale_price?.toLocaleString() || 0}
+                                </p>
+                                <p className="text-xs text-muted-foreground">Stock: {p.stock}</p>
+                              </div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-8 text-center">
+                        <Package className="w-8 h-8 mx-auto mb-2 text-muted-foreground opacity-50" />
+                        <p className="text-sm text-muted-foreground">
+                          {linkProductSearch ? "No se encontraron productos" : "Ingresa un término de búsqueda"}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {selectedLinkProductId && (
+                  <div className="p-2 bg-primary/10 rounded-lg border border-primary/20">
+                    <p className="text-xs text-muted-foreground">Producto seleccionado:</p>
+                    <p className="font-medium text-sm">
+                      {linkProductsData?.data.find((p) => p.id === selectedLinkProductId)?.name}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setLinkDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={() => {
+                  if (selectedManualProduct && selectedLinkProductId) {
+                    linkManualMutation.mutate({
+                      manualId: selectedManualProduct.id,
+                      productId: selectedLinkProductId,
+                    });
+                  }
+                }}
+                disabled={!selectedLinkProductId || linkManualMutation.isPending}
+              >
+                {linkManualMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Vincular
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog para editar producto manual */}
+        <Dialog
+          open={editManualDialogOpen}
+          onOpenChange={(open) => {
+            setEditManualDialogOpen(open);
+            if (!open) {
+              setSelectedManualProduct(null);
+              setEditManualForm({ name: "", quantity: 0, price: 0, status: "PENDING" });
+            }
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Editar Producto Manual</DialogTitle>
+              <DialogDescription>
+                Modifica los datos del producto manual "{selectedManualProduct?.name}"
+              </DialogDescription>
+            </DialogHeader>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (selectedManualProduct) {
+                  updateManualMutation.mutate({
+                    id: selectedManualProduct.id,
+                    data: editManualForm,
+                  });
+                }
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <Label htmlFor="edit-name">Nombre *</Label>
+                <Input
+                  id="edit-name"
+                  value={editManualForm.name}
+                  onChange={(e) => setEditManualForm({ ...editManualForm, name: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="edit-quantity">Cantidad *</Label>
+                  <Input
+                    id="edit-quantity"
+                    type="number"
+                    min="1"
+                    value={editManualForm.quantity}
+                    onChange={(e) =>
+                      setEditManualForm({ ...editManualForm, quantity: Number(e.target.value) })
+                    }
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-price">Precio *</Label>
+                  <Input
+                    id="edit-price"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={editManualForm.price}
+                    onChange={(e) =>
+                      setEditManualForm({ ...editManualForm, price: Number(e.target.value) })
+                    }
+                    required
+                  />
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="edit-status">Estado</Label>
+                <Select
+                  value={editManualForm.status}
+                  onValueChange={(value: any) =>
+                    setEditManualForm({ ...editManualForm, status: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="PENDING">Pendiente</SelectItem>
+                    <SelectItem value="LINKED">Vinculado</SelectItem>
+                    <SelectItem value="CONVERTED">Convertido</SelectItem>
+                    <SelectItem value="IGNORED">Ignorado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setEditManualDialogOpen(false);
+                    setSelectedManualProduct(null);
+                  }}
+                >
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={updateManualMutation.isPending}>
+                  {updateManualMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  Guardar Cambios
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
 
         {/* Stock Dialog */}
         <Dialog open={isStockDialogOpen} onOpenChange={setIsStockDialogOpen}>

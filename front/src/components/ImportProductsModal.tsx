@@ -500,7 +500,7 @@ export function ImportProductsModal({ open, onOpenChange }: ImportProductsModalP
                 <div>
                   <h4 className="font-semibold mb-2 flex items-center gap-2">
                     <FileWarning className="w-4 h-4 text-destructive" />
-                    Errores encontrados ({importResult.totalErrors})
+                    Errores encontrados ({importResult.failed})
                   </h4>
                   <div className="border rounded-lg overflow-auto max-h-48">
                     <Table>
@@ -520,9 +520,9 @@ export function ImportProductsModal({ open, onOpenChange }: ImportProductsModalP
                       </TableBody>
                     </Table>
                   </div>
-                  {importResult.totalErrors > importResult.errors.length && (
+                  {importResult.failed > importResult.errors.length && (
                     <p className="text-xs text-muted-foreground mt-2">
-                      Mostrando {importResult.errors.length} de {importResult.totalErrors} errores
+                      Mostrando {importResult.errors.length} de {importResult.failed} errores
                     </p>
                   )}
                 </div>

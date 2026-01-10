@@ -31,6 +31,13 @@ export const linkManualProductSchema = z.object({
   productId: z.string().uuid(),
 });
 
+export const updateManualProductSchema = z.object({
+  name: z.string().min(1).optional(),
+  quantity: z.number().int().min(1).optional(),
+  price: z.number().min(0).optional(),
+  status: z.enum(["PENDING", "LINKED", "CONVERTED", "IGNORED"]).optional(),
+});
+
 export const parseManualTextSchema = z.object({
   text: z.string().min(1),
 });

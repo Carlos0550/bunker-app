@@ -318,9 +318,9 @@ export default function POS() {
 
   return (
     <MainLayout title="Punto de Venta">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-8rem)]">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Products Section */}
-        <div className="lg:col-span-2 flex flex-col gap-4">
+        <div className="lg:col-span-2 flex flex-col gap-4 min-h-[calc(100vh-8rem)]">
           {/* Search */}
           <div className="flex gap-2">
             <div className="relative flex-1">
@@ -424,9 +424,9 @@ export default function POS() {
         </div>
 
         {/* Cart Section */}
-        <div className="bunker-card flex flex-col h-full">
+        <div className="bunker-card flex flex-col max-h-[calc(100vh-8rem)] overflow-hidden">
           {/* Cart Header */}
-          <div className="p-4 border-b border-border">
+          <div className="p-4 border-b border-border flex-shrink-0">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
                 <ShoppingCart className="w-5 h-5" />
@@ -491,7 +491,7 @@ export default function POS() {
           </div>
 
           {/* Cart Items */}
-          <div className="flex-1 overflow-auto scrollbar-thin p-4 space-y-2">
+          <div className="flex-1 overflow-y-auto scrollbar-thin p-4 space-y-2 min-h-0">
             {cart.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
                 <ShoppingCart className="w-12 h-12 mb-3 opacity-50" />
@@ -561,7 +561,7 @@ export default function POS() {
           </div>
 
           {/* Cart Footer */}
-          <div className="p-4 border-t border-border space-y-4">
+          <div className="p-4 border-t border-border space-y-4 flex-shrink-0">
             {/* Discount */}
             <div className="flex items-center gap-2">
               <Percent className="w-4 h-4 text-muted-foreground" />

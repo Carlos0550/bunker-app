@@ -179,4 +179,16 @@ export const salesApi = {
   ignoreManualProduct: async (id: string): Promise<void> => {
     await client.post(`/sales/manual-products/${id}/ignore`);
   },
+
+  // Actualizar producto manual
+  updateManualProduct: async (
+    id: string,
+    data: { name?: string; quantity?: number; price?: number; status?: string }
+  ): Promise<ManualProduct> => {
+    const response = await client.put<{ success: boolean; data: ManualProduct }>(
+      `/sales/manual-products/${id}`,
+      data
+    );
+    return response.data.data;
+  },
 };

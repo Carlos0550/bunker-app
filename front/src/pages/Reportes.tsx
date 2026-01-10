@@ -122,7 +122,6 @@ export default function Reportes() {
     }).format(value);
   };
 
-  // Datos para gráfico de métodos de pago
   const paymentMethodData = (salesSummary?.salesByPaymentMethod || []).map((pm, index) => ({
     name: pm.paymentMethod === "CASH" ? "Efectivo" :
           pm.paymentMethod === "CARD" ? "Tarjeta" :
@@ -132,7 +131,6 @@ export default function Reportes() {
     fill: COLORS[index % COLORS.length],
   })) || [];
 
-  // Filtrar ventas por búsqueda
   const filteredSales = salesData?.data.filter(sale =>
     sale.saleNumber.toLowerCase().includes(salesSearch.toLowerCase()) ||
     sale.customer?.name?.toLowerCase().includes(salesSearch.toLowerCase()) ||

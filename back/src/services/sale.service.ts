@@ -539,6 +539,35 @@ class SaleService {
   }
 
   /**
+   * Actualizar un producto manual
+   */
+  async updateManualProduct(
+    manualProductId: string,
+    businessId: string,
+    data: { name?: string; quantity?: number; price?: number; status?: ManualProductStatus }
+  ) {
+    const manualProduct = await prisma.manualProduct.findFirst({
+      where: { id: manualProductId, businessId },
+    });
+
+    if (!manualProduct) {
+      throw createHttpError(404, "Producto manual no encontrado");
+    }
+
+    const updated = await prisma.manualProduct.update({
+      where: { id: manualProductId },
+      data: {
+        ...(data.name && { name: data.name }),
+        ...(data.quantity !== undefined && { quantity: data.quantity }),
+        ...(data.price !== undefined && { price: data.price }),
+        ...(data.status && { status: data.status }),
+      },
+    });
+
+    return updated;
+  }
+
+  /**
    * Parsear texto de producto manual
    * Formato: CANTIDAD NOMBRE PRECIO
    * Ejemplo: "2 coca cola 2500"
