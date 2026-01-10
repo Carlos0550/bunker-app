@@ -1,49 +1,78 @@
-import { mockProducts } from "@/data/mockData";
-import { AlertTriangle, Package } from "lucide-react";
+import { AlertTriangle, Package, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
-export function LowStockAlert() {
-  const lowStockProducts = mockProducts.filter(p => p.stock <= p.minStock);
+interface LowStockProduct {
+  id: string;
+  name: string;
+  stock: number;
+  min_stock: number;
+  threshold: number;
+  deficit: number;
+}
+
+interface LowStockAlertProps {
+  products: LowStockProduct[];
+  isLoading?: boolean;
+}
+
+export function LowStockAlert({ products, isLoading }: LowStockAlertProps) {
+  if (isLoading) {
+    return (
+      <div className="bunker-card p-6 animate-fade-in h-[300px] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
-    <div className="bunker-card p-6 border-warning/30 animate-fade-in">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-warning/20">
-            <AlertTriangle className="w-5 h-5 text-warning" />
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold text-foreground">Stock Bajo</h3>
-            <p className="text-sm text-muted-foreground">Productos que requieren atención</p>
-          </div>
+    <div className="bunker-card p-6 animate-fade-in border-warning/20">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <AlertTriangle className="w-5 h-5 text-warning" />
+          <h3 className="text-lg font-semibold text-foreground">Stock Bajo</h3>
         </div>
-        <Badge variant="destructive" className="text-xs">
-          {lowStockProducts.length} productos
-        </Badge>
+        {products.length > 0 && (
+          <Badge variant="destructive">{products.length}</Badge>
+        )}
       </div>
       
-      <div className="space-y-3">
-        {lowStockProducts.map((product) => (
-          <div key={product.id} className="flex items-center gap-3 p-3 rounded-lg bg-warning/5 border border-warning/20">
-            <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
-              <Package className="w-5 h-5 text-muted-foreground" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground truncate">{product.name}</p>
-              <p className="text-xs text-muted-foreground">SKU: {product.sku}</p>
-            </div>
-            <div className="text-right">
-              <p className="text-lg font-bold text-warning">{product.stock}</p>
-              <p className="text-[10px] text-muted-foreground">Min: {product.minStock}</p>
-            </div>
+      {products.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+          <Package className="w-12 h-12 mb-2 opacity-50 text-success" />
+          <p className="text-success">¡Todo en orden!</p>
+          <p className="text-sm">No hay productos con stock bajo</p>
+        </div>
+      ) : (
+        <ScrollArea className="h-[250px] pr-2">
+          <div className="space-y-2">
+            {products.map((product) => (
+              <div
+                key={product.id}
+                className="flex items-center justify-between p-3 rounded-lg bg-warning/10 border border-warning/20"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-warning/20 flex items-center justify-center">
+                    <Package className="w-4 h-4 text-warning" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-foreground text-sm truncate max-w-[150px]">
+                      {product.name}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Mínimo: {product.threshold}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="font-bold text-warning">{product.stock}</p>
+                  <p className="text-xs text-destructive">-{product.deficit}</p>
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
-      
-      <Button className="w-full mt-4" variant="outline">
-        Ver todos los productos
-      </Button>
+        </ScrollArea>
+      )}
     </div>
   );
 }

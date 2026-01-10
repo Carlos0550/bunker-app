@@ -12,6 +12,27 @@ export {
 
 export { authenticate, authorize, optionalAuth, verifyTenant } from "./auth";
 
+export {
+  verifySubscription,
+  verifySubscriptionForCriticalRoutes,
+  checkBusinessAccess,
+  getBusinessSubscriptionStatus,
+} from "./subscription";
+
+export {
+  requireFeature,
+  requireFeatureLimit,
+  requireProductLimit,
+  requireUserLimit,
+  requireSalesLimit,
+  requireReportsAccess,
+  requireAdvancedAnalytics,
+  requireExportAccess,
+  requireApiAccess,
+} from "./feature";
+
+export { requireEmailVerified, warnEmailNotVerified } from "./emailVerified";
+
 
 export { validateBody, requireValidBody } from "./validateBody";
 

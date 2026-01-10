@@ -1,5 +1,8 @@
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { MainLayout } from "@/components/layout/MainLayout";
-import { salesChartData, categoryData, topProducts, mockDashboardStats } from "@/data/mockData";
+import { analyticsApi, SalesSummary, TopProduct, ChartDataPoint, RecentSale } from "@/api/services/analytics";
+import { salesApi, Sale } from "@/api/services/sales";
 import { 
   AreaChart, 
   Area, 
@@ -17,19 +20,160 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Skeleton } from "@/components/ui/skeleton";
 import { 
   Calendar,
   Download,
   TrendingUp,
+  TrendingDown,
   DollarSign,
   ShoppingBag,
-  Users,
+  Package,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  Search,
+  Eye,
+  Receipt,
+  Clock,
+  User,
+  CreditCard,
+  AlertTriangle,
+  RefreshCw
 } from "lucide-react";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
+
+const COLORS = [
+  "hsl(45, 100%, 51%)",  // Amarillo (primary)
+  "hsl(142, 76%, 36%)",  // Verde
+  "hsl(217, 91%, 60%)",  // Azul
+  "hsl(0, 84%, 60%)",    // Rojo
+  "hsl(280, 87%, 65%)",  // Morado
+  "hsl(24, 95%, 53%)",   // Naranja
+];
+
+type Period = "today" | "yesterday" | "week" | "month";
 
 export default function Reportes() {
-  const stats = mockDashboardStats;
+  const [period, setPeriod] = useState<Period>("month");
+  const [salesPage, setSalesPage] = useState(1);
+  const [salesSearch, setSalesSearch] = useState("");
+  const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+
+  // Queries
+  const { data: stats, isLoading: loadingStats, refetch: refetchStats } = useQuery({
+    queryKey: ["dashboardStats"],
+    queryFn: analyticsApi.getDashboardStats,
+  });
+
+  const { data: salesSummary, isLoading: loadingSummary } = useQuery({
+    queryKey: ["salesSummary", period],
+    queryFn: () => analyticsApi.getSalesSummary(period),
+  });
+
+  const { data: topProducts, isLoading: loadingTopProducts } = useQuery({
+    queryKey: ["topProducts", period],
+    queryFn: () => analyticsApi.getTopProducts(10, period),
+  });
+
+  const { data: weeklyChart, isLoading: loadingChart } = useQuery({
+    queryKey: ["weeklyChart"],
+    queryFn: analyticsApi.getWeeklySalesChart,
+  });
+
+  const { data: lowStockProducts } = useQuery({
+    queryKey: ["lowStockProducts"],
+    queryFn: analyticsApi.getLowStockProducts,
+  });
+
+  const { data: salesData, isLoading: loadingSales } = useQuery({
+    queryKey: ["salesHistory", salesPage],
+    queryFn: () => salesApi.getSales({ page: salesPage, limit: 20 }),
+  });
+
+  // Formatear moneda
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat("es-MX", {
+      style: "currency",
+      currency: "MXN",
+    }).format(value);
+  };
+
+  // Datos para gráfico de métodos de pago
+  const paymentMethodData = (salesSummary?.salesByPaymentMethod || []).map((pm, index) => ({
+    name: pm.paymentMethod === "CASH" ? "Efectivo" :
+          pm.paymentMethod === "CARD" ? "Tarjeta" :
+          pm.paymentMethod === "TRANSFER" ? "Transferencia" : "Otro",
+    value: pm.total,
+    count: pm.count,
+    fill: COLORS[index % COLORS.length],
+  })) || [];
+
+  // Filtrar ventas por búsqueda
+  const filteredSales = salesData?.data.filter(sale =>
+    sale.saleNumber.toLowerCase().includes(salesSearch.toLowerCase()) ||
+    sale.customer?.name?.toLowerCase().includes(salesSearch.toLowerCase()) ||
+    sale.user?.name?.toLowerCase().includes(salesSearch.toLowerCase())
+  ) || [];
+
+  const getPeriodLabel = (p: Period) => {
+    switch (p) {
+      case "today": return "Hoy";
+      case "yesterday": return "Ayer";
+      case "week": return "Esta Semana";
+      case "month": return "Este Mes";
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "COMPLETED":
+        return <Badge className="bg-green-500/20 text-green-400">Completada</Badge>;
+      case "PENDING":
+        return <Badge className="bg-yellow-500/20 text-yellow-400">Pendiente</Badge>;
+      case "CANCELLED":
+        return <Badge className="bg-red-500/20 text-red-400">Cancelada</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
+  const getPaymentMethodLabel = (method: string) => {
+    switch (method) {
+      case "CASH": return "Efectivo";
+      case "CARD": return "Tarjeta";
+      case "TRANSFER": return "Transferencia";
+      default: return "Otro";
+    }
+  };
+
+  const handleViewSale = async (sale: Sale) => {
+    setSelectedSale(sale);
+    setIsDetailOpen(true);
+  };
 
   return (
     <MainLayout title="Reportes">
@@ -43,94 +187,147 @@ export default function Reportes() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline">
-              <Calendar className="w-4 h-4 mr-2" />
-              Enero 2024
-            </Button>
-            <Button variant="outline">
-              <Download className="w-4 h-4 mr-2" />
-              Exportar
+            <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
+              <SelectTrigger className="w-[160px]">
+                <Calendar className="w-4 h-4 mr-2" />
+                <SelectValue placeholder="Período" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="today">Hoy</SelectItem>
+                <SelectItem value="yesterday">Ayer</SelectItem>
+                <SelectItem value="week">Esta Semana</SelectItem>
+                <SelectItem value="month">Este Mes</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button variant="outline" onClick={() => refetchStats()}>
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Actualizar
             </Button>
           </div>
         </div>
 
         {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="stat-card">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Ventas Totales</p>
-                <p className="text-2xl font-bold text-foreground">{stats.totalSales}</p>
-                <div className="flex items-center gap-1 mt-1">
-                  <ArrowUpRight className="w-4 h-4 text-success" />
-                  <span className="text-xs text-success">+12% vs mes anterior</span>
+          {loadingStats ? (
+            <>
+              {[...Array(4)].map((_, i) => (
+                <Skeleton key={i} className="h-32" />
+              ))}
+            </>
+          ) : (
+            <>
+              <div className="stat-card">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Ventas del Mes</p>
+                    <p className="text-2xl font-bold text-foreground">{stats?.totalSales || 0}</p>
+                    <div className="flex items-center gap-1 mt-1">
+                      {(stats?.monthlyGrowth || 0) >= 0 ? (
+                        <>
+                          <ArrowUpRight className="w-4 h-4 text-success" />
+                          <span className="text-xs text-success">+{stats?.monthlyGrowth}% vs mes anterior</span>
+                        </>
+                      ) : (
+                        <>
+                          <ArrowDownRight className="w-4 h-4 text-destructive" />
+                          <span className="text-xs text-destructive">{stats?.monthlyGrowth}% vs mes anterior</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="p-3 rounded-xl bg-primary/20">
+                    <ShoppingBag className="w-6 h-6 text-primary" />
+                  </div>
                 </div>
               </div>
-              <div className="p-3 rounded-xl bg-primary/20">
-                <ShoppingBag className="w-6 h-6 text-primary" />
-              </div>
-            </div>
-          </div>
 
-          <div className="stat-card">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Ingresos</p>
-                <p className="text-2xl font-bold text-foreground">
-                  ${stats.totalRevenue.toLocaleString()}
-                </p>
-                <div className="flex items-center gap-1 mt-1">
-                  <ArrowUpRight className="w-4 h-4 text-success" />
-                  <span className="text-xs text-success">+{stats.monthlyGrowth}%</span>
+              <div className="stat-card">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Ingresos del Mes</p>
+                    <p className="text-2xl font-bold text-foreground">
+                      {formatCurrency(stats?.totalRevenue || 0)}
+                    </p>
+                    <div className="flex items-center gap-1 mt-1">
+                      {(stats?.monthlyGrowth || 0) >= 0 ? (
+                        <>
+                          <TrendingUp className="w-4 h-4 text-success" />
+                          <span className="text-xs text-success">Creciendo</span>
+                        </>
+                      ) : (
+                        <>
+                          <TrendingDown className="w-4 h-4 text-destructive" />
+                          <span className="text-xs text-destructive">Decreciendo</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="p-3 rounded-xl bg-success/20">
+                    <DollarSign className="w-6 h-6 text-success" />
+                  </div>
                 </div>
               </div>
-              <div className="p-3 rounded-xl bg-success/20">
-                <DollarSign className="w-6 h-6 text-success" />
-              </div>
-            </div>
-          </div>
 
-          <div className="stat-card">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Ticket Promedio</p>
-                <p className="text-2xl font-bold text-foreground">$294.17</p>
-                <div className="flex items-center gap-1 mt-1">
-                  <ArrowDownRight className="w-4 h-4 text-destructive" />
-                  <span className="text-xs text-destructive">-3% vs mes anterior</span>
+              <div className="stat-card">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Ventas de Hoy</p>
+                    <p className="text-2xl font-bold text-foreground">{stats?.todaySales || 0}</p>
+                    <div className="flex items-center gap-1 mt-1">
+                      {(stats?.dailyChange || 0) >= 0 ? (
+                        <>
+                          <ArrowUpRight className="w-4 h-4 text-success" />
+                          <span className="text-xs text-success">+{stats?.dailyChange}% vs ayer</span>
+                        </>
+                      ) : (
+                        <>
+                          <ArrowDownRight className="w-4 h-4 text-destructive" />
+                          <span className="text-xs text-destructive">{stats?.dailyChange}% vs ayer</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="p-3 rounded-xl bg-blue-500/20">
+                    <Receipt className="w-6 h-6 text-blue-500" />
+                  </div>
                 </div>
               </div>
-              <div className="p-3 rounded-xl bg-warning/20">
-                <TrendingUp className="w-6 h-6 text-warning" />
-              </div>
-            </div>
-          </div>
 
-          <div className="stat-card">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Clientes Nuevos</p>
-                <p className="text-2xl font-bold text-foreground">28</p>
-                <div className="flex items-center gap-1 mt-1">
-                  <ArrowUpRight className="w-4 h-4 text-success" />
-                  <span className="text-xs text-success">+8% vs mes anterior</span>
+              <div className="stat-card">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Stock Bajo</p>
+                    <p className="text-2xl font-bold text-foreground">{stats?.lowStockProducts || 0}</p>
+                    <div className="flex items-center gap-1 mt-1">
+                      {(stats?.lowStockProducts || 0) > 0 ? (
+                        <>
+                          <AlertTriangle className="w-4 h-4 text-warning" />
+                          <span className="text-xs text-warning">Requieren atención</span>
+                        </>
+                      ) : (
+                        <span className="text-xs text-success">Todo en orden</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="p-3 rounded-xl bg-warning/20">
+                    <Package className="w-6 h-6 text-warning" />
+                  </div>
                 </div>
               </div>
-              <div className="p-3 rounded-xl bg-secondary">
-                <Users className="w-6 h-6 text-secondary-foreground" />
-              </div>
-            </div>
-          </div>
+            </>
+          )}
         </div>
 
         {/* Tabs */}
         <Tabs defaultValue="ventas" className="space-y-4">
           <TabsList className="bg-secondary/50">
-            <TabsTrigger value="ventas">Ventas</TabsTrigger>
-            <TabsTrigger value="productos">Productos</TabsTrigger>
-            <TabsTrigger value="categorias">Categorías</TabsTrigger>
+            <TabsTrigger value="ventas">Tendencia de Ventas</TabsTrigger>
+            <TabsTrigger value="productos">Top Productos</TabsTrigger>
+            <TabsTrigger value="metodos">Métodos de Pago</TabsTrigger>
+            <TabsTrigger value="historial">Historial de Ventas</TabsTrigger>
           </TabsList>
 
+          {/* Tendencia de Ventas */}
           <TabsContent value="ventas">
             <div className="bunker-card p-6">
               <div className="flex items-center justify-between mb-6">
@@ -138,182 +335,493 @@ export default function Reportes() {
                   <h3 className="text-lg font-semibold text-foreground">Tendencia de Ventas</h3>
                   <p className="text-sm text-muted-foreground">Últimos 7 días</p>
                 </div>
-                <Badge variant="outline" className="border-success text-success">
-                  <TrendingUp className="w-3 h-3 mr-1" />
-                  Creciendo
-                </Badge>
+                {weeklyChart && weeklyChart.length > 0 && (
+                  <Badge variant="outline" className="border-success text-success">
+                    <TrendingUp className="w-3 h-3 mr-1" />
+                    {formatCurrency(weeklyChart.reduce((acc, d) => acc + d.ventas, 0))} total
+                  </Badge>
+                )}
               </div>
               
-              <div className="h-[400px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={salesChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="colorVentasReport" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="hsl(45, 100%, 51%)" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="hsl(45, 100%, 51%)" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 15%, 22%)" vertical={false} />
-                    <XAxis 
-                      dataKey="name" 
-                      axisLine={false} 
-                      tickLine={false}
-                      tick={{ fill: 'hsl(215, 15%, 55%)', fontSize: 12 }}
-                    />
-                    <YAxis 
-                      axisLine={false} 
-                      tickLine={false}
-                      tick={{ fill: 'hsl(215, 15%, 55%)', fontSize: 12 }}
-                      tickFormatter={(value) => `$${value / 1000}k`}
-                    />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'hsl(220, 18%, 15%)', 
-                        border: '1px solid hsl(220, 15%, 22%)',
-                        borderRadius: '8px'
-                      }}
-                      labelStyle={{ color: 'hsl(210, 20%, 95%)' }}
-                      formatter={(value: number) => [`$${value.toLocaleString()}`, 'Ventas']}
-                    />
-                    <Area 
-                      type="monotone" 
-                      dataKey="ventas" 
-                      stroke="hsl(45, 100%, 51%)" 
-                      strokeWidth={2}
-                      fillOpacity={1} 
-                      fill="url(#colorVentasReport)" 
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="productos">
-            <div className="bunker-card p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h3 className="text-lg font-semibold text-foreground">Productos Más Vendidos</h3>
-                  <p className="text-sm text-muted-foreground">Top 5 por ingresos</p>
-                </div>
-              </div>
-              
-              <div className="h-[400px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart 
-                    data={topProducts} 
-                    layout="vertical"
-                    margin={{ top: 0, right: 20, left: 0, bottom: 0 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 15%, 22%)" horizontal={false} />
-                    <XAxis 
-                      type="number"
-                      axisLine={false} 
-                      tickLine={false}
-                      tick={{ fill: 'hsl(215, 15%, 55%)', fontSize: 12 }}
-                      tickFormatter={(value) => `$${value / 1000}k`}
-                    />
-                    <YAxis 
-                      type="category"
-                      dataKey="name"
-                      axisLine={false} 
-                      tickLine={false}
-                      tick={{ fill: 'hsl(215, 15%, 55%)', fontSize: 12 }}
-                      width={180}
-                    />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'hsl(220, 18%, 15%)', 
-                        border: '1px solid hsl(220, 15%, 22%)',
-                        borderRadius: '8px'
-                      }}
-                      labelStyle={{ color: 'hsl(210, 20%, 95%)' }}
-                      formatter={(value: number) => [`$${value.toLocaleString()}`, 'Ingresos']}
-                    />
-                    <Bar 
-                      dataKey="revenue" 
-                      fill="hsl(45, 100%, 51%)" 
-                      radius={[0, 4, 4, 0]}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="categorias">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="bunker-card p-6">
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-foreground">Ventas por Categoría</h3>
-                  <p className="text-sm text-muted-foreground">Distribución porcentual</p>
-                </div>
-                
-                <div className="h-[300px]">
+              {loadingChart ? (
+                <Skeleton className="h-[400px]" />
+              ) : weeklyChart && weeklyChart.length > 0 ? (
+                <div className="h-[400px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={categoryData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={100}
-                        paddingAngle={4}
-                        dataKey="value"
-                      >
-                        {categoryData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.fill} />
-                        ))}
-                      </Pie>
+                    <AreaChart data={weeklyChart} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="colorVentasReport" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="hsl(45, 100%, 51%)" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="hsl(45, 100%, 51%)" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 15%, 22%)" vertical={false} />
+                      <XAxis 
+                        dataKey="name" 
+                        axisLine={false} 
+                        tickLine={false}
+                        tick={{ fill: 'hsl(215, 15%, 55%)', fontSize: 12 }}
+                      />
+                      <YAxis 
+                        axisLine={false} 
+                        tickLine={false}
+                        tick={{ fill: 'hsl(215, 15%, 55%)', fontSize: 12 }}
+                        tickFormatter={(value) => formatCurrency(value)}
+                      />
                       <Tooltip 
                         contentStyle={{ 
                           backgroundColor: 'hsl(220, 18%, 15%)', 
                           border: '1px solid hsl(220, 15%, 22%)',
                           borderRadius: '8px'
                         }}
-                        formatter={(value: number) => [`${value}%`, 'Participación']}
+                        labelStyle={{ color: 'hsl(210, 20%, 95%)' }}
+                        formatter={(value: number) => [formatCurrency(value), 'Ventas']}
                       />
-                    </PieChart>
+                      <Area 
+                        type="monotone" 
+                        dataKey="ventas" 
+                        stroke="hsl(45, 100%, 51%)" 
+                        strokeWidth={2}
+                        fillOpacity={1} 
+                        fill="url(#colorVentasReport)" 
+                      />
+                    </AreaChart>
                   </ResponsiveContainer>
                 </div>
+              ) : (
+                <div className="h-[400px] flex items-center justify-center text-muted-foreground">
+                  No hay datos de ventas para mostrar
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
+          {/* Top Productos */}
+          <TabsContent value="productos">
+            <div className="bunker-card p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground">Productos Más Vendidos</h3>
+                  <p className="text-sm text-muted-foreground">Top 10 por ingresos - {getPeriodLabel(period)}</p>
+                </div>
+              </div>
+              
+              {loadingTopProducts ? (
+                <Skeleton className="h-[400px]" />
+              ) : topProducts && topProducts.length > 0 ? (
+                <div className="h-[400px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart 
+                      data={topProducts.map(p => ({ name: p.productName, revenue: p.revenue, quantity: p.quantitySold }))} 
+                      layout="vertical"
+                      margin={{ top: 0, right: 20, left: 0, bottom: 0 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 15%, 22%)" horizontal={false} />
+                      <XAxis 
+                        type="number"
+                        axisLine={false} 
+                        tickLine={false}
+                        tick={{ fill: 'hsl(215, 15%, 55%)', fontSize: 12 }}
+                        tickFormatter={(value) => formatCurrency(value)}
+                      />
+                      <YAxis 
+                        type="category"
+                        dataKey="name"
+                        axisLine={false} 
+                        tickLine={false}
+                        tick={{ fill: 'hsl(215, 15%, 55%)', fontSize: 12 }}
+                        width={180}
+                      />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: 'hsl(220, 18%, 15%)', 
+                          border: '1px solid hsl(220, 15%, 22%)',
+                          borderRadius: '8px'
+                        }}
+                        labelStyle={{ color: 'hsl(210, 20%, 95%)' }}
+                        formatter={(value: number, name: string) => [
+                          name === 'revenue' ? formatCurrency(value) : value,
+                          name === 'revenue' ? 'Ingresos' : 'Cantidad'
+                        ]}
+                      />
+                      <Bar 
+                        dataKey="revenue" 
+                        fill="hsl(45, 100%, 51%)" 
+                        radius={[0, 4, 4, 0]}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="h-[400px] flex items-center justify-center text-muted-foreground">
+                  No hay datos de productos para mostrar
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
+          {/* Métodos de Pago */}
+          <TabsContent value="metodos">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="bunker-card p-6">
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-foreground">Ventas por Método de Pago</h3>
+                  <p className="text-sm text-muted-foreground">{getPeriodLabel(period)}</p>
+                </div>
+                
+                {loadingSummary ? (
+                  <Skeleton className="h-[300px]" />
+                ) : paymentMethodData.length > 0 ? (
+                  <div className="h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={paymentMethodData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={100}
+                          paddingAngle={4}
+                          dataKey="value"
+                        >
+                          {paymentMethodData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.fill} />
+                          ))}
+                        </Pie>
+                        <Tooltip 
+                          contentStyle={{ 
+                            backgroundColor: 'hsl(220, 18%, 15%)', 
+                            border: '1px solid hsl(220, 15%, 22%)',
+                            borderRadius: '8px'
+                          }}
+                          formatter={(value: number) => [formatCurrency(value), 'Total']}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                    No hay datos de pagos para mostrar
+                  </div>
+                )}
               </div>
 
               <div className="bunker-card p-6">
                 <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-foreground">Detalle por Categoría</h3>
-                  <p className="text-sm text-muted-foreground">Rendimiento mensual</p>
+                  <h3 className="text-lg font-semibold text-foreground">Detalle por Método</h3>
+                  <p className="text-sm text-muted-foreground">Resumen de {getPeriodLabel(period).toLowerCase()}</p>
                 </div>
                 
-                <div className="space-y-4">
-                  {categoryData.map((category) => (
-                    <div key={category.name} className="flex items-center gap-4">
-                      <div 
-                        className="w-3 h-3 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: category.fill }}
-                      />
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="font-medium text-foreground">{category.name}</span>
-                          <span className="text-sm text-muted-foreground">{category.value}%</span>
-                        </div>
-                        <div className="h-2 rounded-full bg-secondary overflow-hidden">
+                {loadingSummary ? (
+                  <div className="space-y-4">
+                    {[...Array(4)].map((_, i) => (
+                      <Skeleton key={i} className="h-12" />
+                    ))}
+                  </div>
+                ) : paymentMethodData.length > 0 ? (
+                  <div className="space-y-4">
+                    {paymentMethodData.map((method) => {
+                      const total = paymentMethodData.reduce((acc, m) => acc + m.value, 0);
+                      const percentage = total > 0 ? (method.value / total) * 100 : 0;
+                      
+                      return (
+                        <div key={method.name} className="flex items-center gap-4">
                           <div 
-                            className="h-full rounded-full transition-all duration-500"
-                            style={{ 
-                              width: `${category.value}%`,
-                              backgroundColor: category.fill
-                            }}
+                            className="w-3 h-3 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: method.fill }}
                           />
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="font-medium text-foreground">{method.name}</span>
+                              <div className="text-right">
+                                <span className="text-sm text-muted-foreground">{method.count} ventas</span>
+                                <span className="text-sm font-medium text-foreground ml-2">
+                                  {formatCurrency(method.value)}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="h-2 rounded-full bg-secondary overflow-hidden">
+                              <div 
+                                className="h-full rounded-full transition-all duration-500"
+                                style={{ 
+                                  width: `${percentage}%`,
+                                  backgroundColor: method.fill
+                                }}
+                              />
+                            </div>
+                          </div>
                         </div>
+                      );
+                    })}
+
+                    {/* Resumen */}
+                    <div className="pt-4 mt-4 border-t border-border">
+                      <div className="flex justify-between items-center">
+                        <span className="font-semibold text-foreground">Total {getPeriodLabel(period)}</span>
+                        <span className="text-xl font-bold text-primary">
+                          {formatCurrency(salesSummary?.totalRevenue || 0)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center mt-2 text-sm text-muted-foreground">
+                        <span>{salesSummary?.totalSales || 0} ventas</span>
+                        <span>Ticket promedio: {formatCurrency(salesSummary?.averageTicket || 0)}</span>
                       </div>
                     </div>
-                  ))}
+                  </div>
+                ) : (
+                  <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                    No hay datos de pagos para mostrar
+                  </div>
+                )}
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* Historial de Ventas */}
+          <TabsContent value="historial">
+            <div className="bunker-card p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground">Historial de Ventas</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Todas las transacciones realizadas
+                  </p>
+                </div>
+                <div className="relative w-full sm:w-64">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por # venta, cliente..."
+                    value={salesSearch}
+                    onChange={(e) => setSalesSearch(e.target.value)}
+                    className="pl-10"
+                  />
                 </div>
               </div>
+
+              {loadingSales ? (
+                <div className="space-y-2">
+                  {[...Array(10)].map((_, i) => (
+                    <Skeleton key={i} className="h-16" />
+                  ))}
+                </div>
+              ) : filteredSales.length > 0 ? (
+                <>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead># Venta</TableHead>
+                          <TableHead>Fecha</TableHead>
+                          <TableHead>Cliente</TableHead>
+                          <TableHead>Vendedor</TableHead>
+                          <TableHead>Método</TableHead>
+                          <TableHead>Estado</TableHead>
+                          <TableHead className="text-right">Total</TableHead>
+                          <TableHead className="text-center">Acciones</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredSales.map((sale) => (
+                          <TableRow key={sale.id}>
+                            <TableCell className="font-medium">{sale.saleNumber}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2 text-sm">
+                                <Clock className="h-3 w-3 text-muted-foreground" />
+                                {format(new Date(sale.createdAt), "dd MMM yyyy HH:mm", { locale: es })}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <User className="h-3 w-3 text-muted-foreground" />
+                                {sale.customer?.name || "Cliente General"}
+                              </div>
+                            </TableCell>
+                            <TableCell>{sale.user?.name || "-"}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <CreditCard className="h-3 w-3 text-muted-foreground" />
+                                {getPaymentMethodLabel(sale.paymentMethod)}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                {getStatusBadge(sale.status)}
+                                {sale.isCredit && (
+                                  <Badge variant="outline" className="text-xs">Fiado</Badge>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right font-semibold">
+                              {formatCurrency(sale.total)}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleViewSale(sale)}
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  {/* Paginación */}
+                  {salesData?.pagination && (
+                    <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
+                      <p className="text-sm text-muted-foreground">
+                        Mostrando {((salesPage - 1) * 20) + 1} - {Math.min(salesPage * 20, salesData.pagination.total)} de {salesData.pagination.total} ventas
+                      </p>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSalesPage(p => Math.max(1, p - 1))}
+                          disabled={salesPage === 1}
+                        >
+                          Anterior
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSalesPage(p => p + 1)}
+                          disabled={salesPage >= salesData.pagination.totalPages}
+                        >
+                          Siguiente
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="h-[400px] flex flex-col items-center justify-center text-muted-foreground">
+                  <Receipt className="h-12 w-12 mb-4 opacity-50" />
+                  <p>No hay ventas registradas</p>
+                </div>
+              )}
             </div>
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Dialog de detalle de venta */}
+      <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Detalle de Venta #{selectedSale?.saleNumber}</DialogTitle>
+          </DialogHeader>
+
+          {selectedSale && (
+            <div className="space-y-6">
+              {/* Info general */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Fecha</p>
+                  <p className="font-medium">
+                    {format(new Date(selectedSale.createdAt), "dd 'de' MMMM yyyy, HH:mm", { locale: es })}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Estado</p>
+                  {getStatusBadge(selectedSale.status)}
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Cliente</p>
+                  <p className="font-medium">{selectedSale.customer?.name || "Cliente General"}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Método de Pago</p>
+                  <p className="font-medium">{getPaymentMethodLabel(selectedSale.paymentMethod)}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Vendedor</p>
+                  <p className="font-medium">{selectedSale.user?.name || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Tipo</p>
+                  <p className="font-medium">{selectedSale.isCredit ? "Venta a Crédito" : "Venta Normal"}</p>
+                </div>
+              </div>
+
+              {/* Items */}
+              <div>
+                <h4 className="font-semibold mb-3">Productos</h4>
+                <div className="border rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Producto</TableHead>
+                        <TableHead className="text-center">Cantidad</TableHead>
+                        <TableHead className="text-right">Precio Unit.</TableHead>
+                        <TableHead className="text-right">Total</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {selectedSale.items.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell>
+                            <div>
+                              <p className="font-medium">{item.productName}</p>
+                              {item.productSku && (
+                                <p className="text-xs text-muted-foreground">SKU: {item.productSku}</p>
+                              )}
+                              {item.isManual && (
+                                <Badge variant="outline" className="text-xs mt-1">Manual</Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center">{item.quantity}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(item.unitPrice)}</TableCell>
+                          <TableCell className="text-right font-medium">{formatCurrency(item.totalPrice)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+
+              {/* Totales */}
+              <div className="border-t pt-4 space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Subtotal</span>
+                  <span>{formatCurrency(selectedSale.subtotal)}</span>
+                </div>
+                {selectedSale.discountValue && selectedSale.discountValue > 0 && (
+                  <div className="flex justify-between text-destructive">
+                    <span>Descuento ({selectedSale.discountType === "PERCENTAGE" ? `${selectedSale.discountValue}%` : "Fijo"})</span>
+                    <span>-{formatCurrency(
+                      selectedSale.discountType === "PERCENTAGE" 
+                        ? (selectedSale.subtotal * selectedSale.discountValue / 100)
+                        : selectedSale.discountValue
+                    )}</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">IVA ({(selectedSale.taxRate * 100).toFixed(0)}%)</span>
+                  <span>{formatCurrency(selectedSale.taxAmount)}</span>
+                </div>
+                <div className="flex justify-between text-lg font-bold pt-2 border-t">
+                  <span>Total</span>
+                  <span className="text-primary">{formatCurrency(selectedSale.total)}</span>
+                </div>
+              </div>
+
+              {/* Notas */}
+              {selectedSale.notes && (
+                <div>
+                  <h4 className="font-semibold mb-2">Notas</h4>
+                  <p className="text-sm text-muted-foreground bg-secondary/50 p-3 rounded-lg">
+                    {selectedSale.notes}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </MainLayout>
   );
 }

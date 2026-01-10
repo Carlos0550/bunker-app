@@ -77,7 +77,7 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  role?: string;
+  role: number; // 0 = Super Admin, 1 = Admin, 2 = Empleado
   profilePhoto?: string;
 }
 

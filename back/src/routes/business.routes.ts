@@ -4,6 +4,6 @@ import { Router } from "express";
 
 const router = Router();
 
-router.get("/", authenticate,businessController.getBusinessData)
+router.get("/", authenticate, businessController.getBusinessData);
 
 export default router;

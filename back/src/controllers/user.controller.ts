@@ -122,6 +122,83 @@ export class UserController {
       next(error);
     }
   }
+
+  async verifyEmail(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { token } = req.query;
+      if (!token || typeof token !== "string") {
+        throw new Error("Token de verificación requerido");
+      }
+      const result = await userService.verifyEmail(token);
+      res.status(200).json({
+        success: true,
+        message: result.message,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async resendVerificationEmail(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { email } = req.body;
+      if (!email) {
+        throw new Error("Email requerido");
+      }
+      const result = await userService.resendVerificationEmail(email);
+      res.status(200).json({
+        success: true,
+        message: result.message,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async createAdmin(req: Request, res: Response, next: NextFunction) {
+    try {
+      const creatorId = req.user?.userId;
+      if (!creatorId) {
+        throw new Error("Usuario no autenticado");
+      }
+
+      const result = await userService.createAdmin(creatorId, req.body);
+      res.status(201).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getBusinessAdmins(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        throw new Error("Usuario no autenticado");
+      }
+
+      // Obtener el businessId del usuario actual
+      const { prisma } = await import("@/config/db");
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { businessId: true },
+      });
+
+      if (!user?.businessId) {
+        throw new Error("Usuario sin negocio asociado");
+      }
+
+      const admins = await userService.getBusinessAdmins(user.businessId);
+      res.status(200).json({
+        success: true,
+        data: admins,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export const userController = new UserController();

@@ -1,10 +1,10 @@
 import { prisma } from "@/config/db";
-import { decrypt, hashPassword, verifyPassword } from "@/config/crypto";
-import { generateRecoverPswToken, generateToken, TokenPayload } from "@/config/jwt";
-import { uploadFileWithUniqueId } from "@/utils/minio.util";
-import { Prisma, User, PaymentStatus } from "@prisma/client";
+import { hashPassword, verifyPassword, generateSecureToken } from "@/config/crypto";
+import { generateRecoverPswToken, generateToken, TokenPayload, verifyToken } from "@/config/jwt";
+import { uploadFileWithUniqueId, getFileUrl } from "@/utils/minio.util";
+import { Prisma, PaymentStatus } from "@prisma/client";
 import createHttpError from "http-errors";
-import { sendPasswordResetEmail, sendWelcomeEmail } from "@/utils";
+import { sendPasswordResetEmail, sendWelcomeEmail, sendVerificationEmail } from "@/utils";
 
 interface RegisterData extends Prisma.UserCreateInput {
   businessName: string;
@@ -13,7 +13,27 @@ interface RegisterData extends Prisma.UserCreateInput {
   businessEmail?: string;
 }
 
+interface CreateAdminData {
+  name: string;
+  email: string;
+  password: string;
+  businessId: string;
+}
+
 export class UserService {
+  /**
+   * Genera un token de verificación y fecha de expiración (24 horas)
+   */
+  private generateVerificationData() {
+    const verificationToken = generateSecureToken(32);
+    const verificationExpires = new Date();
+    verificationExpires.setHours(verificationExpires.getHours() + 24);
+    return { verificationToken, verificationExpires };
+  }
+
+  /**
+   * Registra un nuevo usuario con su negocio (registro inicial)
+   */
   async createUser(data: RegisterData) {
     const existingUser = await prisma.user.findFirst({
       where: { email: data.email },
@@ -26,6 +46,8 @@ export class UserService {
     const hashedPassword = await hashPassword(data.password);
     const nextPaymentDate = new Date();
     nextPaymentDate.setDate(nextPaymentDate.getDate() + 7); // 7 días de prueba
+
+    const { verificationToken, verificationExpires } = this.generateVerificationData();
 
     // Transacción: Crear Negocio, Usuario y Pago Inicial
     const result = await prisma.$transaction(async (tx) => {
@@ -48,6 +70,9 @@ export class UserService {
           role: 1, // Admin del negocio
           status: "ACTIVE",
           businessId: business.id,
+          emailVerified: false,
+          verificationToken,
+          verificationExpires,
         },
       });
 
@@ -65,6 +90,14 @@ export class UserService {
       return user;
     });
 
+    // Enviar email de verificación
+    await sendVerificationEmail({
+      email: result.email,
+      name: result.name ?? "",
+      verificationToken,
+      appUrl: process.env.APP_URL ?? "",
+    });
+
     const payload: TokenPayload = {
       userId: result.id,
       email: result.email,
@@ -72,18 +105,155 @@ export class UserService {
     };
 
     const token = generateToken(payload);
-    const { password, ...userWithoutPassword } = result;
-    
-    await sendWelcomeEmail({
-      email: result.email,
-      name: result.name ?? "",
+    const { password, verificationToken: _, ...userWithoutSensitiveData } = result;
+
+    return {
+      user: userWithoutSensitiveData,
+      token,
+      message: "Se ha enviado un correo de verificación a tu email. Por favor verifica tu cuenta para acceder a todas las funcionalidades.",
+    };
+  }
+
+  /**
+   * Crea un nuevo administrador para un negocio existente
+   * El admin existente puede crear otros admins
+   */
+  async createAdmin(creatorId: string, data: CreateAdminData) {
+    // Verificar que el creador es admin del negocio
+    const creator = await prisma.user.findUnique({
+      where: { id: creatorId },
+    });
+
+    if (!creator) {
+      throw createHttpError(404, "Usuario no encontrado");
+    }
+
+    if (creator.role !== 1 && creator.role !== 0) {
+      throw createHttpError(403, "No tiene permisos para crear administradores");
+    }
+
+    // Si no es super admin, verificar que pertenece al mismo negocio
+    if (creator.role === 1 && creator.businessId !== data.businessId) {
+      throw createHttpError(403, "No puede crear administradores para otro negocio");
+    }
+
+    // Verificar que el email no existe
+    const existingUser = await prisma.user.findFirst({
+      where: { email: data.email },
+    });
+
+    if (existingUser) {
+      throw createHttpError(409, "El correo electrónico ya está registrado");
+    }
+
+    const hashedPassword = await hashPassword(data.password);
+    const { verificationToken, verificationExpires } = this.generateVerificationData();
+
+    const newAdmin = await prisma.user.create({
+      data: {
+        name: data.name,
+        email: data.email,
+        password: hashedPassword,
+        role: 1, // Admin
+        status: "ACTIVE",
+        businessId: data.businessId,
+        emailVerified: false,
+        verificationToken,
+        verificationExpires,
+      },
+    });
+
+    // Enviar email de verificación
+    await sendVerificationEmail({
+      email: newAdmin.email,
+      name: newAdmin.name ?? "",
+      verificationToken,
       appUrl: process.env.APP_URL ?? "",
     });
 
+    const { password, verificationToken: _, ...adminWithoutSensitiveData } = newAdmin;
+
     return {
-      user: userWithoutPassword,
-      token,
+      user: adminWithoutSensitiveData,
+      message: "Administrador creado. Se ha enviado un correo de verificación.",
     };
+  }
+
+  /**
+   * Verifica el email de un usuario con el token
+   */
+  async verifyEmail(token: string) {
+    const user = await prisma.user.findFirst({
+      where: {
+        verificationToken: token,
+      },
+    });
+
+    if (!user) {
+      throw createHttpError(400, "Token de verificación inválido");
+    }
+
+    if (user.emailVerified) {
+      throw createHttpError(400, "El correo ya ha sido verificado");
+    }
+
+    if (user.verificationExpires && user.verificationExpires < new Date()) {
+      throw createHttpError(400, "El token de verificación ha expirado. Solicite uno nuevo.");
+    }
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        emailVerified: true,
+        verificationToken: null,
+        verificationExpires: null,
+      },
+    });
+
+    // Enviar email de bienvenida después de verificar
+    await sendWelcomeEmail({
+      email: user.email,
+      name: user.name ?? "",
+      appUrl: process.env.APP_URL ?? "",
+    });
+
+    return { message: "Correo verificado exitosamente. Ya puede acceder a todas las funcionalidades." };
+  }
+
+  /**
+   * Reenvía el email de verificación
+   */
+  async resendVerificationEmail(email: string) {
+    const user = await prisma.user.findFirst({
+      where: { email },
+    });
+
+    if (!user) {
+      throw createHttpError(404, "Usuario no encontrado");
+    }
+
+    if (user.emailVerified) {
+      throw createHttpError(400, "El correo ya ha sido verificado");
+    }
+
+    const { verificationToken, verificationExpires } = this.generateVerificationData();
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        verificationToken,
+        verificationExpires,
+      },
+    });
+
+    await sendVerificationEmail({
+      email: user.email,
+      name: user.name ?? "",
+      verificationToken,
+      appUrl: process.env.APP_URL ?? "",
+    });
+
+    return { message: "Se ha enviado un nuevo correo de verificación." };
   }
 
   async loginUser(email: string, password: string) {
@@ -112,11 +282,12 @@ export class UserService {
     };
 
     const token = generateToken(payload);
-    const { password: _, ...userWithoutPassword } = user;
+    const { password: _, verificationToken, ...userWithoutSensitiveData } = user;
 
     return {
-      user: userWithoutPassword,
+      user: userWithoutSensitiveData,
       token,
+      emailVerified: user.emailVerified,
     };
   }
 
@@ -129,8 +300,8 @@ export class UserService {
       throw createHttpError(404, "Usuario no encontrado");
     }
 
-    const { password, ...userWithoutPassword } = user;
-    return userWithoutPassword;
+    const { password, verificationToken, ...userWithoutSensitiveData } = user;
+    return userWithoutSensitiveData;
   }
 
   async updateUser(userId: string, data: Prisma.UserUpdateInput) {
@@ -151,8 +322,8 @@ export class UserService {
       data,
     });
 
-    const { password, ...userWithoutPassword } = updatedUser;
-    return userWithoutPassword;
+    const { password, verificationToken, ...userWithoutSensitiveData } = updatedUser;
+    return userWithoutSensitiveData;
   }
 
   async updateProfilePhoto(userId: string, file: Express.Multer.File) {
@@ -171,18 +342,17 @@ export class UserService {
       "profile-photos"
     );
 
-    const updatedUser = await prisma.user.update({
+    await prisma.user.update({
       where: { id: userId },
       data: {
         profileImage: fileName,
       },
     });
 
-    const { password, ...userWithoutPassword } = updatedUser;
-    return {
-      user: userWithoutPassword,
-      fileName,
-    };
+    // Generar URL firmada para la imagen (válida por 7 días)
+    const url = await getFileUrl(fileName, 7 * 24 * 3600);
+
+    return { url };
   }
 
   async recoverPassword(email: string) {
@@ -194,8 +364,7 @@ export class UserService {
       throw createHttpError(404, "Usuario no encontrado");
     }
 
-    // const decrypted_psw = decrypt(user.password); // No desencriptar, usar hash
-    const resetToken = generateRecoverPswToken({email, password: user.password}, {"expiresIn": "5m"});
+    const resetToken = generateRecoverPswToken({ email, password: user.password }, { expiresIn: "5m" });
 
     await sendPasswordResetEmail({
       email: user.email,
@@ -206,19 +375,10 @@ export class UserService {
   }
 
   async resetPassword(token: string, newPassword: string) {
-    // 1. Verificar token
-    // Necesitamos una función para verificar este tipo de token específico
-    // Por ahora usaré verifyToken genérico, pero idealmente deberíamos chequear el payload.password contra la DB
-    // Importante: jwt.verify lanzará error si expiró
-    
-    // Importamos verifyToken dinámicamente o lo usamos si ya está importado (ya está importado)
-    // Pero verifyToken usa JWT_SECRET. generateRecoverPswToken usa JWT_SECRET.
-    
-    const { verifyToken } = await import("@/config/jwt");
-    const decoded = verifyToken(token) as any; // Cast to any to access payload properties
-    
+    const decoded = verifyToken(token) as any;
+
     if (!decoded || !decoded.email || !decoded.password) {
-        throw createHttpError(400, "Token inválido o incompleto");
+      throw createHttpError(400, "Token inválido o incompleto");
     }
 
     const user = await prisma.user.findFirst({
@@ -229,21 +389,43 @@ export class UserService {
       throw createHttpError(404, "Usuario no encontrado");
     }
 
-    // 2. Verificar Security Stamp (Password Hash)
-    // Si la contraseña del usuario cambió después de generar el token, el hash no coincidirá
+    // Verificar que la contraseña no haya cambiado
     if (user.password !== decoded.password) {
-        throw createHttpError(400, "El enlace de recuperación ya no es válido (la contraseña ha cambiado)");
+      throw createHttpError(400, "El enlace de recuperación ya no es válido (la contraseña ha cambiado)");
     }
 
-    // 3. Actualizar contraseña
     const hashedPassword = await hashPassword(newPassword);
-    
+
     await prisma.user.update({
       where: { id: user.id },
       data: { password: hashedPassword },
     });
-    
+
     return true;
+  }
+
+  /**
+   * Obtiene los administradores de un negocio
+   */
+  async getBusinessAdmins(businessId: string) {
+    const admins = await prisma.user.findMany({
+      where: {
+        businessId,
+        role: 1,
+        status: { not: "DELETED" },
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        status: true,
+        emailVerified: true,
+        profileImage: true,
+        createdAt: true,
+      },
+    });
+
+    return admins;
   }
 }
 

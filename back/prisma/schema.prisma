@@ -12,19 +12,12 @@ datasource db {
   provider = "postgresql"
 }
 
+// ==================== ENUMS ====================
+
 enum UserStatus {
   ACTIVE
   INACTIVE
   DELETED
-}
-
-model BusinessPlan {
-  id       String   @id @default(uuid())
-  name     String   @unique
-  price    Float
-  features String[]
-
-  businesses Business[]
 }
 
 enum PaymentStatus {
@@ -33,69 +26,10 @@ enum PaymentStatus {
   FAILED
 }
 
-model PaymentHistory {
-  id     String   @id @default(uuid())
-  amount Float
-  status PaymentStatus @default(PAID)
-  date   DateTime @default(now())
-  nextPaymentDate DateTime? 
-  isTrial Boolean @default(false)
-
-  businessId String
-  business   Business @relation(fields: [businessId], references: [id])
-}
-
-model Business {
-  id            String   @id @default(uuid())
-  name          String
-  address       String
-  contact_phone String?
-  contact_email String?
-  business_page String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  // Relaciones
-  businessPlanId String?
-  businessPlan   BusinessPlan? @relation(fields: [businessPlanId], references: [id])
-
-  paymentHistory PaymentHistory[]
-
-  users      User[]
-  categories Categories[]
-  providers  Providers[]
-  products   Products[]
-}
-
-model User {
-  id           String     @id @default(uuid())
-  name         String
-  email        String
-  password     String
-  status       UserStatus @default(ACTIVE)
-  role         Int        @default(2)
-  profileImage String?
-
-  businessId String
-  business   Business @relation(fields: [businessId], references: [id])
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([email, role])
-  @@index([email, role])
-  @@index([email])
-  @@index([role])
-  @@index([status])
-  @@index([name])
-}
-
-model Categories {
-  id   String @id @default(uuid())
-  name String
-
-  businessId String
-  business   Business @relation(fields: [businessId], references: [id])
+enum PaymentAttemptStatus {
+  PENDING
+  SUCCESS
+  FAILED
 }
 
 enum ProductState {
@@ -110,6 +44,191 @@ enum ProviderStatus {
   INACTIVE
   BLOCKED
 }
+
+enum FeatureValueType {
+  BOOLEAN
+  NUMBER
+  STRING
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  TRANSFER
+  OTHER
+}
+
+enum SaleStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+  REFUNDED
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+}
+
+enum ManualProductStatus {
+  PENDING
+  LINKED
+  CONVERTED
+  IGNORED
+}
+
+enum AccountStatus {
+  PENDING
+  PARTIAL
+  PAID
+}
+
+// ==================== FEATURES & PLANS ====================
+
+model Feature {
+  id          String           @id @default(uuid())
+  code        String           @unique // "MAX_PRODUCTS", "MAX_USERS", "REPORTS_ACCESS"
+  name        String
+  description String?
+  valueType   FeatureValueType
+
+  planFeatures PlanFeature[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PlanFeature {
+  id        String @id @default(uuid())
+  planId    String
+  featureId String
+  value     String // "true", "100", "advanced"
+
+  plan    BusinessPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  feature Feature      @relation(fields: [featureId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, featureId])
+}
+
+model BusinessPlan {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  price       Float
+  features    String[] // Descripcion textual para mostrar al usuario
+  isActive    Boolean  @default(true)
+  description String?
+
+  planFeatures PlanFeature[]
+  businesses   Business[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ==================== PAYMENTS ====================
+
+model PaymentHistory {
+  id              String        @id @default(uuid())
+  amount          Float
+  status          PaymentStatus @default(PAID)
+  date            DateTime      @default(now())
+  nextPaymentDate DateTime?
+  isTrial         Boolean       @default(false)
+
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
+
+  paymentAttempts PaymentAttempt[]
+
+  createdAt DateTime @default(now())
+}
+
+model PaymentAttempt {
+  id               String               @id @default(uuid())
+  paymentHistoryId String
+  attemptNumber    Int // 1, 2, 3
+  status           PaymentAttemptStatus @default(PENDING)
+  errorMessage     String?
+  notificationSent Boolean              @default(false)
+
+  paymentHistory PaymentHistory @relation(fields: [paymentHistoryId], references: [id], onDelete: Cascade)
+
+  attemptedAt DateTime @default(now())
+}
+
+// ==================== BUSINESS ====================
+
+model Business {
+  id              String   @id @default(uuid())
+  name            String
+  address         String
+  contact_phone   String?
+  contact_email   String?
+  business_page   String?
+  lowStockThreshold Int    @default(10) // Umbral configurable de stock bajo
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relaciones
+  businessPlanId String?
+  businessPlan   BusinessPlan? @relation(fields: [businessPlanId], references: [id])
+
+  paymentHistory    PaymentHistory[]
+  users             User[]
+  categories        Categories[]
+  providers         Providers[]
+  products          Products[]
+  sales             Sale[]
+  manualProducts    ManualProduct[]
+  businessCustomers BusinessCustomer[]
+}
+
+// ==================== USERS ====================
+
+model User {
+  id                  String     @id @default(uuid())
+  name                String
+  email               String
+  password            String
+  status              UserStatus @default(ACTIVE)
+  role                Int        @default(2) // 0=SuperAdmin, 1=Admin, 2=Employee
+  profileImage        String?
+  emailVerified       Boolean    @default(false)
+  verificationToken   String?
+  verificationExpires DateTime?
+
+  businessId String?
+  business   Business? @relation(fields: [businessId], references: [id])
+
+  sales Sale[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([email, role])
+  @@index([email, role])
+  @@index([email])
+  @@index([role])
+  @@index([status])
+  @@index([name])
+}
+
+// ==================== CATEGORIES ====================
+
+model Categories {
+  id   String @id @default(uuid())
+  name String
+
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
+
+  products Products[]
+
+  @@unique([businessId, name])
+}
+
+// ==================== PROVIDERS ====================
 
 model Providers {
   id            String         @id @default(uuid())
@@ -126,25 +245,27 @@ model Providers {
   businessId String
   business   Business @relation(fields: [businessId], references: [id])
 
+  products Products[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
+// ==================== PRODUCTS ====================
+
 model Products {
   id             String       @id @default(uuid())
   name           String
-  stock          Int
+  stock          Int          @default(0)
   bar_code       String?
   image          String?
-  category_id    String?
   description    String?
   state          ProductState @default(ACTIVE)
   sku            String? // Código interno
-  supplier_id    String? // Proveedor
   cost_price     Float? // Precio de costo
   sale_price     Float? // Precio de venta
-  min_stock      Int? // Stock mínimo
-  reserved_stock Int? // Reservas
+  min_stock      Int          @default(5) // Stock mínimo
+  reserved_stock Int          @default(0) // Reservas
   notes          String?
   system_message String?
   multipliers    Json? // Multiplicadores de precio de venta
@@ -152,7 +273,176 @@ model Products {
   businessId String
   business   Business @relation(fields: [businessId], references: [id])
 
+  categoryId String?
+  category   Categories? @relation(fields: [categoryId], references: [id])
+
+  supplierId String?
+  supplier   Providers? @relation(fields: [supplierId], references: [id])
+
+  saleItems SaleItem[]
+
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
+
+  @@index([businessId, state])
+  @@index([businessId, name])
+  @@index([bar_code])
+  @@index([sku])
+}
+
+// ==================== SALES ====================
+
+model Sale {
+  id         String      @id @default(uuid())
+  saleNumber String? // Número de venta legible (VTA-001)
+  businessId String
+  customerId String? // Null = venta directa sin cliente
+  userId     String // Quien procesó la venta
+
+  subtotal      Float
+  taxRate       Float        @default(0.16)
+  taxAmount     Float
+  discountType  DiscountType?
+  discountValue Float?
+  total         Float
+
+  paymentMethod PaymentMethod
+  status        SaleStatus    @default(PENDING)
+  isCredit      Boolean       @default(false) // true = fiado
+
+  notes String?
+
+  business       Business        @relation(fields: [businessId], references: [id])
+  customer       Customer?       @relation(fields: [customerId], references: [id])
+  user           User            @relation(fields: [userId], references: [id])
+  items          SaleItem[]
+  currentAccount CurrentAccount?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([businessId, createdAt])
+  @@index([businessId, status])
+  @@index([customerId])
+}
+
+model SaleItem {
+  id        String  @id @default(uuid())
+  saleId    String
+  productId String? // Null si es producto manual
+
+  // Snapshot del producto al momento de la venta
+  productName String
+  productSku  String?
+  quantity    Int
+  unitPrice   Float
+  totalPrice  Float
+
+  // Para productos manuales
+  isManual Boolean @default(false)
+
+  sale    Sale      @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product Products? @relation(fields: [productId], references: [id])
+
+  @@index([saleId])
+  @@index([productId])
+}
+
+// ==================== MANUAL PRODUCTS ====================
+
+model ManualProduct {
+  id           String              @id @default(uuid())
+  businessId   String
+  originalText String // "1 coca cola 2500" texto original
+  name         String
+  quantity     Int
+  price        Float
+
+  suggestedProductId String? // Producto sugerido por similitud
+  linkedProductId    String? // Producto al que se asoció finalmente
+  status             ManualProductStatus @default(PENDING)
+
+  business Business @relation(fields: [businessId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([businessId, status])
+}
+
+// ==================== CUSTOMERS ====================
+
+model Customer {
+  id         String  @id @default(uuid())
+  identifier String  @unique // Cédula/RUC/teléfono - identificador único global
+  name       String
+  phone      String?
+  email      String?
+  address    String?
+
+  // Relación many-to-many con negocios
+  businessCustomers BusinessCustomer[]
+  sales             Sale[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([identifier])
+  @@index([name])
+}
+
+// Relación cliente-negocio con datos específicos
+model BusinessCustomer {
+  id         String @id @default(uuid())
+  businessId String
+  customerId String
+
+  creditLimit Float? // Límite de crédito en este negocio
+  notes       String? // Notas específicas del negocio
+
+  business Business @relation(fields: [businessId], references: [id])
+  customer Customer @relation(fields: [customerId], references: [id])
+
+  currentAccounts CurrentAccount[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([businessId, customerId])
+  @@index([businessId])
+  @@index([customerId])
+}
+
+// ==================== CURRENT ACCOUNTS (FIADO) ====================
+
+model CurrentAccount {
+  id                 String @id @default(uuid())
+  businessCustomerId String
+  saleId             String @unique // Venta asociada
+
+  originalAmount Float // Monto original de la deuda
+  currentBalance Float // Saldo pendiente
+  status         AccountStatus @default(PENDING)
+
+  businessCustomer BusinessCustomer @relation(fields: [businessCustomerId], references: [id])
+  sale             Sale             @relation(fields: [saleId], references: [id])
+  payments         AccountPayment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([businessCustomerId, status])
+}
+
+model AccountPayment {
+  id               String        @id @default(uuid())
+  currentAccountId String
+  amount           Float
+  paymentMethod    PaymentMethod
+  notes            String?
+
+  currentAccount CurrentAccount @relation(fields: [currentAccountId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
 }

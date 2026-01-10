@@ -5,6 +5,13 @@ import pino from "pino";
 import createHttpError, { HttpError } from "http-errors";
 import userRouter from "@/routes/user.routes";
 import businessRouter from "@/routes/business.routes";
+import adminRouter from "@/routes/admin.routes";
+import productRouter from "@/routes/product.routes";
+import saleRouter from "@/routes/sale.routes";
+import analyticsRouter from "@/routes/analytics.routes";
+import customerRouter from "@/routes/customer.routes";
+import subscriptionRouter from "@/routes/subscription.routes";
+import importRouter from "@/routes/import.routes";
 
 export const logger = pino({
   transport:
@@ -64,7 +71,14 @@ app.get("/health", (_req: Request, res: Response) => {
 });
 
 app.use("/api", userRouter);
-app.use("/api/business", businessRouter)
+app.use("/api/business", businessRouter);
+app.use("/api/admin", adminRouter);
+app.use("/api/products", productRouter);
+app.use("/api/sales", saleRouter);
+app.use("/api/analytics", analyticsRouter);
+app.use("/api/customers", customerRouter);
+app.use("/api/subscription", subscriptionRouter);
+app.use("/api/import", importRouter);
 
 
 

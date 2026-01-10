@@ -1,0 +1,467 @@
+import { prisma } from "@/config/db";
+import { SaleStatus, ProductState, AccountStatus } from "@prisma/client";
+
+type Period = "today" | "yesterday" | "week" | "month" | "custom";
+
+interface DateRange {
+  startDate: Date;
+  endDate: Date;
+}
+
+class AnalyticsService {
+  /**
+   * Obtiene el rango de fechas según el período
+   */
+  private getDateRange(period: Period, customStart?: Date, customEnd?: Date): DateRange {
+    const now = new Date();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    switch (period) {
+      case "today":
+        return {
+          startDate: startOfDay,
+          endDate: now,
+        };
+      case "yesterday":
+        const yesterday = new Date(startOfDay);
+        yesterday.setDate(yesterday.getDate() - 1);
+        return {
+          startDate: yesterday,
+          endDate: startOfDay,
+        };
+      case "week":
+        const weekAgo = new Date(startOfDay);
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        return {
+          startDate: weekAgo,
+          endDate: now,
+        };
+      case "month":
+        const monthAgo = new Date(startOfDay);
+        monthAgo.setMonth(monthAgo.getMonth() - 1);
+        return {
+          startDate: monthAgo,
+          endDate: now,
+        };
+      case "custom":
+        if (!customStart || !customEnd) {
+          throw new Error("Se requieren fechas de inicio y fin para período personalizado");
+        }
+        return {
+          startDate: customStart,
+          endDate: customEnd,
+        };
+      default:
+        return {
+          startDate: startOfDay,
+          endDate: now,
+        };
+    }
+  }
+
+  /**
+   * Obtiene el resumen de ventas para un período
+   */
+  async getSalesSummary(businessId: string, period: Period, customStart?: Date, customEnd?: Date) {
+    const { startDate, endDate } = this.getDateRange(period, customStart, customEnd);
+
+    // Ventas completadas (no crédito) o créditos pagados
+    const sales = await prisma.sale.findMany({
+      where: {
+        businessId,
+        createdAt: { gte: startDate, lte: endDate },
+        status: SaleStatus.COMPLETED,
+        OR: [
+          { isCredit: false },
+          {
+            isCredit: true,
+            currentAccount: { status: AccountStatus.PAID },
+          },
+        ],
+      },
+      include: {
+        items: true,
+      },
+    });
+
+    const totalSales = sales.length;
+    const totalRevenue = sales.reduce((acc, sale) => acc + sale.total, 0);
+    const totalItems = sales.reduce((acc, sale) => 
+      acc + sale.items.reduce((itemAcc, item) => itemAcc + item.quantity, 0), 0
+    );
+    const averageTicket = totalSales > 0 ? totalRevenue / totalSales : 0;
+
+    // Ventas por método de pago
+    const salesByPaymentMethod = await prisma.sale.groupBy({
+      by: ["paymentMethod"],
+      where: {
+        businessId,
+        createdAt: { gte: startDate, lte: endDate },
+        status: SaleStatus.COMPLETED,
+      },
+      _count: true,
+      _sum: { total: true },
+    });
+
+    return {
+      period: { startDate, endDate },
+      totalSales,
+      totalRevenue,
+      totalItems,
+      averageTicket,
+      salesByPaymentMethod: salesByPaymentMethod.map((s) => ({
+        paymentMethod: s.paymentMethod,
+        count: s._count,
+        total: s._sum.total || 0,
+      })),
+    };
+  }
+
+  /**
+   * Obtiene los productos más vendidos
+   */
+  async getTopProducts(businessId: string, limit: number = 10, period?: Period) {
+    const dateFilter = period ? this.getDateRange(period) : null;
+
+    const topProducts = await prisma.saleItem.groupBy({
+      by: ["productId", "productName"],
+      where: {
+        sale: {
+          businessId,
+          status: SaleStatus.COMPLETED,
+          ...(dateFilter && { createdAt: { gte: dateFilter.startDate, lte: dateFilter.endDate } }),
+        },
+        productId: { not: null },
+      },
+      _count: true,
+      _sum: {
+        quantity: true,
+        totalPrice: true,
+      },
+      orderBy: {
+        _sum: { quantity: "desc" },
+      },
+      take: limit,
+    });
+
+    // Obtener datos adicionales de los productos
+    const productIds = topProducts
+      .map((p) => p.productId)
+      .filter((id): id is string => id !== null);
+
+    const products = await prisma.products.findMany({
+      where: { id: { in: productIds } },
+      select: { id: true, name: true, sale_price: true, stock: true, image: true },
+    });
+
+    const productMap = new Map(products.map((p) => [p.id, p]));
+
+    return topProducts.map((p) => ({
+      productId: p.productId,
+      productName: p.productName,
+      salesCount: p._count,
+      quantitySold: p._sum.quantity || 0,
+      revenue: p._sum.totalPrice || 0,
+      product: p.productId ? productMap.get(p.productId) : null,
+    }));
+  }
+
+  /**
+   * Obtiene los productos menos vendidos (oportunidades de mejora)
+   */
+  async getLeastSellingProducts(businessId: string, limit: number = 10, period?: Period) {
+    const dateFilter = period ? this.getDateRange(period) : null;
+
+    // Productos activos que no han tenido ventas o muy pocas
+    const allProducts = await prisma.products.findMany({
+      where: {
+        businessId,
+        state: ProductState.ACTIVE,
+      },
+      select: { id: true, name: true, sale_price: true, stock: true, createdAt: true },
+    });
+
+    const salesByProduct = await prisma.saleItem.groupBy({
+      by: ["productId"],
+      where: {
+        sale: {
+          businessId,
+          status: SaleStatus.COMPLETED,
+          ...(dateFilter && { createdAt: { gte: dateFilter.startDate, lte: dateFilter.endDate } }),
+        },
+        productId: { not: null },
+      },
+      _sum: { quantity: true },
+    });
+
+    const salesMap = new Map(salesByProduct.map((s) => [s.productId, s._sum.quantity || 0]));
+
+    const productsWithSales = allProducts.map((p) => ({
+      ...p,
+      quantitySold: salesMap.get(p.id) || 0,
+    }));
+
+    // Ordenar por ventas ascendente
+    productsWithSales.sort((a, b) => a.quantitySold - b.quantitySold);
+
+    return productsWithSales.slice(0, limit);
+  }
+
+  /**
+   * Obtiene productos con stock bajo
+   */
+  async getLowStockProducts(businessId: string) {
+    const business = await prisma.business.findUnique({
+      where: { id: businessId },
+      select: { lowStockThreshold: true },
+    });
+
+    const defaultThreshold = business?.lowStockThreshold || 10;
+
+    const products = await prisma.products.findMany({
+      where: {
+        businessId,
+        state: ProductState.ACTIVE,
+      },
+      select: {
+        id: true,
+        name: true,
+        stock: true,
+        min_stock: true,
+        sale_price: true,
+        image: true,
+      },
+    });
+
+    return products
+      .filter((p) => p.stock <= (p.min_stock || defaultThreshold))
+      .map((p) => ({
+        ...p,
+        threshold: p.min_stock || defaultThreshold,
+        deficit: (p.min_stock || defaultThreshold) - p.stock,
+      }))
+      .sort((a, b) => a.stock - b.stock);
+  }
+
+  /**
+   * Obtiene el rendimiento de un producto específico
+   */
+  async getProductPerformance(businessId: string, productId: string) {
+    const product = await prisma.products.findFirst({
+      where: { id: productId, businessId },
+    });
+
+    if (!product) {
+      throw new Error("Producto no encontrado");
+    }
+
+    // Ventas del producto por período
+    const periods = ["today", "week", "month"] as const;
+    const salesByPeriod: Record<string, any> = {};
+
+    for (const period of periods) {
+      const { startDate, endDate } = this.getDateRange(period);
+      
+      const sales = await prisma.saleItem.aggregate({
+        where: {
+          productId,
+          sale: {
+            businessId,
+            status: SaleStatus.COMPLETED,
+            createdAt: { gte: startDate, lte: endDate },
+          },
+        },
+        _sum: { quantity: true, totalPrice: true },
+        _count: true,
+      });
+
+      salesByPeriod[period] = {
+        quantity: sales._sum.quantity || 0,
+        revenue: sales._sum.totalPrice || 0,
+        transactionCount: sales._count,
+      };
+    }
+
+    // Historial de ventas últimos 30 días
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const totalSalesLast30Days = await prisma.saleItem.aggregate({
+      where: {
+        productId,
+        sale: {
+          businessId,
+          status: SaleStatus.COMPLETED,
+          createdAt: { gte: thirtyDaysAgo },
+        },
+      },
+      _sum: { quantity: true, totalPrice: true },
+    });
+
+    return {
+      product,
+      salesByPeriod,
+      totalSalesLast30Days: {
+        quantity: totalSalesLast30Days._sum.quantity || 0,
+        totalPrice: totalSalesLast30Days._sum.totalPrice || 0,
+      },
+    };
+  }
+
+  /**
+   * Obtiene las estadísticas del dashboard
+   */
+  async getDashboardStats(businessId: string) {
+    const today = new Date();
+    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const startOfYesterday = new Date(startOfToday);
+    startOfYesterday.setDate(startOfYesterday.getDate() - 1);
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const startOfLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    const endOfLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+
+    // Ventas de hoy
+    const todaySales = await prisma.sale.aggregate({
+      where: {
+        businessId,
+        createdAt: { gte: startOfToday },
+        status: SaleStatus.COMPLETED,
+      },
+      _count: true,
+      _sum: { total: true },
+    });
+
+    // Ventas de ayer (para comparación)
+    const yesterdaySales = await prisma.sale.aggregate({
+      where: {
+        businessId,
+        createdAt: { gte: startOfYesterday, lt: startOfToday },
+        status: SaleStatus.COMPLETED,
+      },
+      _count: true,
+      _sum: { total: true },
+    });
+
+    // Ventas del mes actual
+    const monthSales = await prisma.sale.aggregate({
+      where: {
+        businessId,
+        createdAt: { gte: startOfMonth },
+        status: SaleStatus.COMPLETED,
+      },
+      _count: true,
+      _sum: { total: true },
+    });
+
+    // Ventas del mes pasado (para calcular crecimiento)
+    const lastMonthSales = await prisma.sale.aggregate({
+      where: {
+        businessId,
+        createdAt: { gte: startOfLastMonth, lte: endOfLastMonth },
+        status: SaleStatus.COMPLETED,
+      },
+      _sum: { total: true },
+    });
+
+    // Total de productos
+    const totalProducts = await prisma.products.count({
+      where: { businessId, state: { not: ProductState.DELETED } },
+    });
+
+    // Productos con stock bajo
+    const lowStockProducts = await this.getLowStockProducts(businessId);
+
+    // Calcular cambio porcentual vs ayer
+    const todayRevenue = todaySales._sum.total || 0;
+    const yesterdayRevenue = yesterdaySales._sum.total || 0;
+    const dailyChange = yesterdayRevenue > 0
+      ? ((todayRevenue - yesterdayRevenue) / yesterdayRevenue) * 100
+      : todayRevenue > 0 ? 100 : 0;
+
+    // Calcular crecimiento mensual
+    const currentMonthRevenue = monthSales._sum.total || 0;
+    const lastMonthRevenue = lastMonthSales._sum.total || 0;
+    const monthlyGrowth = lastMonthRevenue > 0
+      ? ((currentMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100
+      : currentMonthRevenue > 0 ? 100 : 0;
+
+    return {
+      todaySales: todaySales._count,
+      todayRevenue,
+      dailyChange: Math.round(dailyChange * 10) / 10,
+      totalProducts,
+      lowStockProducts: lowStockProducts.length,
+      monthlyGrowth: Math.round(monthlyGrowth * 10) / 10,
+      totalSales: monthSales._count,
+      totalRevenue: currentMonthRevenue,
+    };
+  }
+
+  /**
+   * Obtiene datos para el gráfico de ventas de la semana
+   */
+  async getWeeklySalesChart(businessId: string) {
+    const days = [];
+    const today = new Date();
+
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      const endOfDay = new Date(startOfDay);
+      endOfDay.setDate(endOfDay.getDate() + 1);
+
+      const sales = await prisma.sale.aggregate({
+        where: {
+          businessId,
+          createdAt: { gte: startOfDay, lt: endOfDay },
+          status: SaleStatus.COMPLETED,
+        },
+        _sum: { total: true },
+      });
+
+      const dayNames = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+      days.push({
+        name: dayNames[date.getDay()],
+        date: startOfDay.toISOString().split("T")[0],
+        ventas: sales._sum.total || 0,
+      });
+    }
+
+    return days;
+  }
+
+  /**
+   * Obtiene las ventas recientes
+   */
+  async getRecentSales(businessId: string, limit: number = 5) {
+    const sales = await prisma.sale.findMany({
+      where: {
+        businessId,
+        status: SaleStatus.COMPLETED,
+      },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      include: {
+        customer: true,
+        items: true,
+        user: {
+          select: { name: true },
+        },
+      },
+    });
+
+    return sales.map((sale) => ({
+      id: sale.id,
+      saleNumber: sale.saleNumber,
+      customerName: sale.customer?.name || "Cliente General",
+      total: sale.total,
+      itemCount: sale.items.reduce((acc, item) => acc + item.quantity, 0),
+      paymentMethod: sale.paymentMethod,
+      createdAt: sale.createdAt,
+      processedBy: sale.user?.name,
+    }));
+  }
+}
+
+export const analyticsService = new AnalyticsService();

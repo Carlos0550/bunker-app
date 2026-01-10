@@ -9,10 +9,10 @@ import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import POS from "./pages/POS";
 import Productos from "./pages/Productos";
-import Stock from "./pages/Stock";
 import Clientes from "./pages/Clientes";
 import Reportes from "./pages/Reportes";
 import Configuracion from "./pages/Configuracion";
+import AdminPanel from "./pages/AdminPanel";
 import NotFound from "./pages/NotFound";
 import Landing from "./pages/Landing";
 import ResetPassword from "./pages/ResetPassword";
@@ -37,10 +37,10 @@ const App = () => (
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/pos" element={<POS />} />
             <Route path="/productos" element={<Productos />} />
-            <Route path="/stock" element={<Stock />} />
             <Route path="/clientes" element={<Clientes />} />
             <Route path="/reportes" element={<Reportes />} />
             <Route path="/configuracion" element={<Configuracion />} />
+            <Route path="/admin" element={<AdminPanel />} />
           </Route>
 
           {/* Ruta 404 (Accesible siempre) */}
