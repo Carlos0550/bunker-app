@@ -34,94 +34,95 @@ const Landing = () => {
     {
       icon: Users,
       title: "Gestión de Clientes",
-      description: "Base de datos centralizada con historial de compras, créditos y análisis de comportamiento."
+      description: "Base de datos centralizada con historial de compras, ventas a crédito  (cuentas corrientes) y análisis de comportamiento."
     },
     {
       icon: BarChart3,
       title: "Reportes Avanzados",
-      description: "Dashboards interactivos con métricas clave. Toma decisiones basadas en datos reales."
+      description: "Dashboards interactivos con métricas clave. Tomá decisiones basadas en datos reales."
     },
     {
       icon: Shield,
       title: "Seguridad Empresarial",
       description: "Roles y permisos personalizables. Auditoría completa de todas las operaciones."
-    },
-    {
-      icon: Zap,
-      title: "Sincronización Instantánea",
-      description: "Datos actualizados en tiempo real entre todas tus sucursales y dispositivos."
     }
   ];
 
-  const testimonials = [
-    {
-      name: "Carlos Mendoza",
-      role: "Propietario, Ferretería El Constructor",
-      content: "Bunker transformó mi negocio. Reduje errores de inventario en un 90% y las ventas aumentaron 35% gracias a los reportes.",
-      rating: 5
-    },
-    {
-      name: "María González",
-      role: "Gerente, Minimarket Express",
-      content: "La facilidad de uso es increíble. Mi equipo aprendió a usarlo en menos de una hora. El soporte es excepcional.",
-      rating: 5
-    },
-    {
-      name: "Roberto Silva",
-      role: "Director, Distribuidora Silva",
-      content: "Manejamos 5 sucursales con Bunker. La sincronización en tiempo real nos da control total del negocio.",
-      rating: 5
-    }
-  ];
+
+  //   {
+  //     name: "Carlos Mendoza",
+  //     role: "Propietario, Ferretería El Constructor",
+  //     content: "Bunker transformó mi negocio. Reduje errores de inventario en un 90% y las ventas aumentaron 35% gracias a los reportes.",
+  //     rating: 5
+  //   },
+  //   {
+  //     name: "María González",
+  //     role: "Gerente, Minimarket Express",
+  //     content: "La facilidad de uso es increíble. Mi equipo aprendió a usarlo en menos de una hora. El soporte es excepcional.",
+  //     rating: 5
+  //   },
+  //   {
+  //     name: "Roberto Silva",
+  //     role: "Director, Distribuidora Silva",
+  //     content: "Manejamos 5 sucursales con Bunker. La sincronización en tiempo real nos da control total del negocio.",
+  //     rating: 5
+  //   }
+  // ];
 
   const plans = [
     {
-      name: "Starter",
-      price: "29",
-      description: "Ideal para pequeños negocios",
+      name: "Prueba gratuita",
+      price: "",
+      description: "Ideal para probar nuestra plataforma (no te comprometes a nada pero estamos seguros que no te arrepentirás).",
       features: [
-        "1 punto de venta",
-        "Hasta 500 productos",
-        "Reportes básicos",
-        "Soporte por email",
-        "Actualizaciones incluidas"
+        "1 punto de venta simultáneo",
+        "Hasta 5,000 productos en inventario",
+        "Reportes básicos de ventas e inventario",
+        "Hasta 50 clientes con cuentas corrientes",
+        "Hasta 500 ventas al mes",
+        "Hasta 2 administradores/usuarios",
+        "Gestión básica de clientes y proveedores",
+        "Búsqueda de productos por nombre, SKU o código de barras",
+        "Control de stock con alertas de bajo inventario",
+        "Historial de ventas básico",
+        "Importación de productos desde Excel/CSV (hasta 1,000 productos por importación)",
+        "Soporte por email (respuesta en 48-72 horas)"
       ]
     },
     {
-      name: "Professional",
-      price: "79",
-      description: "Para negocios en crecimiento",
+      name: "Pro",
+      price: "$30.000/mes",
+      description: "Para negocios pequeños y medianos en pleno crecimiento.",
       popular: true,
       features: [
-        "3 puntos de venta",
-        "Productos ilimitados",
-        "Reportes avanzados",
-        "Soporte prioritario 24/7",
-        "Multi-sucursal",
-        "API de integración"
-      ]
-    },
-    {
-      name: "Enterprise",
-      price: "199",
-      description: "Solución completa empresarial",
-      features: [
+        "Todo lo incluido en el plan Gratis",
         "Puntos de venta ilimitados",
-        "Productos ilimitados",
-        "Reportes personalizados",
-        "Gerente de cuenta dedicado",
-        "Capacitación presencial",
-        "Integraciones custom"
+        "Hasta 25,000 productos en inventario",
+        "Reportes avanzados con analíticas detalladas",
+        "Dashboard con métricas en tiempo real",
+        "Clientes ilimitados con cuentas corrientes",
+        "Ventas ilimitadas al mes",
+        "Hasta 10 administradores/usuarios",
+        "Exportación de datos a Excel/CSV",
+        "Importación masiva ilimitada de productos en cualquier de los formatos soportados (csv, xlsx, xls)",
+        "Analíticas avanzadas: productos más vendidos, tendencias, comparativas",
+        "Gestión avanzada de categorías y proveedores",
+        "Historial completo de transacciones y movimientos",
+        "Reportes personalizados por fechas y filtros",
+        "Soporte prioritario 24/7 por email y chat",
+        "Acceso anticipado a nuevas funcionalidades",
+        "Funciones especiales con IA (Próximamente)",
+        "Recordatorios automáticos de pagos pendientes a tus clientes"
       ]
     }
   ];
 
-  const stats = [
-    { value: "2,500+", label: "Negocios activos" },
-    { value: "15M+", label: "Ventas procesadas" },
-    { value: "99.9%", label: "Uptime garantizado" },
-    { value: "4.9/5", label: "Calificación usuarios" }
-  ];
+  // const stats = [
+  //   { value: "2,500+", label: "Negocios activos" },
+  //   { value: "15M+", label: "Ventas procesadas" },
+  //   { value: "99.9%", label: "Uptime garantizado" },
+  //   { value: "4.9/5", label: "Calificación usuarios" }
+  // ];
 
   return (
     <div className="min-h-screen bg-background">
@@ -139,9 +140,9 @@ const Landing = () => {
             <a href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               Características
             </a>
-            <a href="#testimonials" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+            {/* <a href="#testimonials" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               Testimonios
-            </a>
+            </a> */}
             <a href="#pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               Precios
             </a>
@@ -195,7 +196,7 @@ const Landing = () => {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-3xl mx-auto">
+            {/* <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-3xl mx-auto">
               {stats.map((stat, index) => (
                 <div key={index} className="text-center">
                   <div className="text-3xl md:text-4xl font-bold text-primary mb-1">
@@ -204,7 +205,7 @@ const Landing = () => {
                   <div className="text-sm text-muted-foreground">{stat.label}</div>
                 </div>
               ))}
-            </div>
+            </div> */}
           </div>
         </div>
       </section>
@@ -316,7 +317,7 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* Testimonials Section */}
+      {/* Testimonials Section
       <section id="testimonials" className="py-20 px-4 bg-muted/30">
         <div className="container mx-auto">
           <div className="text-center max-w-2xl mx-auto mb-16">
@@ -357,7 +358,7 @@ const Landing = () => {
             ))}
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* Pricing Section */}
       <section id="pricing" className="py-20 px-4">
@@ -368,7 +369,7 @@ const Landing = () => {
               Planes que se adaptan a tu negocio
             </h2>
             <p className="text-muted-foreground">
-              Sin compromisos. Cancela cuando quieras. Prueba gratis por 14 días.
+              Sin compromisos. Cancela cuando quieras. Prueba gratis por 7 días.
             </p>
           </div>
 
@@ -388,8 +389,8 @@ const Landing = () => {
                     <h3 className="text-xl font-bold mb-2">{plan.name}</h3>
                     <p className="text-sm text-muted-foreground mb-4">{plan.description}</p>
                     <div className="flex items-baseline justify-center gap-1">
-                      <span className="text-4xl font-bold">${plan.price}</span>
-                      <span className="text-muted-foreground">/mes</span>
+                      <span className="text-4xl font-bold">{plan.price}</span>
+                      <span className="text-muted-foreground"></span>
                     </div>
                   </div>
                   
