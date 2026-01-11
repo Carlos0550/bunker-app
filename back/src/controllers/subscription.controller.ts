@@ -170,5 +170,30 @@ class SubscriptionController {
       next(error);
     }
   };
+
+  registerManualPayment = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { businessId, amount, months, notes } = req.body;
+      
+      if (!businessId || amount === undefined || !months) {
+        throw createHttpError(400, "Faltan datos requeridos (businessId, amount, months)");
+      }
+
+      const payment = await subscriptionService.registerManualPayment(
+        businessId,
+        amount,
+        months,
+        notes
+      );
+
+      res.json({
+        success: true,
+        data: payment,
+        message: "Pago registrado exitosamente"
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
 }
 export const subscriptionController = new SubscriptionController();

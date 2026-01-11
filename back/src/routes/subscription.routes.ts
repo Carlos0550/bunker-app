@@ -18,4 +18,18 @@ router.post(
 router.post("/mercadopago/webhook", subscriptionController.mercadoPagoWebhook);
 router.get("/mercadopago/verify/:paymentId", authenticate, subscriptionController.verifyMercadoPagoPayment);
 router.post("/run-reminders", authenticate, authorize(0), subscriptionController.runReminders);
+
+router.post(
+  "/manual-payment",
+  authenticate,
+  authorize(0),
+  validateBody(z.object({
+    businessId: z.string().uuid(),
+    amount: z.number().min(0),
+    months: z.number().int().positive(),
+    notes: z.string().optional(),
+  })),
+  subscriptionController.registerManualPayment
+);
+
 export default router;

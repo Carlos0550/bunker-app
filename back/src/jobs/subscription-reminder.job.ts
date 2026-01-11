@@ -111,7 +111,7 @@ async function recordNotification(
 }
 function getPaymentLink(businessId: string): string {
   const baseUrl = process.env.FRONTEND_URL || process.env.APP_URL || "http://localhost:3000";
-  return `${baseUrl}/configuracion?renovar=true`;
+  return `${baseUrl}/configuracion`;
 }
 async function sendExpiryWarning(subscription: BusinessSubscription): Promise<void> {
   const paymentLink = getPaymentLink(subscription.businessId);

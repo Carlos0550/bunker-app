@@ -55,6 +55,7 @@ import {
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { subscriptionApi } from "@/api/services/subscription";
 
 // Types
 interface Plan {
@@ -148,6 +149,11 @@ export default function AdminPanel() {
     features: "",
   });
 
+  // Manual Payment State
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedBusinessForPayment, setSelectedBusinessForPayment] = useState<Business | null>(null);
+  const [paymentForm, setPaymentForm] = useState({ amount: 0, months: 1, notes: "" });
+
   // Queries
   const { data: stats, isLoading: loadingStats } = useQuery({
     queryKey: ["adminStats"],
@@ -200,6 +206,18 @@ export default function AdminPanel() {
     onError: (error: any) => {
       toast.error(error.response?.data?.error?.message || "Error al eliminar");
     },
+  });
+
+  const manualPaymentMutation = useMutation({
+    mutationFn: subscriptionApi.registerManualPayment,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["adminBusinesses"] });
+      toast.success("Pago registrado correctamente");
+      setShowPaymentModal(false);
+    },
+    onError: () => {
+      toast.error("Error al registrar el pago");
+    }
   });
 
   // Helpers
@@ -475,6 +493,7 @@ export default function AdminPanel() {
                         <TableHead className="text-center">Ventas</TableHead>
                         <TableHead>Estado Pago</TableHead>
                         <TableHead>Registrado</TableHead>
+                        <TableHead className="text-right">Acciones</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -513,6 +532,24 @@ export default function AdminPanel() {
                             </TableCell>
                             <TableCell className="text-sm text-muted-foreground">
                               {format(new Date(business.createdAt), "dd MMM yyyy", { locale: es })}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedBusinessForPayment(business);
+                                  setPaymentForm({
+                                    amount: business.businessPlan?.price || 0,
+                                    months: 1,
+                                    notes: ""
+                                  });
+                                  setShowPaymentModal(true);
+                                }}
+                              >
+                                <CreditCard className="w-4 h-4 mr-2" />
+                                Pago
+                              </Button>
                             </TableCell>
                           </TableRow>
                         );
@@ -622,6 +659,73 @@ export default function AdminPanel() {
                 <Check className="w-4 h-4 mr-2" />
               )}
               {editingPlan ? "Guardar" : "Crear"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Payment Modal */}
+      <Dialog open={showPaymentModal} onOpenChange={setShowPaymentModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Registrar Pago Manual</DialogTitle>
+            <DialogDescription>
+              Registra un pago manual para {selectedBusinessForPayment?.name}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="paymentAmount">Monto (MXN)</Label>
+              <Input
+                id="paymentAmount"
+                type="number"
+                value={paymentForm.amount}
+                onChange={(e) => setPaymentForm(p => ({ ...p, amount: Number(e.target.value) }))}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="paymentMonths">Meses a pagar</Label>
+              <Input
+                id="paymentMonths"
+                type="number"
+                min="1"
+                value={paymentForm.months}
+                onChange={(e) => setPaymentForm(p => ({ ...p, months: Number(e.target.value) }))}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="paymentNotes">Notas (Opcional)</Label>
+              <Textarea
+                id="paymentNotes"
+                value={paymentForm.notes}
+                onChange={(e) => setPaymentForm(p => ({ ...p, notes: e.target.value }))}
+                placeholder="Detalles del pago..."
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPaymentModal(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={() => {
+                if (selectedBusinessForPayment) {
+                  manualPaymentMutation.mutate({
+                    businessId: selectedBusinessForPayment.id,
+                    amount: paymentForm.amount,
+                    months: paymentForm.months,
+                    notes: paymentForm.notes
+                  });
+                }
+              }}
+              disabled={manualPaymentMutation.isPending}
+            >
+              {manualPaymentMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Registrar Pago
             </Button>
           </DialogFooter>
         </DialogContent>

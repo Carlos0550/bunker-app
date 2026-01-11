@@ -101,4 +101,13 @@ export const subscriptionApi = {
     );
     return response.data.data;
   },
+
+  // Registrar pago manual (Super Admin)
+  registerManualPayment: async (data: { businessId: string; amount: number; months: number; notes?: string }): Promise<any> => {
+    const response = await client.post(
+      '/subscription/manual-payment',
+      data
+    );
+    return response.data;
+  },
 };
