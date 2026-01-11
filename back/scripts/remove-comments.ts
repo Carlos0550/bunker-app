@@ -6,18 +6,63 @@ import path from 'path';
 /**
  * Remove comments from TypeScript/JavaScript code
  * This removes both single-line (//) and multi-line (/* *\/) comments
+ * while preserving URLs and other strings that contain double slashes
  */
 function removeComments(content: string): string {
-  // Remove single-line comments
-  let result = content.replace(/\/\/.*$/gm, '');
+  let result = content;
   
-  // Remove multi-line comments
+  // First remove multi-line comments
   result = result.replace(/\/\*[\s\S]*?\*\//g, '');
+  
+  // Remove single-line comments more carefully
+  // This approach processes line by line to avoid removing URLs
+  const lines = result.split('\n');
+  const cleanedLines: string[] = [];
+  
+  for (const line of lines) {
+    let cleanedLine = line;
+    
+    // Only remove // comments that are not part of strings/URLs
+    // Look for // that are not preceded by : (to avoid http://, https://)
+    // and not inside quotes
+    const commentIndex = cleanedLine.indexOf('//');
+    
+    if (commentIndex !== -1) {
+      // Check if the // is part of a URL or string
+      const beforeComment = cleanedLine.substring(0, commentIndex);
+      
+      // If // is not preceded by : (avoid URLs) and not inside quotes
+      if (!beforeComment.includes('://') && 
+          !isInsideQuotes(cleanedLine, commentIndex)) {
+        // Remove the comment part
+        cleanedLine = cleanedLine.substring(0, commentIndex).trimEnd();
+      }
+    }
+    
+    cleanedLines.push(cleanedLine);
+  }
+  
+  result = cleanedLines.join('\n');
   
   // Remove empty lines left by comment removal
   result = result.replace(/^\s*\n/gm, '');
   
   return result;
+}
+
+/**
+ * Check if a position in a string is inside quotes
+ */
+function isInsideQuotes(line: string, position: number): boolean {
+  const textBefore = line.substring(0, position);
+  const singleQuotes = (textBefore.match(/'/g) || []).length;
+  const doubleQuotes = (textBefore.match(/"/g) || []).length;
+  const backticks = (textBefore.match(/`/g) || []).length;
+  
+  // If odd number of quotes, we're inside a string
+  return (singleQuotes % 2 === 1) || 
+         (doubleQuotes % 2 === 1) || 
+         (backticks % 2 === 1);
 }
 
 /**
