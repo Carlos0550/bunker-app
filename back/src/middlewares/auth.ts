@@ -1,101 +1,1 @@
-import { Request, Response, NextFunction } from "express";
-import createHttpError from "http-errors";
-import { verifyToken, extractTokenFromHeader, DecodedToken } from "@/config/jwt";
-
-
-declare global {
-  namespace Express {
-    interface Request {
-      user?: DecodedToken;
-    }
-  }
-}
-
-
-export function authenticate(req: Request, _res: Response, next: NextFunction): void {
-  try {
-    const authHeader = req.headers.authorization;
-    const token = extractTokenFromHeader(authHeader);
-
-    if (!token) {
-      throw createHttpError(401, "Token de autenticación no proporcionado");
-    }
-
-    const decoded = verifyToken(token);
-    req.user = decoded;
-    next();
-  } catch (error) {
-    if (error instanceof Error) {
-      if (error.message === "Token expirado") {
-        next(createHttpError(401, "Token expirado, por favor inicie sesión nuevamente"));
-      } else if (error.message === "Token inválido") {
-        next(createHttpError(401, "Token inválido"));
-      } else {
-        next(error);
-      }
-    } else {
-      next(createHttpError(401, "Error de autenticación"));
-    }
-  }
-}
-
-
-export function authorize(...allowedRoles: number[]) {
-  return (req: Request, _res: Response, next: NextFunction): void => {
-    if (!req.user) {
-      return next(createHttpError(401, "Usuario no autenticado"));
-    }
-
-    if (!allowedRoles.includes(req.user.role)) {
-      return next(
-        createHttpError(
-          403,
-          `Acceso denegado. Se requiere uno de los siguientes roles: ${allowedRoles.join(", ")}`
-        )
-      );
-    }
-
-    next();
-  };
-}
-
-
-export function optionalAuth(req: Request, _res: Response, next: NextFunction): void {
-  try {
-    const authHeader = req.headers.authorization;
-    const token = extractTokenFromHeader(authHeader);
-
-    if (token) {
-      const decoded = verifyToken(token);
-      req.user = decoded;
-    }
-
-    next();
-  } catch {
-    
-    next();
-  }
-}
-
-
-export function verifyTenant(req: Request, _res: Response, next: NextFunction): void {
-  if (!req.user) {
-    return next(createHttpError(401, "Usuario no autenticado"));
-  }
-
-  const tenantIdFromParams = req.params.tenantId;
-  const tenantIdFromUser = req.user.tenantId;
-
-  
-  if (req.user.role === 3) {
-    return next();
-  }
-
-  if (tenantIdFromParams && tenantIdFromParams !== tenantIdFromUser) {
-    return next(createHttpError(403, "No tiene acceso a este tenant"));
-  }
-
-  next();
-}
-
-
+import { Request, Response, NextFunction } from "express";import createHttpError from "http-errors";import { verifyToken, extractTokenFromHeader, DecodedToken } from "@/config/jwt";declare global {  namespace Express {    interface Request {      user?: DecodedToken;    }  }}export function authenticate(req: Request, _res: Response, next: NextFunction): void {  try {    const authHeader = req.headers.authorization;    const token = extractTokenFromHeader(authHeader);    if (!token) {      throw createHttpError(401, "Token de autenticación no proporcionado");    }    const decoded = verifyToken(token);    req.user = decoded;    next();  } catch (error) {    if (error instanceof Error) {      if (error.message === "Token expirado") {        next(createHttpError(401, "Token expirado, por favor inicie sesión nuevamente"));      } else if (error.message === "Token inválido") {        next(createHttpError(401, "Token inválido"));      } else {        next(error);      }    } else {      next(createHttpError(401, "Error de autenticación"));    }  }}export function authorize(...allowedRoles: number[]) {  return (req: Request, _res: Response, next: NextFunction): void => {    if (!req.user) {      return next(createHttpError(401, "Usuario no autenticado"));    }    if (!allowedRoles.includes(req.user.role)) {      return next(        createHttpError(          403,          `Acceso denegado. Se requiere uno de los siguientes roles: ${allowedRoles.join(", ")}`        )      );    }    next();  };}export function optionalAuth(req: Request, _res: Response, next: NextFunction): void {  try {    const authHeader = req.headers.authorization;    const token = extractTokenFromHeader(authHeader);    if (token) {      const decoded = verifyToken(token);      req.user = decoded;    }    next();  } catch {    next();  }}export function verifyTenant(req: Request, _res: Response, next: NextFunction): void {  if (!req.user) {    return next(createHttpError(401, "Usuario no autenticado"));  }  const tenantIdFromParams = req.params.tenantId;  const tenantIdFromUser = req.user.tenantId;  if (req.user.role === 3) {    return next();  }  if (tenantIdFromParams && tenantIdFromParams !== tenantIdFromUser) {    return next(createHttpError(403, "No tiene acceso a este tenant"));  }  next();}

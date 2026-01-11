@@ -5,59 +5,41 @@ import { uploadFileWithUniqueId, getFileUrl } from "@/utils/minio.util";
 import { Prisma, PaymentStatus } from "@prisma/client";
 import createHttpError from "http-errors";
 import { sendPasswordResetEmail, sendWelcomeEmail, sendVerificationEmail } from "@/utils";
-
 interface RegisterData extends Prisma.UserCreateInput {
   businessName: string;
   businessAddress: string;
   businessPhone?: string;
   businessEmail?: string;
 }
-
 interface CreateAdminData {
   name: string;
   email: string;
   password: string;
   businessId: string;
 }
-
 export class UserService {
-  /**
-   * Genera un token de verificación y fecha de expiración (24 horas)
-   */
   private generateVerificationData() {
     const verificationToken = generateSecureToken(32);
     const verificationExpires = new Date();
     verificationExpires.setHours(verificationExpires.getHours() + 24);
     return { verificationToken, verificationExpires };
   }
-
-  /**
-   * Registra un nuevo usuario con su negocio (registro inicial)
-   */
   async createUser(data: RegisterData) {
     const existingUser = await prisma.user.findFirst({
       where: { email: data.email },
     });
-
     if (existingUser) {
       throw createHttpError(409, "El correo electrónico ya está registrado");
     }
-
     const hashedPassword = await hashPassword(data.password);
     const nextPaymentDate = new Date();
-    nextPaymentDate.setDate(nextPaymentDate.getDate() + 7); // 7 días de prueba
-
+    nextPaymentDate.setDate(nextPaymentDate.getDate() + 7); 
     const { verificationToken, verificationExpires } = this.generateVerificationData();
-
-    // Transacción: Crear Negocio, Usuario y Pago Inicial
     const result = await prisma.$transaction(async (tx) => {
-      // 0. Obtener o crear el plan activo
       let activePlan = await tx.businessPlan.findFirst({
         where: { isActive: true },
       });
-
       if (!activePlan) {
-        // Si no hay plan activo, crear uno por defecto
         activePlan = await tx.businessPlan.create({
           data: {
             name: "Plan Estándar",
@@ -68,8 +50,6 @@ export class UserService {
           },
         });
       }
-
-      // 1. Crear Negocio con plan asignado
       const business = await tx.business.create({
         data: {
           name: data.businessName,
@@ -79,14 +59,12 @@ export class UserService {
           businessPlanId: activePlan.id,
         },
       });
-
-      // 2. Crear Usuario Admin (Role 1) vinculado al Negocio
       const user = await tx.user.create({
         data: {
           name: data.name,
           email: data.email,
           password: hashedPassword,
-          role: 1, // Admin del negocio
+          role: 1, 
           status: "ACTIVE",
           businessId: business.id,
           emailVerified: false,
@@ -94,8 +72,6 @@ export class UserService {
           verificationExpires,
         },
       });
-
-      // 3. Crear Historial de Pago (Trial)
       await tx.paymentHistory.create({
         data: {
           businessId: business.id,
@@ -105,75 +81,54 @@ export class UserService {
           nextPaymentDate: nextPaymentDate,
         },
       });
-
       return user;
     });
-
-    // Enviar email de verificación
     await sendVerificationEmail({
       email: result.email,
       name: result.name ?? "",
       verificationToken,
       appUrl: process.env.APP_URL ?? "",
     });
-
     const payload: TokenPayload = {
       userId: result.id,
       email: result.email,
       role: result.role,
     };
-
     const token = generateToken(payload);
     const { password, verificationToken: _, ...userWithoutSensitiveData } = result;
-
     return {
       user: userWithoutSensitiveData,
       token,
       message: "Se ha enviado un correo de verificación a tu email. Por favor verifica tu cuenta para acceder a todas las funcionalidades.",
     };
   }
-
-  /**
-   * Crea un nuevo administrador para un negocio existente
-   * El admin existente puede crear otros admins
-   */
   async createAdmin(creatorId: string, data: CreateAdminData) {
-    // Verificar que el creador es admin del negocio
     const creator = await prisma.user.findUnique({
       where: { id: creatorId },
     });
-
     if (!creator) {
       throw createHttpError(404, "Usuario no encontrado");
     }
-
     if (creator.role !== 1 && creator.role !== 0) {
       throw createHttpError(403, "No tiene permisos para crear administradores");
     }
-
-    // Si no es super admin, verificar que pertenece al mismo negocio
     if (creator.role === 1 && creator.businessId !== data.businessId) {
       throw createHttpError(403, "No puede crear administradores para otro negocio");
     }
-
-    // Verificar que el email no existe
     const existingUser = await prisma.user.findFirst({
       where: { email: data.email },
     });
-
     if (existingUser) {
       throw createHttpError(409, "El correo electrónico ya está registrado");
     }
-
     const hashedPassword = await hashPassword(data.password);
     const { verificationToken, verificationExpires } = this.generateVerificationData();
-
     const newAdmin = await prisma.user.create({
       data: {
         name: data.name,
         email: data.email,
         password: hashedPassword,
-        role: 1, // Admin
+        role: 1, 
         status: "ACTIVE",
         businessId: data.businessId,
         emailVerified: false,
@@ -181,45 +136,33 @@ export class UserService {
         verificationExpires,
       },
     });
-
-    // Enviar email de verificación
     await sendVerificationEmail({
       email: newAdmin.email,
       name: newAdmin.name ?? "",
       verificationToken,
       appUrl: process.env.APP_URL ?? "",
     });
-
     const { password, verificationToken: _, ...adminWithoutSensitiveData } = newAdmin;
-
     return {
       user: adminWithoutSensitiveData,
       message: "Administrador creado. Se ha enviado un correo de verificación.",
     };
   }
-
-  /**
-   * Verifica el email de un usuario con el token
-   */
   async verifyEmail(token: string) {
     const user = await prisma.user.findFirst({
       where: {
         verificationToken: token,
       },
     });
-
     if (!user) {
       throw createHttpError(400, "Token de verificación inválido");
     }
-
     if (user.emailVerified) {
       throw createHttpError(400, "El correo ya ha sido verificado");
     }
-
     if (user.verificationExpires && user.verificationExpires < new Date()) {
       throw createHttpError(400, "El token de verificación ha expirado. Solicite uno nuevo.");
     }
-
     await prisma.user.update({
       where: { id: user.id },
       data: {
@@ -228,35 +171,24 @@ export class UserService {
         verificationExpires: null,
       },
     });
-
-    // Enviar email de bienvenida después de verificar
     await sendWelcomeEmail({
       email: user.email,
       name: user.name ?? "",
       appUrl: process.env.APP_URL ?? "",
     });
-
     return { message: "Correo verificado exitosamente. Ya puede acceder a todas las funcionalidades." };
   }
-
-  /**
-   * Reenvía el email de verificación
-   */
   async resendVerificationEmail(email: string) {
     const user = await prisma.user.findFirst({
       where: { email },
     });
-
     if (!user) {
       throw createHttpError(404, "Usuario no encontrado");
     }
-
     if (user.emailVerified) {
       throw createHttpError(400, "El correo ya ha sido verificado");
     }
-
     const { verificationToken, verificationExpires } = this.generateVerificationData();
-
     await prisma.user.update({
       where: { id: user.id },
       data: {
@@ -264,127 +196,98 @@ export class UserService {
         verificationExpires,
       },
     });
-
     await sendVerificationEmail({
       email: user.email,
       name: user.name ?? "",
       verificationToken,
       appUrl: process.env.APP_URL ?? "",
     });
-
     return { message: "Se ha enviado un nuevo correo de verificación." };
   }
-
   async loginUser(email: string, password: string) {
     const user = await prisma.user.findFirst({
       where: { email },
     });
-
     if (!user) {
       throw createHttpError(401, "Credenciales inválidas");
     }
-
     const isValidPassword = await verifyPassword(password, user.password);
-
     if (!isValidPassword) {
       throw createHttpError(401, "Credenciales inválidas");
     }
-
     if (user.status !== "ACTIVE") {
       throw createHttpError(403, "Su cuenta no está activa");
     }
-
     const payload: TokenPayload = {
       userId: user.id,
       email: user.email,
       role: user.role,
     };
-
     const token = generateToken(payload);
     const { password: _, verificationToken, ...userWithoutSensitiveData } = user;
-
     return {
       user: userWithoutSensitiveData,
       token,
       emailVerified: user.emailVerified,
     };
   }
-
   async getUserById(userId: string) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
     });
-
     if (!user) {
       throw createHttpError(404, "Usuario no encontrado");
     }
-
     const { password, verificationToken, ...userWithoutSensitiveData } = user;
     return userWithoutSensitiveData;
   }
-
   async updateUser(userId: string, data: Prisma.UserUpdateInput) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
     });
-
     if (!user) {
       throw createHttpError(404, "Usuario no encontrado");
     }
-
     if (data.password && typeof data.password === "string") {
       data.password = await hashPassword(data.password);
     }
-
     const updatedUser = await prisma.user.update({
       where: { id: userId },
       data,
     });
-
     const { password, verificationToken, ...userWithoutSensitiveData } = updatedUser;
     return userWithoutSensitiveData;
   }
-
   async updateProfilePhoto(userId: string, file: Express.Multer.File) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
     });
-
     if (!user) {
       throw createHttpError(404, "Usuario no encontrado");
     }
-
     const fileName = await uploadFileWithUniqueId(
       file.originalname,
       file.buffer,
       file.mimetype,
       "profile-photos"
     );
-
     await prisma.user.update({
       where: { id: userId },
       data: {
         profileImage: fileName,
       },
     });
-
-    // Generar URL firmada para la imagen (válida por 7 días)
     const url = await getFileUrl(fileName, 7 * 24 * 3600);
-
     return { url };
   }
-
   async recoverPassword(email: string) {
     const user = await prisma.user.findFirst({
       where: { email },
     });
-
     if (!user) {
       throw createHttpError(404, "Usuario no encontrado");
     }
-
     const resetToken = generateRecoverPswToken({ email, password: user.password }, { expiresIn: "5m" });
-
     await sendPasswordResetEmail({
       email: user.email,
       name: user.name ?? "",
@@ -392,40 +295,27 @@ export class UserService {
       appUrl: process.env.APP_URL ?? "",
     });
   }
-
   async resetPassword(token: string, newPassword: string) {
     const decoded = verifyToken(token) as any;
-
     if (!decoded || !decoded.email || !decoded.password) {
       throw createHttpError(400, "Token inválido o incompleto");
     }
-
     const user = await prisma.user.findFirst({
       where: { email: decoded.email },
     });
-
     if (!user) {
       throw createHttpError(404, "Usuario no encontrado");
     }
-
-    // Verificar que la contraseña no haya cambiado
     if (user.password !== decoded.password) {
       throw createHttpError(400, "El enlace de recuperación ya no es válido (la contraseña ha cambiado)");
     }
-
     const hashedPassword = await hashPassword(newPassword);
-
     await prisma.user.update({
       where: { id: user.id },
       data: { password: hashedPassword },
     });
-
     return true;
   }
-
-  /**
-   * Obtiene los administradores de un negocio
-   */
   async getBusinessAdmins(businessId: string) {
     const admins = await prisma.user.findMany({
       where: {
@@ -443,9 +333,7 @@ export class UserService {
         createdAt: true,
       },
     });
-
     return admins;
   }
 }
-
 export const userService = new UserService();

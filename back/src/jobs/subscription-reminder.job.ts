@@ -5,44 +5,33 @@ import { sendCustomEmail } from "@/utils/email.util";
 import { PaymentAttemptStatus, PaymentStatus } from "@prisma/client";
 import { logger } from "@/app";
 import { emailService } from "@/services/email.service";
-
 const QUEUE_NAME = "subscription-reminders";
 const JOB_NAME = "check-subscriptions";
-
-// Configuración de días para notificaciones
-const DAYS_BEFORE_EXPIRY = [7, 3, 1]; // Notificar 7, 3 y 1 día antes
-const GRACE_PERIOD_DAYS = 3; // Días de gracia después del vencimiento
-
+const DAYS_BEFORE_EXPIRY = [7, 3, 1]; 
+const GRACE_PERIOD_DAYS = 3; 
 interface SubscriptionReminderData {
   scheduledAt: string;
 }
-
 interface BusinessSubscription {
   businessId: string;
   businessName: string;
   adminEmail: string;
   adminName: string;
   nextPaymentDate: Date;
-  daysUntilExpiry: number; // Positivo = días antes, Negativo = días después (vencido)
+  daysUntilExpiry: number; 
   planName: string;
   planPrice: number;
   latestPaymentHistoryId: string;
   isTrial: boolean;
 }
-
-/**
- * Obtiene las suscripciones próximas a vencer o vencidas
- */
 async function getSubscriptionsToNotify(): Promise<BusinessSubscription[]> {
   const now = new Date();
   const subscriptions: BusinessSubscription[] = [];
-
-  // Buscar el último pago de cada negocio
   const businesses = await prisma.business.findMany({
     include: {
       businessPlan: true,
       users: {
-        where: { role: 1, status: "ACTIVE" }, // Admin activo
+        where: { role: 1, status: "ACTIVE" }, 
         select: { email: true, name: true },
         take: 1,
       },
@@ -53,24 +42,16 @@ async function getSubscriptionsToNotify(): Promise<BusinessSubscription[]> {
       },
     },
   });
-
   for (const business of businesses) {
     const lastPayment = business.paymentHistory[0];
     const admin = business.users[0];
-
     if (!lastPayment?.nextPaymentDate || !admin) continue;
-
     const nextPaymentDate = new Date(lastPayment.nextPaymentDate);
     const diffTime = nextPaymentDate.getTime() - now.getTime();
     const diffDays = diffTime / (1000 * 60 * 60 * 24);
-    
-    // Usar Math.floor para fechas pasadas y Math.ceil para fechas futuras
-    // Esto asegura que si nextPaymentDate ya pasó, daysUntilExpiry será negativo
     const daysUntilExpiry = diffDays < 0 
-      ? Math.floor(diffDays)  // Para fechas pasadas, redondear hacia abajo (más negativo)
-      : Math.ceil(diffDays);   // Para fechas futuras, redondear hacia arriba
-
-    // Debug logging (solo en desarrollo)
+      ? Math.floor(diffDays)  
+      : Math.ceil(diffDays);   
     if (process.env.NODE_ENV === "development") {
       logger.debug({
         message: "Checking subscription",
@@ -83,13 +64,8 @@ async function getSubscriptionsToNotify(): Promise<BusinessSubscription[]> {
         isVencido: daysUntilExpiry < 0,
       });
     }
-
-    // Incluir si:
-    // 1. Está próximo a vencer (en los días configurados)
-    // 2. Está en período de gracia (vencido pero dentro del límite)
     const shouldNotifyBefore = DAYS_BEFORE_EXPIRY.includes(daysUntilExpiry);
     const isInGracePeriod = daysUntilExpiry < 0 && daysUntilExpiry >= -GRACE_PERIOD_DAYS;
-
     if (shouldNotifyBefore || isInGracePeriod) {
       subscriptions.push({
         businessId: business.id,
@@ -105,17 +81,11 @@ async function getSubscriptionsToNotify(): Promise<BusinessSubscription[]> {
       });
     }
   }
-
   return subscriptions;
 }
-
-/**
- * Verifica si ya se envió notificación hoy para un negocio
- */
 async function wasNotificationSentToday(paymentHistoryId: string): Promise<boolean> {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-
   const existingAttempt = await prisma.paymentAttempt.findFirst({
     where: {
       paymentHistoryId,
@@ -123,20 +93,13 @@ async function wasNotificationSentToday(paymentHistoryId: string): Promise<boole
       notificationSent: true,
     },
   });
-
   return !!existingAttempt;
 }
-
-/**
- * Registra la notificación enviada
- */
 async function recordNotification(
   paymentHistoryId: string,
   daysUntilExpiry: number
 ): Promise<void> {
-  // Usar el día como número de intento (negativo para vencidos)
   const attemptNumber = daysUntilExpiry >= 0 ? -daysUntilExpiry : Math.abs(daysUntilExpiry) + 100;
-
   await prisma.paymentAttempt.create({
     data: {
       paymentHistoryId,
@@ -146,18 +109,10 @@ async function recordNotification(
     },
   });
 }
-
-/**
- * Genera el enlace de pago para el negocio
- */
 function getPaymentLink(businessId: string): string {
-  const baseUrl = process.env.FRONTEND_URL || process.env.APP_URL || "http://localhost:8080";
+  const baseUrl = process.env.FRONTEND_URL || process.env.APP_URL || "http://localhost:3000";
   return `${baseUrl}/configuracion?renovar=true`;
 }
-
-/**
- * Envía notificación de suscripción próxima a vencer
- */
 async function sendExpiryWarning(subscription: BusinessSubscription): Promise<void> {
   const paymentLink = getPaymentLink(subscription.businessId);
   const formattedDate = subscription.nextPaymentDate.toLocaleDateString("es-ES", {
@@ -170,18 +125,15 @@ async function sendExpiryWarning(subscription: BusinessSubscription): Promise<vo
     style: "currency",
     currency: "ARS",
   }).format(subscription.planPrice);
-
   const subject = subscription.isTrial
     ? `⏰ Tu prueba gratuita termina en ${subscription.daysUntilExpiry} día(s) - ${subscription.businessName}`
     : `⏰ Tu suscripción vence en ${subscription.daysUntilExpiry} día(s) - ${subscription.businessName}`;
-
   const trialBanner = subscription.isTrial
     ? `<div class="trial-banner">
         <strong>🎁 ¡Tu período de prueba está por terminar!</strong>
         Suscríbete ahora para seguir disfrutando de todas las funcionalidades.
       </div>`
     : "";
-
   await emailService.sendEmailWithTemplate({
     to: subscription.adminEmail,
     subject,
@@ -199,7 +151,6 @@ async function sendExpiryWarning(subscription: BusinessSubscription): Promise<vo
       trialBanner,
     },
   });
-
   logger.info({
     message: "Expiry warning sent",
     businessId: subscription.businessId,
@@ -207,20 +158,14 @@ async function sendExpiryWarning(subscription: BusinessSubscription): Promise<vo
     email: subscription.adminEmail,
   });
 }
-
-/**
- * Envía notificación de suscripción vencida (período de gracia)
- */
 async function sendOverdueWarning(subscription: BusinessSubscription): Promise<void> {
   const paymentLink = getPaymentLink(subscription.businessId);
   const daysOverdue = Math.abs(subscription.daysUntilExpiry);
-  const remainingGraceDays = Math.max(0, GRACE_PERIOD_DAYS - daysOverdue); // No permitir valores negativos
+  const remainingGraceDays = Math.max(0, GRACE_PERIOD_DAYS - daysOverdue); 
   const formattedPrice = new Intl.NumberFormat("es-AR", {
     style: "currency",
     currency: "ARS",
   }).format(subscription.planPrice);
-
-  // Determinar el mensaje según los días restantes
   let gracePeriodMessage: string;
   if (remainingGraceDays === 0) {
     gracePeriodMessage = "Este es tu último día de gracia. Tu acceso será suspendido mañana si no realizas el pago.";
@@ -229,9 +174,7 @@ async function sendOverdueWarning(subscription: BusinessSubscription): Promise<v
   } else {
     gracePeriodMessage = `Te quedan ${remainingGraceDays} día(s) para regularizar tu situación antes de que tu acceso sea suspendido.`;
   }
-
   const subject = `⚠️ URGENTE: Tu suscripción está vencida - ${subscription.businessName}`;
-
   await emailService.sendEmailWithTemplate({
     to: subscription.adminEmail,
     subject,
@@ -243,13 +186,12 @@ async function sendOverdueWarning(subscription: BusinessSubscription): Promise<v
       businessName: subscription.businessName,
       daysOverdue: daysOverdue.toString(),
       remainingGraceDays: remainingGraceDays.toString(),
-      gracePeriodMessage, // Mensaje personalizado según los días restantes
+      gracePeriodMessage, 
       planName: subscription.planName,
       planPrice: formattedPrice,
       paymentLink,
     },
   });
-
   logger.info({
     message: "Overdue warning sent",
     businessId: subscription.businessId,
@@ -258,15 +200,9 @@ async function sendOverdueWarning(subscription: BusinessSubscription): Promise<v
     email: subscription.adminEmail,
   });
 }
-
-/**
- * Suspende el acceso a negocios que excedieron el período de gracia
- */
 async function suspendExpiredBusinesses(): Promise<void> {
   const now = new Date();
   const gracePeriodAgo = new Date(now.getTime() - GRACE_PERIOD_DAYS * 24 * 60 * 60 * 1000);
-
-  // Buscar negocios con pagos vencidos hace más del período de gracia
   const businesses = await prisma.business.findMany({
     include: {
       paymentHistory: {
@@ -280,14 +216,10 @@ async function suspendExpiredBusinesses(): Promise<void> {
       },
     },
   });
-
   for (const business of businesses) {
     const lastPayment = business.paymentHistory[0];
     if (!lastPayment?.nextPaymentDate) continue;
-
-    // Verificar si el período de gracia ya expiró
     if (new Date(lastPayment.nextPaymentDate) < gracePeriodAgo) {
-      // Suspender usuarios del negocio (marcar como INACTIVE)
       await prisma.user.updateMany({
         where: {
           businessId: business.id,
@@ -297,8 +229,6 @@ async function suspendExpiredBusinesses(): Promise<void> {
           status: "INACTIVE",
         },
       });
-
-      // Notificar al admin
       const admin = business.users[0];
       if (admin) {
         const subject = `🔒 Acceso desactivado - ${business.name}`;
@@ -315,7 +245,6 @@ async function suspendExpiredBusinesses(): Promise<void> {
           },
         });
       }
-
       logger.warn({
         message: "Business deactivated due to expired subscription",
         businessId: business.id,
@@ -324,25 +253,15 @@ async function suspendExpiredBusinesses(): Promise<void> {
     }
   }
 }
-
-/**
- * Procesa el job de recordatorio de suscripciones
- */
 async function processSubscriptionReminder(job: Job<SubscriptionReminderData>): Promise<void> {
   logger.info({ message: "Starting subscription reminder job", jobId: job.id });
-
   try {
-    // 1. Obtener suscripciones a notificar
     const subscriptions = await getSubscriptionsToNotify();
-
     logger.info({
       message: "Found subscriptions to process",
       count: subscriptions.length,
     });
-
-    // 2. Enviar notificaciones
     for (const subscription of subscriptions) {
-      // Verificar si ya se envió notificación hoy
       const alreadySent = await wasNotificationSentToday(subscription.latestPaymentHistoryId);
       if (alreadySent) {
         logger.debug({
@@ -351,22 +270,14 @@ async function processSubscriptionReminder(job: Job<SubscriptionReminderData>): 
         });
         continue;
       }
-
       if (subscription.daysUntilExpiry > 0) {
-        // Próximo a vencer
         await sendExpiryWarning(subscription);
       } else {
-        // Vencido (en período de gracia)
         await sendOverdueWarning(subscription);
       }
-
-      // Registrar notificación
       await recordNotification(subscription.latestPaymentHistoryId, subscription.daysUntilExpiry);
     }
-
-    // 3. Suspender negocios que excedieron el período de gracia
     await suspendExpiredBusinesses();
-
     logger.info({
       message: "Subscription reminder job completed",
       jobId: job.id,
@@ -381,19 +292,13 @@ async function processSubscriptionReminder(job: Job<SubscriptionReminderData>): 
     throw error;
   }
 }
-
-/**
- * Inicializa el worker para procesar jobs de recordatorio
- */
 export function initSubscriptionReminderWorker(): Worker {
   const worker = createWorker(QUEUE_NAME, processSubscriptionReminder, {
     concurrency: 1,
   });
-
   worker.on("completed", (job) => {
     logger.info({ message: "Subscription reminder job completed", jobId: job.id });
   });
-
   worker.on("failed", (job, err) => {
     logger.error({
       message: "Subscription reminder job failed",
@@ -401,42 +306,28 @@ export function initSubscriptionReminderWorker(): Worker {
       error: err.message,
     });
   });
-
   return worker;
 }
-
-/**
- * Programa el job para ejecutarse diariamente a las 9:00 AM
- */
 export async function scheduleSubscriptionReminderJob(): Promise<void> {
   const queue = getQueue(QUEUE_NAME);
-
-  // Eliminar jobs repetitivos anteriores
   const repeatableJobs = await queue.getRepeatableJobs();
   for (const job of repeatableJobs) {
     if (job.name === JOB_NAME) {
       await queue.removeRepeatableByKey(job.key);
     }
   }
-
-  // Programar nuevo job diario a las 00:31 (12:31 AM)
   await queue.add(
     JOB_NAME,
     { scheduledAt: new Date().toISOString() },
     {
       repeat: {
-        pattern: "58 0 * * *", // Todos los días a las 00:31 (minuto 31, hora 0)
+        pattern: "58 0 * * *", 
       },
       jobId: `${JOB_NAME}-daily`,
     }
   );
-
   logger.info({ message: "Subscription reminder job scheduled for 00:31 daily" });
 }
-
-/**
- * Ejecuta el job inmediatamente (para testing)
- */
 export async function runSubscriptionReminderNow(): Promise<void> {
   const queue = getQueue(QUEUE_NAME);
   await queue.add(JOB_NAME, { scheduledAt: new Date().toISOString() });

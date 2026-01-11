@@ -8,7 +8,6 @@ import {
   ManualProductStatus,
 } from "@prisma/client";
 import createHttpError from "http-errors";
-
 interface SaleItemInput {
   productId?: string;
   productName: string;
@@ -17,7 +16,6 @@ interface SaleItemInput {
   unitPrice: number;
   isManual?: boolean;
 }
-
 interface CreateSaleData {
   customerId?: string;
   items: SaleItemInput[];
@@ -28,14 +26,12 @@ interface CreateSaleData {
   isCredit?: boolean;
   notes?: string;
 }
-
 interface ManualProductInput {
   originalText: string;
   name: string;
   quantity: number;
   price: number;
 }
-
 interface SaleFilters {
   startDate?: Date;
   endDate?: Date;
@@ -44,24 +40,17 @@ interface SaleFilters {
   isCredit?: boolean;
   paymentMethod?: PaymentMethod;
 }
-
 interface PaginationOptions {
   page?: number;
   limit?: number;
   sortBy?: string;
   sortOrder?: "asc" | "desc";
 }
-
 class SaleService {
-  /**
-   * Genera un número de venta único
-   */
   private async generateSaleNumber(businessId: string): Promise<string> {
     const today = new Date();
     const year = today.getFullYear();
     const month = String(today.getMonth() + 1).padStart(2, "0");
-
-    // Contar ventas del mes actual
     const startOfMonth = new Date(year, today.getMonth(), 1);
     const count = await prisma.sale.count({
       where: {
@@ -69,23 +58,14 @@ class SaleService {
         createdAt: { gte: startOfMonth },
       },
     });
-
     return `VTA-${year}${month}-${String(count + 1).padStart(4, "0")}`;
   }
-
-  /**
-   * Crear una nueva venta
-   */
   async createSale(businessId: string, userId: string, data: CreateSaleData) {
-    // Calcular totales
     let subtotal = 0;
     const itemsData: Prisma.SaleItemCreateWithoutSaleInput[] = [];
-
     for (const item of data.items) {
       const totalPrice = item.quantity * item.unitPrice;
       subtotal += totalPrice;
-
-      // Si no es manual, verificar que el producto existe y tiene stock
       if (!item.isManual && item.productId) {
         const product = await prisma.products.findFirst({
           where: {
@@ -94,11 +74,9 @@ class SaleService {
             state: { not: ProductState.DELETED },
           },
         });
-
         if (!product) {
           throw createHttpError(404, `Producto no encontrado: ${item.productName}`);
         }
-
         if (product.stock < item.quantity) {
           throw createHttpError(
             400,
@@ -106,7 +84,6 @@ class SaleService {
           );
         }
       }
-
       itemsData.push({
         ...(item.productId && { product: { connect: { id: item.productId } } }),
         productName: item.productName,
@@ -117,8 +94,6 @@ class SaleService {
         isManual: item.isManual || false,
       });
     }
-
-    // Calcular descuento
     let discountAmount = 0;
     if (data.discountValue && data.discountType) {
       if (data.discountType === DiscountType.PERCENTAGE) {
@@ -127,20 +102,11 @@ class SaleService {
         discountAmount = data.discountValue;
       }
     }
-
-    // Calcular impuesto
     const taxRate = data.taxRate ?? 0.16;
     const taxAmount = (subtotal - discountAmount) * taxRate;
-
-    // Total final
     const total = subtotal - discountAmount + taxAmount;
-
-    // Generar número de venta
     const saleNumber = await this.generateSaleNumber(businessId);
-
-    // Crear la venta en transacción
     const sale = await prisma.$transaction(async (tx) => {
-      // 1. Crear la venta
       const newSale = await tx.sale.create({
         data: {
           saleNumber,
@@ -169,8 +135,6 @@ class SaleService {
           },
         },
       });
-
-      // 2. Actualizar stock de productos (solo si no es crédito)
       if (!data.isCredit) {
         for (const item of data.items) {
           if (!item.isManual && item.productId) {
@@ -180,12 +144,9 @@ class SaleService {
                 stock: { decrement: item.quantity },
               },
             });
-
-            // Verificar si quedó sin stock
             const updatedProduct = await tx.products.findUnique({
               where: { id: item.productId },
             });
-
             if (updatedProduct && updatedProduct.stock <= 0) {
               await tx.products.update({
                 where: { id: item.productId },
@@ -195,10 +156,7 @@ class SaleService {
           }
         }
       }
-
-      // 3. Si es venta a crédito, crear cuenta corriente
       if (data.isCredit && data.customerId) {
-        // Buscar o crear BusinessCustomer
         let businessCustomer = await tx.businessCustomer.findUnique({
           where: {
             businessId_customerId: {
@@ -207,7 +165,6 @@ class SaleService {
             },
           },
         });
-
         if (!businessCustomer) {
           businessCustomer = await tx.businessCustomer.create({
             data: {
@@ -216,7 +173,6 @@ class SaleService {
             },
           });
         }
-
         await tx.currentAccount.create({
           data: {
             businessCustomerId: businessCustomer.id,
@@ -227,16 +183,10 @@ class SaleService {
           },
         });
       }
-
       return newSale;
     });
-
     return sale;
   }
-
-  /**
-   * Obtener ventas con filtros y paginación
-   */
   async getSales(
     businessId: string,
     filters: SaleFilters = {},
@@ -245,33 +195,25 @@ class SaleService {
     const { startDate, endDate, status, customerId, isCredit, paymentMethod } = filters;
     const { page = 1, limit = 20, sortBy = "createdAt", sortOrder = "desc" } = pagination;
     const skip = (page - 1) * limit;
-
     const where: Prisma.SaleWhereInput = { businessId };
-
     if (startDate) {
       where.createdAt = { ...where.createdAt as any, gte: startDate };
     }
-
     if (endDate) {
       where.createdAt = { ...where.createdAt as any, lte: endDate };
     }
-
     if (status) {
       where.status = status;
     }
-
     if (customerId) {
       where.customerId = customerId;
     }
-
     if (isCredit !== undefined) {
       where.isCredit = isCredit;
     }
-
     if (paymentMethod) {
       where.paymentMethod = paymentMethod;
     }
-
     const [sales, total] = await Promise.all([
       prisma.sale.findMany({
         where,
@@ -288,7 +230,6 @@ class SaleService {
       }),
       prisma.sale.count({ where }),
     ]);
-
     return {
       data: sales,
       pagination: {
@@ -299,10 +240,6 @@ class SaleService {
       },
     };
   }
-
-  /**
-   * Obtener una venta por ID
-   */
   async getSaleById(saleId: string, businessId: string) {
     const sale = await prisma.sale.findFirst({
       where: { id: saleId, businessId },
@@ -319,33 +256,23 @@ class SaleService {
         },
       },
     });
-
     if (!sale) {
       throw createHttpError(404, "Venta no encontrada");
     }
-
     return sale;
   }
-
-  /**
-   * Cancelar una venta
-   */
   async cancelSale(saleId: string, businessId: string) {
     const sale = await prisma.sale.findFirst({
       where: { id: saleId, businessId },
       include: { items: true },
     });
-
     if (!sale) {
       throw createHttpError(404, "Venta no encontrada");
     }
-
     if (sale.status === SaleStatus.CANCELLED) {
       throw createHttpError(400, "La venta ya está cancelada");
     }
-
     await prisma.$transaction(async (tx) => {
-      // Restaurar stock si la venta estaba completada
       if (sale.status === SaleStatus.COMPLETED) {
         for (const item of sale.items) {
           if (item.productId) {
@@ -359,30 +286,18 @@ class SaleService {
           }
         }
       }
-
-      // Cancelar la venta
       await tx.sale.update({
         where: { id: saleId },
         data: { status: SaleStatus.CANCELLED },
       });
-
-      // Si tenía cuenta corriente, cancelarla
       await tx.currentAccount.updateMany({
         where: { saleId },
         data: { status: "PAID", currentBalance: 0 },
       });
     });
-
     return { message: "Venta cancelada correctamente" };
   }
-
-  // ==================== PRODUCTOS MANUALES ====================
-
-  /**
-   * Registrar un producto manual
-   */
   async createManualProduct(businessId: string, data: ManualProductInput) {
-    // Buscar productos similares por nombre
     const similarProducts = await prisma.products.findMany({
       where: {
         businessId,
@@ -394,9 +309,7 @@ class SaleService {
       },
       take: 5,
     });
-
     const suggestedProductId = similarProducts.length > 0 ? similarProducts[0].id : null;
-
     const manualProduct = await prisma.manualProduct.create({
       data: {
         businessId,
@@ -408,28 +321,20 @@ class SaleService {
         status: ManualProductStatus.PENDING,
       },
     });
-
     return {
       manualProduct,
       suggestions: similarProducts,
     };
   }
-
-  /**
-   * Obtener productos manuales pendientes
-   */
   async getManualProducts(businessId: string, status?: ManualProductStatus) {
     const where: Prisma.ManualProductWhereInput = { businessId };
     if (status) {
       where.status = status;
     }
-
     const manualProducts = await prisma.manualProduct.findMany({
       where,
       orderBy: { createdAt: "desc" },
     });
-
-    // Obtener sugerencias para cada producto
     const productsWithSuggestions = await Promise.all(
       manualProducts.map(async (mp) => {
         const suggestions = await prisma.products.findMany({
@@ -443,34 +348,24 @@ class SaleService {
           },
           take: 5,
         });
-
         return { ...mp, suggestions };
       })
     );
-
     return productsWithSuggestions;
   }
-
-  /**
-   * Vincular producto manual a un producto existente
-   */
   async linkManualProduct(manualProductId: string, productId: string, businessId: string) {
     const manualProduct = await prisma.manualProduct.findFirst({
       where: { id: manualProductId, businessId },
     });
-
     if (!manualProduct) {
       throw createHttpError(404, "Producto manual no encontrado");
     }
-
     const product = await prisma.products.findFirst({
       where: { id: productId, businessId },
     });
-
     if (!product) {
       throw createHttpError(404, "Producto no encontrado");
     }
-
     await prisma.manualProduct.update({
       where: { id: manualProductId },
       data: {
@@ -478,23 +373,15 @@ class SaleService {
         status: ManualProductStatus.LINKED,
       },
     });
-
     return { message: "Producto vinculado correctamente" };
   }
-
-  /**
-   * Convertir producto manual en producto real
-   */
   async convertManualProduct(manualProductId: string, businessId: string, additionalData?: any) {
     const manualProduct = await prisma.manualProduct.findFirst({
       where: { id: manualProductId, businessId },
     });
-
     if (!manualProduct) {
       throw createHttpError(404, "Producto manual no encontrado");
     }
-
-    // Crear el producto real
     const newProduct = await prisma.products.create({
       data: {
         businessId,
@@ -505,8 +392,6 @@ class SaleService {
         ...additionalData,
       },
     });
-
-    // Actualizar el producto manual
     await prisma.manualProduct.update({
       where: { id: manualProductId },
       data: {
@@ -514,33 +399,21 @@ class SaleService {
         status: ManualProductStatus.CONVERTED,
       },
     });
-
     return newProduct;
   }
-
-  /**
-   * Ignorar un producto manual
-   */
   async ignoreManualProduct(manualProductId: string, businessId: string) {
     const manualProduct = await prisma.manualProduct.findFirst({
       where: { id: manualProductId, businessId },
     });
-
     if (!manualProduct) {
       throw createHttpError(404, "Producto manual no encontrado");
     }
-
     await prisma.manualProduct.update({
       where: { id: manualProductId },
       data: { status: ManualProductStatus.IGNORED },
     });
-
     return { message: "Producto ignorado" };
   }
-
-  /**
-   * Actualizar un producto manual
-   */
   async updateManualProduct(
     manualProductId: string,
     businessId: string,
@@ -549,11 +422,9 @@ class SaleService {
     const manualProduct = await prisma.manualProduct.findFirst({
       where: { id: manualProductId, businessId },
     });
-
     if (!manualProduct) {
       throw createHttpError(404, "Producto manual no encontrado");
     }
-
     const updated = await prisma.manualProduct.update({
       where: { id: manualProductId },
       data: {
@@ -563,25 +434,15 @@ class SaleService {
         ...(data.status && { status: data.status }),
       },
     });
-
     return updated;
   }
-
-  /**
-   * Parsear texto de producto manual
-   * Formato: CANTIDAD NOMBRE PRECIO
-   * Ejemplo: "2 coca cola 2500"
-   */
   parseManualProductText(text: string): ManualProductInput | null {
     const regex = /^(\d+)\s+(.+?)\s+(\d+(?:\.\d{2})?)$/;
     const match = text.trim().match(regex);
-
     if (!match) {
       return null;
     }
-
     const [, quantityStr, name, priceStr] = match;
-
     return {
       originalText: text,
       quantity: parseInt(quantityStr, 10),
@@ -590,5 +451,4 @@ class SaleService {
     };
   }
 }
-
 export const saleService = new SaleService();

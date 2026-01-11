@@ -1,84 +1,1 @@
-import { z } from "zod/v4";
-import dotenv from "dotenv";
-
-
-dotenv.config();
-
-const envSchema = z.object({
-  
-  NODE_ENV: z.enum(["development", "production", "test"]),
-  PORT: z.string().transform(Number),
-
-  
-  DATABASE_URL: z.string().url(),
-
-  
-  REDIS_URL: z.string(),
-
-  
-  JWT_SECRET: z.string().min(32, "JWT_SECRET debe tener al menos 32 caracteres"),
-  JWT_EXPIRES_IN: z.string(),
-
-  
-  CRYPTO_SECRET: z.string().length(32, "CRYPTO_SECRET debe tener exactamente 32 caracteres"),
-
-  
-  MINIO_ENDPOINT: z.string(),
-  MINIO_PORT: z.string().transform(Number),
-  MINIO_ACCESS_KEY: z.string(),
-  MINIO_SECRET_KEY: z.string(),
-  MINIO_BUCKET: z.string(),
-  MINIO_USE_SSL: z.string().transform((v) => v === "true"),
-
-  
-  WASENDER_API_KEY: z.string().optional(),
-  WASENDER_API_URL: z.string().optional(),
-
-   
-  EMAIL_PROVIDER: z.enum(["resend", "nodemailer", "ethereal"]).default("ethereal"),
-  EMAIL_FROM: z.string().email().default("noreply@bunkerapp.com"),
-  
-   
-  RESEND_API_KEY: z.string().optional(),
-
-   
-  SMTP_HOST: z.string().optional(),
-  SMTP_PORT: z.string().transform(Number).optional(),
-  SMTP_SECURE: z.string().transform((v) => v === "true").optional(),
-  SMTP_USER: z.string().optional(),
-  SMTP_PASS: z.string().optional(),
-});
-
-const parseResult = envSchema.safeParse(process.env);
-
-if (!parseResult.success) {
-  console.error("❌ Error en las variables de entorno:");
-  console.error(parseResult.error.format());
-  process.exit(1);
-}
-
-export const env = parseResult.data;
-
-
-if (env.NODE_ENV === "production") {
-  if (!env.WASENDER_API_KEY || !env.WASENDER_API_URL) {
-    console.error("❌ En producción, WASENDER_API_KEY y WASENDER_API_URL son requeridos");
-    process.exit(1);
-  }
-  
-  if (env.EMAIL_PROVIDER === "resend" && !env.RESEND_API_KEY) {
-    console.error("❌ En producción con Resend, RESEND_API_KEY es requerido");
-    process.exit(1);
-  }
-
-  if (env.EMAIL_PROVIDER === "nodemailer") {
-    if (!env.SMTP_HOST || !env.SMTP_USER || !env.SMTP_PASS) {
-      console.error("❌ En producción con Nodemailer, SMTP_HOST, SMTP_USER y SMTP_PASS son requeridos");
-      process.exit(1);
-    }
-  }
-}
-
-export type Env = typeof env;
-
-
+import { z } from "zod/v4";import dotenv from "dotenv";dotenv.config();const envSchema = z.object({  NODE_ENV: z.enum(["development", "production", "test"]),  PORT: z.string().transform(Number),  DATABASE_URL: z.string().url(),  REDIS_URL: z.string(),  JWT_SECRET: z.string().min(32, "JWT_SECRET debe tener al menos 32 caracteres"),  JWT_EXPIRES_IN: z.string(),  CRYPTO_SECRET: z.string().length(32, "CRYPTO_SECRET debe tener exactamente 32 caracteres"),  MINIO_ENDPOINT: z.string(),  MINIO_PORT: z.string().transform(Number),  MINIO_ACCESS_KEY: z.string(),  MINIO_SECRET_KEY: z.string(),  MINIO_BUCKET: z.string(),  MINIO_USE_SSL: z.string().transform((v) => v === "true"),  WASENDER_API_KEY: z.string().optional(),  WASENDER_API_URL: z.string().optional(),  EMAIL_PROVIDER: z.enum(["resend", "nodemailer", "ethereal"]).default("ethereal"),  EMAIL_FROM: z.string().email().default("noreply@bunkerapp.com"),  RESEND_API_KEY: z.string().optional(),  SMTP_HOST: z.string().optional(),  SMTP_PORT: z.string().transform(Number).optional(),  SMTP_SECURE: z.string().transform((v) => v === "true").optional(),  SMTP_USER: z.string().optional(),  SMTP_PASS: z.string().optional(),});const parseResult = envSchema.safeParse(process.env);if (!parseResult.success) {  console.error("❌ Error en las variables de entorno:");  console.error(parseResult.error.format());  process.exit(1);}export const env = parseResult.data;if (env.NODE_ENV === "production") {  if (!env.WASENDER_API_KEY || !env.WASENDER_API_URL) {    console.error("❌ En producción, WASENDER_API_KEY y WASENDER_API_URL son requeridos");    process.exit(1);  }  if (env.EMAIL_PROVIDER === "resend" && !env.RESEND_API_KEY) {    console.error("❌ En producción con Resend, RESEND_API_KEY es requerido");    process.exit(1);  }  if (env.EMAIL_PROVIDER === "nodemailer") {    if (!env.SMTP_HOST || !env.SMTP_USER || !env.SMTP_PASS) {      console.error("❌ En producción con Nodemailer, SMTP_HOST, SMTP_USER y SMTP_PASS son requeridos");      process.exit(1);    }  }}export type Env = typeof env;

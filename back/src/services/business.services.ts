@@ -1,28 +1,1 @@
-import { prisma } from "@/config";
-import { BusinessResponse } from "@/types";
-
-class BusinessService {
-    async getBusinessData (userId: string): Promise<BusinessResponse>{
-        const user = await prisma.user.findFirstOrThrow({
-            where:{
-                id: userId,
-                role: 1
-            },
-            select:{
-                business: {
-                    include: {
-                        businessPlan: true
-                    }
-                }
-            }
-        })
-
-        if (!user.business) {
-            throw new Error('Business not found');
-        }
-        
-        return user.business as BusinessResponse;
-    }
-}
-
-export default new BusinessService();
+import { prisma } from "@/config";import { BusinessResponse } from "@/types";class BusinessService {    async getBusinessData (userId: string): Promise<BusinessResponse>{        const user = await prisma.user.findFirstOrThrow({            where:{                id: userId,                role: 1            },            select:{                business: {                    include: {                        businessPlan: true                    }                }            }        })        if (!user.business) {            throw new Error('Business not found');        }        return user.business as BusinessResponse;    }}export default new BusinessService();

@@ -1,98 +1,1 @@
-import { Queue, Worker, Job, QueueOptions, WorkerOptions } from "bullmq";
-import { env } from "@/config/env";
-
-
-function parseRedisUrl(url: string) {
-  const parsed = new URL(url);
-  return {
-    host: parsed.hostname,
-    port: parseInt(parsed.port) || 6379,
-    password: parsed.password || undefined,
-    username: parsed.username || undefined,
-  };
-}
-
-const redisConnection = parseRedisUrl(env.REDIS_URL);
-
-
-const defaultQueueOptions: QueueOptions = {
-  connection: redisConnection,
-  defaultJobOptions: {
-    attempts: 3,
-    backoff: {
-      type: "exponential",
-      delay: 1000,
-    },
-    removeOnComplete: {
-      count: 100,
-      age: 24 * 60 * 60, 
-    },
-    removeOnFail: {
-      count: 500,
-    },
-  },
-};
-
-
-const queues = new Map<string, Queue>();
-const workers = new Map<string, Worker>();
-
-
-export function getQueue(name: string, options?: Partial<QueueOptions>): Queue {
-  if (!queues.has(name)) {
-    const queue = new Queue(name, {
-      ...defaultQueueOptions,
-      ...options,
-    });
-    queues.set(name, queue);
-  }
-  return queues.get(name)!;
-}
-
-
-export function createWorker<T = unknown>(
-  queueName: string,
-  processor: (job: Job<T>) => Promise<void>,
-  options?: Partial<WorkerOptions>
-): Worker<T> {
-  const worker = new Worker<T>(queueName, processor, {
-    connection: redisConnection,
-    concurrency: 5,
-    ...options,
-  });
-
-  worker.on("completed", (job) => {
-    console.log(`✅ Job ${job.id} completado en cola ${queueName}`);
-  });
-
-  worker.on("failed", (job, err) => {
-    console.error(`❌ Job ${job?.id} falló en cola ${queueName}:`, err.message);
-  });
-
-  workers.set(queueName, worker);
-  return worker;
-}
-
-
-export const defaultQueue = getQueue("default");
-
-
-export async function closeAllQueues(): Promise<void> {
-  const closePromises: Promise<void>[] = [];
-
-  for (const [name, queue] of queues) {
-    closePromises.push(queue.close().then(() => console.log(`📭 Cola ${name} cerrada`)));
-  }
-
-  for (const [name, worker] of workers) {
-    closePromises.push(worker.close().then(() => console.log(`👷 Worker ${name} cerrado`)));
-  }
-
-  await Promise.all(closePromises);
-  queues.clear();
-  workers.clear();
-}
-
-export { redisConnection };
-
-
+import { Queue, Worker, Job, QueueOptions, WorkerOptions } from "bullmq";import { env } from "@/config/env";function parseRedisUrl(url: string) {  const parsed = new URL(url);  return {    host: parsed.hostname,    port: parseInt(parsed.port) || 6379,    password: parsed.password || undefined,    username: parsed.username || undefined,  };}const redisConnection = parseRedisUrl(env.REDIS_URL);const defaultQueueOptions: QueueOptions = {  connection: redisConnection,  defaultJobOptions: {    attempts: 3,    backoff: {      type: "exponential",      delay: 1000,    },    removeOnComplete: {      count: 100,      age: 24 * 60 * 60,     },    removeOnFail: {      count: 500,    },  },};const queues = new Map<string, Queue>();const workers = new Map<string, Worker>();export function getQueue(name: string, options?: Partial<QueueOptions>): Queue {  if (!queues.has(name)) {    const queue = new Queue(name, {      ...defaultQueueOptions,      ...options,    });    queues.set(name, queue);  }  return queues.get(name)!;}export function createWorker<T = unknown>(  queueName: string,  processor: (job: Job<T>) => Promise<void>,  options?: Partial<WorkerOptions>): Worker<T> {  const worker = new Worker<T>(queueName, processor, {    connection: redisConnection,    concurrency: 5,    ...options,  });  worker.on("completed", (job) => {    console.log(`✅ Job ${job.id} completado en cola ${queueName}`);  });  worker.on("failed", (job, err) => {    console.error(`❌ Job ${job?.id} falló en cola ${queueName}:`, err.message);  });  workers.set(queueName, worker);  return worker;}export const defaultQueue = getQueue("default");export async function closeAllQueues(): Promise<void> {  const closePromises: Promise<void>[] = [];  for (const [name, queue] of queues) {    closePromises.push(queue.close().then(() => console.log(`📭 Cola ${name} cerrada`)));  }  for (const [name, worker] of workers) {    closePromises.push(worker.close().then(() => console.log(`👷 Worker ${name} cerrado`)));  }  await Promise.all(closePromises);  queues.clear();  workers.clear();}export { redisConnection };

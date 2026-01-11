@@ -1,5 +1,4 @@
 import { z } from "zod";
-
 export const createProductSchema = z.object({
   name: z.string().min(1, "El nombre es requerido"),
   stock: z.number().int().min(0).optional().default(0),
@@ -14,7 +13,6 @@ export const createProductSchema = z.object({
   notes: z.string().optional(),
   multipliers: z.any().optional(),
 });
-
 export const updateProductSchema = z.object({
   name: z.string().min(1).optional(),
   stock: z.number().int().min(0).optional(),
@@ -32,16 +30,13 @@ export const updateProductSchema = z.object({
   system_message: z.string().optional().nullable(),
   multipliers: z.any().optional(),
 });
-
 export const createProductsBulkSchema = z.object({
   products: z.array(createProductSchema).min(1, "Debe incluir al menos un producto"),
 });
-
 export const updateStockSchema = z.object({
   quantity: z.number().int().min(0, "La cantidad debe ser positiva"),
   operation: z.enum(["add", "subtract", "set"]),
 });
-
 export const createCategorySchema = z.object({
   name: z.string().min(1, "El nombre es requerido").max(100),
 });

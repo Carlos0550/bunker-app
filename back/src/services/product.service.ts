@@ -2,7 +2,6 @@ import { prisma } from "@/config/db";
 import { Prisma, ProductState } from "@prisma/client";
 import createHttpError from "http-errors";
 import { uploadFileWithUniqueId, getFileUrl, deleteFile } from "@/utils/minio.util";
-
 interface ProductFilters {
   search?: string;
   categoryId?: string;
@@ -11,14 +10,12 @@ interface ProductFilters {
   minPrice?: number;
   maxPrice?: number;
 }
-
 interface PaginationOptions {
   page?: number;
   limit?: number;
   sortBy?: string;
   sortOrder?: "asc" | "desc";
 }
-
 interface CreateProductData {
   name: string;
   stock?: number;
@@ -33,7 +30,6 @@ interface CreateProductData {
   notes?: string;
   multipliers?: any;
 }
-
 interface UpdateProductData {
   name?: string;
   stock?: number;
@@ -51,11 +47,7 @@ interface UpdateProductData {
   system_message?: string;
   multipliers?: any;
 }
-
 class ProductService {
-  /**
-   * Obtener productos con filtros y paginación
-   */
   async getProducts(
     businessId: string,
     filters: ProductFilters = {},
@@ -69,22 +61,17 @@ class ProductService {
       minPrice,
       maxPrice,
     } = filters;
-
     const {
       page = 1,
       limit = 20,
       sortBy = "createdAt",
       sortOrder = "desc",
     } = pagination;
-
     const skip = (page - 1) * limit;
-
-    // Construir where clause
     const where: Prisma.ProductsWhereInput = {
       businessId,
       state: state || { not: ProductState.DELETED },
     };
-
     if (search) {
       where.OR = [
         { name: { contains: search, mode: "insensitive" } },
@@ -93,32 +80,25 @@ class ProductService {
         { description: { contains: search, mode: "insensitive" } },
       ];
     }
-
     if (categoryId) {
       where.categoryId = categoryId;
     }
-
     if (minPrice !== undefined) {
       where.sale_price = { ...where.sale_price as any, gte: minPrice };
     }
-
     if (maxPrice !== undefined) {
       where.sale_price = { ...where.sale_price as any, lte: maxPrice };
     }
-
-    // Filtro de stock bajo
     if (lowStock) {
       where.AND = [
         ...(where.AND as Prisma.ProductsWhereInput[] || []),
         {
           stock: {
-            lte: prisma.products.fields.min_stock as any, // Esto no funciona directamente en Prisma
+            lte: prisma.products.fields.min_stock as any, 
           },
         },
       ];
-      // Alternativa: hacer raw query o filtrar después
     }
-
     const [products, total] = await Promise.all([
       prisma.products.findMany({
         where,
@@ -132,14 +112,10 @@ class ProductService {
       }),
       prisma.products.count({ where }),
     ]);
-
-    // Si se pidió lowStock, filtrar después (workaround)
     let filteredProducts = products;
     if (lowStock) {
       filteredProducts = products.filter((p) => p.stock <= (p.min_stock || 0));
     }
-
-    // Generar URLs de imágenes si existen
     const productsWithUrls = await Promise.all(
       filteredProducts.map(async (product) => {
         let imageUrl = null;
@@ -147,13 +123,11 @@ class ProductService {
           try {
             imageUrl = await getFileUrl(product.image, 7 * 24 * 3600);
           } catch {
-            // Si falla, dejar null
           }
         }
         return { ...product, imageUrl };
       })
     );
-
     return {
       data: productsWithUrls,
       pagination: {
@@ -164,10 +138,6 @@ class ProductService {
       },
     };
   }
-
-  /**
-   * Obtener un producto por ID
-   */
   async getProductById(productId: string, businessId: string) {
     const product = await prisma.products.findFirst({
       where: {
@@ -180,28 +150,19 @@ class ProductService {
         supplier: true,
       },
     });
-
     if (!product) {
       throw createHttpError(404, "Producto no encontrado");
     }
-
     let imageUrl = null;
     if (product.image) {
       try {
         imageUrl = await getFileUrl(product.image, 7 * 24 * 3600);
       } catch {
-        // Si falla, dejar null
       }
     }
-
     return { ...product, imageUrl };
   }
-
-  /**
-   * Crear un nuevo producto
-   */
   async createProduct(businessId: string, data: CreateProductData) {
-    // Verificar si el SKU ya existe para este negocio
     if (data.sku) {
       const existingSku = await prisma.products.findFirst({
         where: {
@@ -210,13 +171,10 @@ class ProductService {
           state: { not: ProductState.DELETED },
         },
       });
-
       if (existingSku) {
         throw createHttpError(409, `Ya existe un producto con el SKU '${data.sku}'`);
       }
     }
-
-    // Verificar si el código de barras ya existe para este negocio
     if (data.bar_code) {
       const existingBarcode = await prisma.products.findFirst({
         where: {
@@ -225,12 +183,10 @@ class ProductService {
           state: { not: ProductState.DELETED },
         },
       });
-
       if (existingBarcode) {
         throw createHttpError(409, `Ya existe un producto con el código de barras '${data.bar_code}'`);
       }
     }
-
     const product = await prisma.products.create({
       data: {
         name: data.name,
@@ -252,19 +208,13 @@ class ProductService {
         supplier: true,
       },
     });
-
     return product;
   }
-
-  /**
-   * Crear múltiples productos
-   */
   async createProductsBulk(businessId: string, products: CreateProductData[]) {
     const results = {
       created: [] as any[],
       errors: [] as { index: number; error: string }[],
     };
-
     for (let i = 0; i < products.length; i++) {
       try {
         const product = await this.createProduct(businessId, products[i]);
@@ -276,13 +226,8 @@ class ProductService {
         });
       }
     }
-
     return results;
   }
-
-  /**
-   * Actualizar un producto (update inteligente - solo campos enviados)
-   */
   async updateProduct(productId: string, businessId: string, data: UpdateProductData) {
     const product = await prisma.products.findFirst({
       where: {
@@ -291,12 +236,9 @@ class ProductService {
         state: { not: ProductState.DELETED },
       },
     });
-
     if (!product) {
       throw createHttpError(404, "Producto no encontrado");
     }
-
-    // Verificar unicidad de SKU si se está actualizando
     if (data.sku && data.sku !== product.sku) {
       const existingSku = await prisma.products.findFirst({
         where: {
@@ -306,13 +248,10 @@ class ProductService {
           state: { not: ProductState.DELETED },
         },
       });
-
       if (existingSku) {
         throw createHttpError(409, `Ya existe un producto con el SKU '${data.sku}'`);
       }
     }
-
-    // Verificar unicidad de código de barras si se está actualizando
     if (data.bar_code && data.bar_code !== product.bar_code) {
       const existingBarcode = await prisma.products.findFirst({
         where: {
@@ -322,15 +261,11 @@ class ProductService {
           state: { not: ProductState.DELETED },
         },
       });
-
       if (existingBarcode) {
         throw createHttpError(409, `Ya existe un producto con el código de barras '${data.bar_code}'`);
       }
     }
-
-    // Construir objeto de actualización solo con campos definidos
     const updateData: Prisma.ProductsUpdateInput = {};
-
     if (data.name !== undefined) updateData.name = data.name;
     if (data.stock !== undefined) updateData.stock = data.stock;
     if (data.bar_code !== undefined) updateData.bar_code = data.bar_code;
@@ -344,24 +279,19 @@ class ProductService {
     if (data.notes !== undefined) updateData.notes = data.notes;
     if (data.system_message !== undefined) updateData.system_message = data.system_message;
     if (data.multipliers !== undefined) updateData.multipliers = data.multipliers;
-
     if (data.categoryId !== undefined) {
       updateData.category = data.categoryId
         ? { connect: { id: data.categoryId } }
         : { disconnect: true };
     }
-
     if (data.supplierId !== undefined) {
       updateData.supplier = data.supplierId
         ? { connect: { id: data.supplierId } }
         : { disconnect: true };
     }
-
-    // Actualizar estado automáticamente si el stock llega a 0
     if (data.stock !== undefined && data.stock <= 0 && data.state === undefined) {
       updateData.state = ProductState.OUT_OF_STOCK;
     }
-
     const updatedProduct = await prisma.products.update({
       where: { id: productId },
       data: updateData,
@@ -370,13 +300,8 @@ class ProductService {
         supplier: true,
       },
     });
-
     return updatedProduct;
   }
-
-  /**
-   * Actualizar imagen del producto
-   */
   async updateProductImage(productId: string, businessId: string, file: Express.Multer.File) {
     const product = await prisma.products.findFirst({
       where: {
@@ -385,41 +310,28 @@ class ProductService {
         state: { not: ProductState.DELETED },
       },
     });
-
     if (!product) {
       throw createHttpError(404, "Producto no encontrado");
     }
-
-    // Eliminar imagen anterior si existe
     if (product.image) {
       try {
         await deleteFile(product.image);
       } catch {
-        // Ignorar errores al eliminar
       }
     }
-
-    // Subir nueva imagen
     const fileName = await uploadFileWithUniqueId(
       file.originalname,
       file.buffer,
       file.mimetype,
       "product-images"
     );
-
     await prisma.products.update({
       where: { id: productId },
       data: { image: fileName },
     });
-
     const url = await getFileUrl(fileName, 7 * 24 * 3600);
-
     return { url, fileName };
   }
-
-  /**
-   * Soft delete de un producto (cambia estado a DELETED)
-   */
   async softDeleteProduct(productId: string, businessId: string) {
     const product = await prisma.products.findFirst({
       where: {
@@ -428,11 +340,9 @@ class ProductService {
         state: { not: ProductState.DELETED },
       },
     });
-
     if (!product) {
       throw createHttpError(404, "Producto no encontrado");
     }
-
     await prisma.products.update({
       where: { id: productId },
       data: {
@@ -440,13 +350,8 @@ class ProductService {
         deletedAt: new Date(),
       },
     });
-
     return { message: "Producto eliminado correctamente" };
   }
-
-  /**
-   * Hard delete de un producto (solo si ya está en estado DELETED)
-   */
   async hardDeleteProduct(productId: string, businessId: string) {
     const product = await prisma.products.findFirst({
       where: {
@@ -454,11 +359,9 @@ class ProductService {
         businessId,
       },
     });
-
     if (!product) {
       throw createHttpError(404, "Producto no encontrado");
     }
-
     if (product.state !== ProductState.DELETED) {
       throw createHttpError(
         400,
@@ -466,12 +369,9 @@ class ProductService {
         "Primero realice un soft delete."
       );
     }
-
-    // Verificar si el producto tiene ventas asociadas
     const salesCount = await prisma.saleItem.count({
       where: { productId },
     });
-
     if (salesCount > 0) {
       throw createHttpError(
         400,
@@ -479,26 +379,17 @@ class ProductService {
         "Los productos con historial de ventas deben permanecer en el sistema."
       );
     }
-
-    // Eliminar imagen si existe
     if (product.image) {
       try {
         await deleteFile(product.image);
       } catch {
-        // Ignorar errores
       }
     }
-
     await prisma.products.delete({
       where: { id: productId },
     });
-
     return { message: "Producto eliminado permanentemente" };
   }
-
-  /**
-   * Restaurar un producto eliminado
-   */
   async restoreProduct(productId: string, businessId: string) {
     const product = await prisma.products.findFirst({
       where: {
@@ -507,13 +398,10 @@ class ProductService {
         state: ProductState.DELETED,
       },
     });
-
     if (!product) {
       throw createHttpError(404, "Producto eliminado no encontrado");
     }
-
     const newState = product.stock <= 0 ? ProductState.OUT_OF_STOCK : ProductState.ACTIVE;
-
     await prisma.products.update({
       where: { id: productId },
       data: {
@@ -521,17 +409,11 @@ class ProductService {
         deletedAt: null,
       },
     });
-
     return { message: "Producto restaurado correctamente" };
   }
-
-  /**
-   * Obtener productos eliminados (papelera)
-   */
   async getDeletedProducts(businessId: string, pagination: PaginationOptions = {}) {
     const { page = 1, limit = 20 } = pagination;
     const skip = (page - 1) * limit;
-
     const [products, total] = await Promise.all([
       prisma.products.findMany({
         where: {
@@ -549,7 +431,6 @@ class ProductService {
         },
       }),
     ]);
-
     return {
       data: products,
       pagination: {
@@ -560,16 +441,11 @@ class ProductService {
       },
     };
   }
-
-  /**
-   * Obtener productos con stock bajo
-   */
   async getLowStockProducts(businessId: string) {
     const business = await prisma.business.findUnique({
       where: { id: businessId },
       select: { lowStockThreshold: true },
     });
-
     const products = await prisma.products.findMany({
       where: {
         businessId,
@@ -579,23 +455,16 @@ class ProductService {
         category: true,
       },
     });
-
-    // Filtrar productos con stock bajo
     const lowStockProducts = products.filter((p) => {
       const threshold = p.min_stock || business?.lowStockThreshold || 10;
       return p.stock <= threshold;
     });
-
     return lowStockProducts.map((p) => ({
       ...p,
       threshold: p.min_stock || business?.lowStockThreshold || 10,
       deficit: (p.min_stock || business?.lowStockThreshold || 10) - p.stock,
     }));
   }
-
-  /**
-   * Actualizar stock de un producto
-   */
   async updateStock(
     productId: string,
     businessId: string,
@@ -609,11 +478,9 @@ class ProductService {
         state: { not: ProductState.DELETED },
       },
     });
-
     if (!product) {
       throw createHttpError(404, "Producto no encontrado");
     }
-
     let newStock: number;
     switch (operation) {
       case "add":
@@ -629,9 +496,7 @@ class ProductService {
         newStock = quantity;
         break;
     }
-
     const newState = newStock <= 0 ? ProductState.OUT_OF_STOCK : ProductState.ACTIVE;
-
     const updatedProduct = await prisma.products.update({
       where: { id: productId },
       data: {
@@ -639,13 +504,8 @@ class ProductService {
         state: product.state === ProductState.DISABLED ? product.state : newState,
       },
     });
-
     return updatedProduct;
   }
-
-  /**
-   * Buscar productos por código de barras
-   */
   async findByBarcode(businessId: string, barcode: string) {
     const product = await prisma.products.findFirst({
       where: {
@@ -657,36 +517,24 @@ class ProductService {
         category: true,
       },
     });
-
     return product;
   }
-
-  /**
-   * Obtener categorías del negocio
-   */
   async getCategories(businessId: string) {
     return prisma.categories.findMany({
       where: { businessId },
       orderBy: { name: "asc" },
     });
   }
-
-  /**
-   * Crear una categoría
-   */
   async createCategory(businessId: string, name: string) {
     const existing = await prisma.categories.findFirst({
       where: { businessId, name },
     });
-
     if (existing) {
       throw createHttpError(409, `La categoría '${name}' ya existe`);
     }
-
     return prisma.categories.create({
       data: { name, businessId },
     });
   }
 }
-
 export const productService = new ProductService();

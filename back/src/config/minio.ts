@@ -1,47 +1,1 @@
-import { Client } from "minio";
-import { env } from "@/config/env";
-
-
-const globalForMinio = globalThis as unknown as {
-  minioClient: Client | undefined;
-};
-
-function createMinioClient(): Client {
-  return new Client({
-    endPoint: env.MINIO_ENDPOINT,
-    port: env.MINIO_PORT,
-    useSSL: env.MINIO_USE_SSL,
-    accessKey: env.MINIO_ACCESS_KEY,
-    secretKey: env.MINIO_SECRET_KEY,
-  });
-}
-
-export const minioClient = globalForMinio.minioClient ?? createMinioClient();
-
-if (process.env.NODE_ENV !== "production") {
-  globalForMinio.minioClient = minioClient;
-}
-
-
-export async function initializeMinio(): Promise<void> {
-  try {
-    const bucketExists = await minioClient.bucketExists(env.MINIO_BUCKET);
-
-    if (!bucketExists) {
-      await minioClient.makeBucket(env.MINIO_BUCKET);
-      console.log(`📦 Bucket "${env.MINIO_BUCKET}" creado`);
-    }
-
-    console.log("✅ Conexión a MinIO establecida");
-  } catch (error) {
-    console.error("❌ Error al conectar con MinIO:", error);
-    throw error;
-  }
-}
-
-
-export function getDefaultBucket(): string {
-  return env.MINIO_BUCKET;
-}
-
-
+import { Client } from "minio";import { env } from "@/config/env";const globalForMinio = globalThis as unknown as {  minioClient: Client | undefined;};function createMinioClient(): Client {  return new Client({    endPoint: env.MINIO_ENDPOINT,    port: env.MINIO_PORT,    useSSL: env.MINIO_USE_SSL,    accessKey: env.MINIO_ACCESS_KEY,    secretKey: env.MINIO_SECRET_KEY,  });}export const minioClient = globalForMinio.minioClient ?? createMinioClient();if (process.env.NODE_ENV !== "production") {  globalForMinio.minioClient = minioClient;}export async function initializeMinio(): Promise<void> {  try {    const bucketExists = await minioClient.bucketExists(env.MINIO_BUCKET);    if (!bucketExists) {      await minioClient.makeBucket(env.MINIO_BUCKET);      console.log(`📦 Bucket "${env.MINIO_BUCKET}" creado`);    }    console.log("✅ Conexión a MinIO establecida");  } catch (error) {    console.error("❌ Error al conectar con MinIO:", error);    throw error;  }}export function getDefaultBucket(): string {  return env.MINIO_BUCKET;}

@@ -1,21 +1,14 @@
 import { prisma } from "@/config/db";
 import { SaleStatus, ProductState, AccountStatus } from "@prisma/client";
-
 type Period = "today" | "yesterday" | "week" | "month" | "custom";
-
 interface DateRange {
   startDate: Date;
   endDate: Date;
 }
-
 class AnalyticsService {
-  /**
-   * Obtiene el rango de fechas según el período
-   */
   private getDateRange(period: Period, customStart?: Date, customEnd?: Date): DateRange {
     const now = new Date();
     const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
     switch (period) {
       case "today":
         return {
@@ -58,14 +51,8 @@ class AnalyticsService {
         };
     }
   }
-
-  /**
-   * Obtiene el resumen de ventas para un período
-   */
   async getSalesSummary(businessId: string, period: Period, customStart?: Date, customEnd?: Date) {
     const { startDate, endDate } = this.getDateRange(period, customStart, customEnd);
-
-    // Ventas completadas (no crédito) o créditos pagados
     const sales = await prisma.sale.findMany({
       where: {
         businessId,
@@ -83,15 +70,12 @@ class AnalyticsService {
         items: true,
       },
     });
-
     const totalSales = sales.length;
     const totalRevenue = sales.reduce((acc, sale) => acc + sale.total, 0);
     const totalItems = sales.reduce((acc, sale) => 
       acc + sale.items.reduce((itemAcc, item) => itemAcc + item.quantity, 0), 0
     );
     const averageTicket = totalSales > 0 ? totalRevenue / totalSales : 0;
-
-    // Ventas por método de pago
     const salesByPaymentMethod = await prisma.sale.groupBy({
       by: ["paymentMethod"],
       where: {
@@ -102,7 +86,6 @@ class AnalyticsService {
       _count: true,
       _sum: { total: true },
     });
-
     return {
       period: { startDate, endDate },
       totalSales,
@@ -116,13 +99,8 @@ class AnalyticsService {
       })),
     };
   }
-
-  /**
-   * Obtiene los productos más vendidos
-   */
   async getTopProducts(businessId: string, limit: number = 10, period?: Period) {
     const dateFilter = period ? this.getDateRange(period) : null;
-
     const topProducts = await prisma.saleItem.groupBy({
       by: ["productId", "productName"],
       where: {
@@ -143,19 +121,14 @@ class AnalyticsService {
       },
       take: limit,
     });
-
-    // Obtener datos adicionales de los productos
     const productIds = topProducts
       .map((p) => p.productId)
       .filter((id): id is string => id !== null);
-
     const products = await prisma.products.findMany({
       where: { id: { in: productIds } },
       select: { id: true, name: true, sale_price: true, stock: true, image: true },
     });
-
     const productMap = new Map(products.map((p) => [p.id, p]));
-
     return topProducts.map((p) => ({
       productId: p.productId,
       productName: p.productName,
@@ -165,14 +138,8 @@ class AnalyticsService {
       product: p.productId ? productMap.get(p.productId) : null,
     }));
   }
-
-  /**
-   * Obtiene los productos menos vendidos (oportunidades de mejora)
-   */
   async getLeastSellingProducts(businessId: string, limit: number = 10, period?: Period) {
     const dateFilter = period ? this.getDateRange(period) : null;
-
-    // Productos activos que no han tenido ventas o muy pocas
     const allProducts = await prisma.products.findMany({
       where: {
         businessId,
@@ -180,7 +147,6 @@ class AnalyticsService {
       },
       select: { id: true, name: true, sale_price: true, stock: true, createdAt: true },
     });
-
     const salesByProduct = await prisma.saleItem.groupBy({
       by: ["productId"],
       where: {
@@ -193,31 +159,20 @@ class AnalyticsService {
       },
       _sum: { quantity: true },
     });
-
     const salesMap = new Map(salesByProduct.map((s) => [s.productId, s._sum.quantity || 0]));
-
     const productsWithSales = allProducts.map((p) => ({
       ...p,
       quantitySold: salesMap.get(p.id) || 0,
     }));
-
-    // Ordenar por ventas ascendente
     productsWithSales.sort((a, b) => a.quantitySold - b.quantitySold);
-
     return productsWithSales.slice(0, limit);
   }
-
-  /**
-   * Obtiene productos con stock bajo
-   */
   async getLowStockProducts(businessId: string) {
     const business = await prisma.business.findUnique({
       where: { id: businessId },
       select: { lowStockThreshold: true },
     });
-
     const defaultThreshold = business?.lowStockThreshold || 10;
-
     const products = await prisma.products.findMany({
       where: {
         businessId,
@@ -232,7 +187,6 @@ class AnalyticsService {
         image: true,
       },
     });
-
     return products
       .filter((p) => p.stock <= (p.min_stock || defaultThreshold))
       .map((p) => ({
@@ -242,26 +196,17 @@ class AnalyticsService {
       }))
       .sort((a, b) => a.stock - b.stock);
   }
-
-  /**
-   * Obtiene el rendimiento de un producto específico
-   */
   async getProductPerformance(businessId: string, productId: string) {
     const product = await prisma.products.findFirst({
       where: { id: productId, businessId },
     });
-
     if (!product) {
       throw new Error("Producto no encontrado");
     }
-
-    // Ventas del producto por período
     const periods = ["today", "week", "month"] as const;
     const salesByPeriod: Record<string, any> = {};
-
     for (const period of periods) {
       const { startDate, endDate } = this.getDateRange(period);
-      
       const sales = await prisma.saleItem.aggregate({
         where: {
           productId,
@@ -274,18 +219,14 @@ class AnalyticsService {
         _sum: { quantity: true, totalPrice: true },
         _count: true,
       });
-
       salesByPeriod[period] = {
         quantity: sales._sum.quantity || 0,
         revenue: sales._sum.totalPrice || 0,
         transactionCount: sales._count,
       };
     }
-
-    // Historial de ventas últimos 30 días
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
     const totalSalesLast30Days = await prisma.saleItem.aggregate({
       where: {
         productId,
@@ -297,7 +238,6 @@ class AnalyticsService {
       },
       _sum: { quantity: true, totalPrice: true },
     });
-
     return {
       product,
       salesByPeriod,
@@ -307,10 +247,6 @@ class AnalyticsService {
       },
     };
   }
-
-  /**
-   * Obtiene las estadísticas del dashboard
-   */
   async getDashboardStats(businessId: string) {
     const today = new Date();
     const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
@@ -319,8 +255,6 @@ class AnalyticsService {
     const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
     const startOfLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
     const endOfLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
-
-    // Ventas de hoy
     const todaySales = await prisma.sale.aggregate({
       where: {
         businessId,
@@ -330,8 +264,6 @@ class AnalyticsService {
       _count: true,
       _sum: { total: true },
     });
-
-    // Ventas de ayer (para comparación)
     const yesterdaySales = await prisma.sale.aggregate({
       where: {
         businessId,
@@ -341,8 +273,6 @@ class AnalyticsService {
       _count: true,
       _sum: { total: true },
     });
-
-    // Ventas del mes actual
     const monthSales = await prisma.sale.aggregate({
       where: {
         businessId,
@@ -352,8 +282,6 @@ class AnalyticsService {
       _count: true,
       _sum: { total: true },
     });
-
-    // Ventas del mes pasado (para calcular crecimiento)
     const lastMonthSales = await prisma.sale.aggregate({
       where: {
         businessId,
@@ -362,29 +290,20 @@ class AnalyticsService {
       },
       _sum: { total: true },
     });
-
-    // Total de productos
     const totalProducts = await prisma.products.count({
       where: { businessId, state: { not: ProductState.DELETED } },
     });
-
-    // Productos con stock bajo
     const lowStockProducts = await this.getLowStockProducts(businessId);
-
-    // Calcular cambio porcentual vs ayer
     const todayRevenue = todaySales._sum.total || 0;
     const yesterdayRevenue = yesterdaySales._sum.total || 0;
     const dailyChange = yesterdayRevenue > 0
       ? ((todayRevenue - yesterdayRevenue) / yesterdayRevenue) * 100
       : todayRevenue > 0 ? 100 : 0;
-
-    // Calcular crecimiento mensual
     const currentMonthRevenue = monthSales._sum.total || 0;
     const lastMonthRevenue = lastMonthSales._sum.total || 0;
     const monthlyGrowth = lastMonthRevenue > 0
       ? ((currentMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100
       : currentMonthRevenue > 0 ? 100 : 0;
-
     return {
       todaySales: todaySales._count,
       todayRevenue,
@@ -396,21 +315,15 @@ class AnalyticsService {
       totalRevenue: currentMonthRevenue,
     };
   }
-
-  /**
-   * Obtiene datos para el gráfico de ventas de la semana
-   */
   async getWeeklySalesChart(businessId: string) {
     const days = [];
     const today = new Date();
-
     for (let i = 6; i >= 0; i--) {
       const date = new Date(today);
       date.setDate(date.getDate() - i);
       const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
       const endOfDay = new Date(startOfDay);
       endOfDay.setDate(endOfDay.getDate() + 1);
-
       const sales = await prisma.sale.aggregate({
         where: {
           businessId,
@@ -419,7 +332,6 @@ class AnalyticsService {
         },
         _sum: { total: true },
       });
-
       const dayNames = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
       days.push({
         name: dayNames[date.getDay()],
@@ -427,13 +339,8 @@ class AnalyticsService {
         ventas: sales._sum.total || 0,
       });
     }
-
     return days;
   }
-
-  /**
-   * Obtiene las ventas recientes
-   */
   async getRecentSales(businessId: string, limit: number = 5) {
     const sales = await prisma.sale.findMany({
       where: {
@@ -450,7 +357,6 @@ class AnalyticsService {
         },
       },
     });
-
     return sales.map((sale) => ({
       id: sale.id,
       saleNumber: sale.saleNumber,
@@ -463,5 +369,4 @@ class AnalyticsService {
     }));
   }
 }
-
 export const analyticsService = new AnalyticsService();

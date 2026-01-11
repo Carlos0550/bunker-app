@@ -3,14 +3,11 @@ import { importController } from "@/controllers/import.controller";
 import { authenticate } from "@/middlewares/auth";
 import { verifySubscription } from "@/middlewares";
 import multer from "multer";
-
 const router = Router();
-
-// Configurar multer para archivos en memoria
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB máximo
+    fileSize: 10 * 1024 * 1024, 
   },
   fileFilter: (_req, file, cb) => {
     const allowedMimes = [
@@ -22,7 +19,6 @@ const upload = multer({
     ];
     const allowedExtensions = ["csv", "xls", "xlsx"];
     const extension = file.originalname.split(".").pop()?.toLowerCase();
-
     if (allowedMimes.includes(file.mimetype) || allowedExtensions.includes(extension || "")) {
       cb(null, true);
     } else {
@@ -30,21 +26,10 @@ const upload = multer({
     }
   },
 });
-
-// Todas las rutas requieren autenticación
 router.use(authenticate);
 router.use(verifySubscription);
-
-// Obtener columnas del sistema
 router.get("/columns", importController.getSystemColumns);
-
-// Analizar archivo y obtener headers
 router.post("/analyze", upload.single("file"), importController.analyzeFile);
-
-// Procesar importación con mapeo
 router.post("/process", importController.processImport);
-
-// Cancelar importación
 router.post("/cancel", importController.cancelImport);
-
 export default router;

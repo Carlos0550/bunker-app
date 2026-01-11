@@ -1,9 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { adminService } from "@/services/admin.service";
-
 class AdminController {
-  // ==================== PLANES ====================
-
   async createPlan(req: Request, res: Response, next: NextFunction) {
     try {
       const plan = await adminService.createPlan(req.body);
@@ -15,7 +12,6 @@ class AdminController {
       next(error);
     }
   }
-
   async getAllPlans(req: Request, res: Response, next: NextFunction) {
     try {
       const includeInactive = req.query.includeInactive === "true";
@@ -28,7 +24,6 @@ class AdminController {
       next(error);
     }
   }
-
   async getPlanById(req: Request, res: Response, next: NextFunction) {
     try {
       const plan = await adminService.getPlanById(req.params.id);
@@ -40,7 +35,6 @@ class AdminController {
       next(error);
     }
   }
-
   async updatePlan(req: Request, res: Response, next: NextFunction) {
     try {
       const plan = await adminService.updatePlan(req.params.id, req.body);
@@ -52,7 +46,6 @@ class AdminController {
       next(error);
     }
   }
-
   async deletePlan(req: Request, res: Response, next: NextFunction) {
     try {
       await adminService.deletePlan(req.params.id);
@@ -64,7 +57,6 @@ class AdminController {
       next(error);
     }
   }
-
   async getActivePlan(req: Request, res: Response, next: NextFunction) {
     try {
       const plan = await adminService.getActivePlan();
@@ -76,15 +68,11 @@ class AdminController {
       next(error);
     }
   }
-
-  // ==================== NEGOCIOS ====================
-
   async getAllBusinesses(req: Request, res: Response, next: NextFunction) {
     try {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 20;
       const search = req.query.search as string | undefined;
-
       const result = await adminService.getAllBusinesses(page, limit, search);
       res.status(200).json({
         success: true,
@@ -94,7 +82,6 @@ class AdminController {
       next(error);
     }
   }
-
   async changeBusinessPlan(req: Request, res: Response, next: NextFunction) {
     try {
       const { planId } = req.body;
@@ -107,9 +94,6 @@ class AdminController {
       next(error);
     }
   }
-
-  // ==================== ESTADÍSTICAS ====================
-
   async getSystemStats(req: Request, res: Response, next: NextFunction) {
     try {
       const stats = await adminService.getSystemStats();
@@ -122,5 +106,4 @@ class AdminController {
     }
   }
 }
-
 export const adminController = new AdminController();

@@ -1,181 +1,1 @@
-import { Job, JobsOptions } from "bullmq";
-import { getQueue, createWorker } from "@/config/queue";
-
-
-export async function addJob<T extends object>(
-  queueName: string,
-  jobName: string,
-  data: T,
-  opts?: JobsOptions
-): Promise<Job<T>> {
-  const queue = getQueue(queueName);
-  return queue.add(jobName, data, opts);
-}
-
-
-export async function addDelayedJob<T extends object>(
-  queueName: string,
-  jobName: string,
-  data: T,
-  delayMs: number
-): Promise<Job<T>> {
-  return addJob(queueName, jobName, data, { delay: delayMs });
-}
-
-
-export async function addRepeatingJob<T extends object>(
-  queueName: string,
-  jobName: string,
-  data: T,
-  pattern: string
-): Promise<Job<T>> {
-  return addJob(queueName, jobName, data, {
-    repeat: { pattern },
-  });
-}
-
-
-export async function getJob<T = unknown>(
-  queueName: string,
-  jobId: string
-): Promise<Job<T> | undefined> {
-  const queue = getQueue(queueName);
-  return queue.getJob(jobId) as Promise<Job<T> | undefined>;
-}
-
-
-export async function getJobState(
-  queueName: string,
-  jobId: string
-): Promise<string | null> {
-  const job = await getJob(queueName, jobId);
-
-  if (!job) {
-    return null;
-  }
-
-  return job.getState();
-}
-
-
-export async function removeJob(
-  queueName: string,
-  jobId: string
-): Promise<boolean> {
-  const job = await getJob(queueName, jobId);
-
-  if (!job) {
-    return false;
-  }
-
-  await job.remove();
-  return true;
-}
-
-
-export async function retryJob(
-  queueName: string,
-  jobId: string
-): Promise<boolean> {
-  const job = await getJob(queueName, jobId);
-
-  if (!job) {
-    return false;
-  }
-
-  await job.retry();
-  return true;
-}
-
-
-export async function getWaitingJobs<T = unknown>(
-  queueName: string,
-  start: number = 0,
-  end: number = 100
-): Promise<Job<T>[]> {
-  const queue = getQueue(queueName);
-  return queue.getJobs(["waiting"], start, end) as Promise<Job<T>[]>;
-}
-
-
-export async function getActiveJobs<T = unknown>(
-  queueName: string
-): Promise<Job<T>[]> {
-  const queue = getQueue(queueName);
-  return queue.getJobs(["active"]) as Promise<Job<T>[]>;
-}
-
-
-export async function getFailedJobs<T = unknown>(
-  queueName: string,
-  start: number = 0,
-  end: number = 100
-): Promise<Job<T>[]> {
-  const queue = getQueue(queueName);
-  return queue.getJobs(["failed"], start, end) as Promise<Job<T>[]>;
-}
-
-
-export async function getCompletedJobs<T = unknown>(
-  queueName: string,
-  start: number = 0,
-  end: number = 100
-): Promise<Job<T>[]> {
-  const queue = getQueue(queueName);
-  return queue.getJobs(["completed"], start, end) as Promise<Job<T>[]>;
-}
-
-
-export async function cleanCompletedJobs(
-  queueName: string,
-  gracePeriodMs: number = 3600000 
-): Promise<string[]> {
-  const queue = getQueue(queueName);
-  return queue.clean(gracePeriodMs, 1000, "completed");
-}
-
-
-export async function cleanFailedJobs(
-  queueName: string,
-  gracePeriodMs: number = 86400000 
-): Promise<string[]> {
-  const queue = getQueue(queueName);
-  return queue.clean(gracePeriodMs, 1000, "failed");
-}
-
-
-export async function pauseQueue(queueName: string): Promise<void> {
-  const queue = getQueue(queueName);
-  await queue.pause();
-}
-
-
-export async function resumeQueue(queueName: string): Promise<void> {
-  const queue = getQueue(queueName);
-  await queue.resume();
-}
-
-
-export async function getQueueStats(queueName: string): Promise<{
-  waiting: number;
-  active: number;
-  completed: number;
-  failed: number;
-  delayed: number;
-}> {
-  const queue = getQueue(queueName);
-  const counts = await queue.getJobCounts();
-
-  return {
-    waiting: counts.waiting || 0,
-    active: counts.active || 0,
-    completed: counts.completed || 0,
-    failed: counts.failed || 0,
-    delayed: counts.delayed || 0,
-  };
-}
-
-
-export { createWorker };
-
-
+import { Job, JobsOptions } from "bullmq";import { getQueue, createWorker } from "@/config/queue";export async function addJob<T extends object>(  queueName: string,  jobName: string,  data: T,  opts?: JobsOptions): Promise<Job<T>> {  const queue = getQueue(queueName);  return queue.add(jobName, data, opts);}export async function addDelayedJob<T extends object>(  queueName: string,  jobName: string,  data: T,  delayMs: number): Promise<Job<T>> {  return addJob(queueName, jobName, data, { delay: delayMs });}export async function addRepeatingJob<T extends object>(  queueName: string,  jobName: string,  data: T,  pattern: string): Promise<Job<T>> {  return addJob(queueName, jobName, data, {    repeat: { pattern },  });}export async function getJob<T = unknown>(  queueName: string,  jobId: string): Promise<Job<T> | undefined> {  const queue = getQueue(queueName);  return queue.getJob(jobId) as Promise<Job<T> | undefined>;}export async function getJobState(  queueName: string,  jobId: string): Promise<string | null> {  const job = await getJob(queueName, jobId);  if (!job) {    return null;  }  return job.getState();}export async function removeJob(  queueName: string,  jobId: string): Promise<boolean> {  const job = await getJob(queueName, jobId);  if (!job) {    return false;  }  await job.remove();  return true;}export async function retryJob(  queueName: string,  jobId: string): Promise<boolean> {  const job = await getJob(queueName, jobId);  if (!job) {    return false;  }  await job.retry();  return true;}export async function getWaitingJobs<T = unknown>(  queueName: string,  start: number = 0,  end: number = 100): Promise<Job<T>[]> {  const queue = getQueue(queueName);  return queue.getJobs(["waiting"], start, end) as Promise<Job<T>[]>;}export async function getActiveJobs<T = unknown>(  queueName: string): Promise<Job<T>[]> {  const queue = getQueue(queueName);  return queue.getJobs(["active"]) as Promise<Job<T>[]>;}export async function getFailedJobs<T = unknown>(  queueName: string,  start: number = 0,  end: number = 100): Promise<Job<T>[]> {  const queue = getQueue(queueName);  return queue.getJobs(["failed"], start, end) as Promise<Job<T>[]>;}export async function getCompletedJobs<T = unknown>(  queueName: string,  start: number = 0,  end: number = 100): Promise<Job<T>[]> {  const queue = getQueue(queueName);  return queue.getJobs(["completed"], start, end) as Promise<Job<T>[]>;}export async function cleanCompletedJobs(  queueName: string,  gracePeriodMs: number = 3600000 ): Promise<string[]> {  const queue = getQueue(queueName);  return queue.clean(gracePeriodMs, 1000, "completed");}export async function cleanFailedJobs(  queueName: string,  gracePeriodMs: number = 86400000 ): Promise<string[]> {  const queue = getQueue(queueName);  return queue.clean(gracePeriodMs, 1000, "failed");}export async function pauseQueue(queueName: string): Promise<void> {  const queue = getQueue(queueName);  await queue.pause();}export async function resumeQueue(queueName: string): Promise<void> {  const queue = getQueue(queueName);  await queue.resume();}export async function getQueueStats(queueName: string): Promise<{  waiting: number;  active: number;  completed: number;  failed: number;  delayed: number;}> {  const queue = getQueue(queueName);  const counts = await queue.getJobCounts();  return {    waiting: counts.waiting || 0,    active: counts.active || 0,    completed: counts.completed || 0,    failed: counts.failed || 0,    delayed: counts.delayed || 0,  };}export { createWorker };

@@ -1,51 +1,38 @@
 import { emailService } from '@/services/email.service';
 import { EmailResult, EmailTemplateData } from '@/types';
-
- 
-
 export interface SendWelcomeEmailOptions {
   email: string;
   name: string;
   appUrl?: string;
 }
-
 export interface SendPasswordResetOptions {
   email: string;
   name: string;
   resetToken: string;
   appUrl?: string;
 }
-
 export interface SendVerificationOptions {
   email: string;
   name: string;
   verificationToken: string;
   appUrl?: string;
 }
-
 export interface SendCustomEmailOptions {
   to: string | string[];
   subject: string;
   templateName: string;
   data: EmailTemplateData;
 }
-
- 
 export function generatePasswordResetLink(token: string, appUrl?: string): string {
-  const baseUrl = appUrl || process.env.APP_URL || 'http://localhost:5173';
+  const baseUrl = appUrl || process.env.APP_URL || 'http://localhost:3000';
   return `${baseUrl}/reset-password?token=${token}`;
 }
-
- 
 export function generateVerificationLink(token: string, appUrl?: string): string {
-  const baseUrl = appUrl || process.env.APP_URL || 'http://localhost:5173';
+  const baseUrl = appUrl || process.env.APP_URL || 'http://localhost:3000';
   return `${baseUrl}/verify-email?token=${token}`;
 }
-
- 
 export async function sendWelcomeEmail(options: SendWelcomeEmailOptions): Promise<EmailResult> {
-  const appUrl = options.appUrl || process.env.APP_URL || 'http://localhost:5173';
-  
+  const appUrl = options.appUrl || process.env.APP_URL || 'http://localhost:3000';
   return emailService.sendEmailWithTemplate({
     to: options.email,
     subject: '¡Bienvenido a Bunker App!',
@@ -57,11 +44,8 @@ export async function sendWelcomeEmail(options: SendWelcomeEmailOptions): Promis
     },
   });
 }
-
- 
 export async function sendPasswordResetEmail(options: SendPasswordResetOptions): Promise<EmailResult> {
   const resetLink = generatePasswordResetLink(options.resetToken, options.appUrl);
-  
   return emailService.sendEmailWithTemplate({
     to: options.email,
     subject: 'Recuperación de Contraseña - Bunker App',
@@ -73,11 +57,8 @@ export async function sendPasswordResetEmail(options: SendPasswordResetOptions):
     },
   });
 }
-
- 
 export async function sendVerificationEmail(options: SendVerificationOptions): Promise<EmailResult> {
   const verificationLink = generateVerificationLink(options.verificationToken, options.appUrl);
-  
   return emailService.sendEmailWithTemplate({
     to: options.email,
     subject: 'Verifica tu Cuenta - Bunker App',
@@ -89,8 +70,6 @@ export async function sendVerificationEmail(options: SendVerificationOptions): P
     },
   });
 }
-
- 
 export async function sendNotificationEmail(
   email: string,
   name: string, 
@@ -109,8 +88,6 @@ export async function sendNotificationEmail(
     },
   });
 }
-
- 
 export async function sendCustomEmail(options: SendCustomEmailOptions): Promise<EmailResult> {
   return emailService.sendEmailWithTemplate({
     to: options.to,
@@ -119,15 +96,10 @@ export async function sendCustomEmail(options: SendCustomEmailOptions): Promise<
     data: options.data,
   });
 }
-
- 
 export function isValidEmail(email: string): boolean {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
 }
-
- 
 export function normalizeEmail(email: string): string {
   return email.toLowerCase().trim();
 }
-
