@@ -1,14 +1,12 @@
 import { prisma } from "@/config/db";
-import { FeatureValueType, Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import createHttpError from "http-errors";
-import { featureService } from "./feature.service";
 
 interface CreatePlanData {
   name: string;
   price: number;
   description?: string;
-  features?: string[]; // Descripción textual
-  planFeatures?: { featureId: string; value: string }[];
+  features?: string[]; // Descripción textual para mostrar en frontend
 }
 
 interface UpdatePlanData {
@@ -26,6 +24,15 @@ class AdminService {
    * Crear un nuevo plan de negocio
    */
   async createPlan(data: CreatePlanData) {
+    // Verificar si ya existe un plan activo
+    const existingActive = await prisma.businessPlan.findFirst({
+      where: { isActive: true },
+    });
+
+    if (existingActive && data.name !== existingActive.name) {
+      throw createHttpError(409, `Ya existe un plan activo. Solo puede haber un plan activo a la vez.`);
+    }
+
     const existing = await prisma.businessPlan.findUnique({
       where: { name: data.name },
     });
@@ -40,20 +47,16 @@ class AdminService {
         price: data.price,
         description: data.description,
         features: data.features || [],
+        isActive: true, // El nuevo plan se activa automáticamente
       },
     });
 
-    // Asignar features si se proporcionaron
-    if (data.planFeatures && data.planFeatures.length > 0) {
-      for (const pf of data.planFeatures) {
-        await prisma.planFeature.create({
-          data: {
-            planId: plan.id,
-            featureId: pf.featureId,
-            value: pf.value,
-          },
-        });
-      }
+    // Si se crea un nuevo plan activo, desactivar los demás
+    if (plan.isActive) {
+      await prisma.businessPlan.updateMany({
+        where: { id: { not: plan.id }, isActive: true },
+        data: { isActive: false },
+      });
     }
 
     return this.getPlanById(plan.id);
@@ -66,14 +69,11 @@ class AdminService {
     return prisma.businessPlan.findMany({
       where: includeInactive ? {} : { isActive: true },
       include: {
-        planFeatures: {
-          include: { feature: true },
-        },
         _count: {
           select: { businesses: true },
         },
       },
-      orderBy: { price: "asc" },
+      orderBy: { createdAt: "desc" },
     });
   }
 
@@ -84,9 +84,6 @@ class AdminService {
     const plan = await prisma.businessPlan.findUnique({
       where: { id: planId },
       include: {
-        planFeatures: {
-          include: { feature: true },
-        },
         _count: {
           select: { businesses: true },
         },
@@ -95,6 +92,26 @@ class AdminService {
 
     if (!plan) {
       throw createHttpError(404, "Plan no encontrado");
+    }
+
+    return plan;
+  }
+
+  /**
+   * Obtener el plan activo único
+   */
+  async getActivePlan() {
+    const plan = await prisma.businessPlan.findFirst({
+      where: { isActive: true },
+      include: {
+        _count: {
+          select: { businesses: true },
+        },
+      },
+    });
+
+    if (!plan) {
+      throw createHttpError(404, "No hay un plan activo configurado");
     }
 
     return plan;
@@ -121,12 +138,20 @@ class AdminService {
       }
     }
 
+    // Si se activa este plan, desactivar los demás
+    if (data.isActive === true) {
+      await prisma.businessPlan.updateMany({
+        where: { id: { not: planId }, isActive: true },
+        data: { isActive: false },
+      });
+    }
+
     return prisma.businessPlan.update({
       where: { id: planId },
       data,
       include: {
-        planFeatures: {
-          include: { feature: true },
+        _count: {
+          select: { businesses: true },
         },
       },
     });
@@ -155,99 +180,9 @@ class AdminService {
       );
     }
 
-    // Eliminar features asociadas primero
-    await prisma.planFeature.deleteMany({
-      where: { planId },
-    });
-
     return prisma.businessPlan.delete({
       where: { id: planId },
     });
-  }
-
-  /**
-   * Asignar una feature a un plan
-   */
-  async assignFeatureToPlan(planId: string, featureId: string, value: string) {
-    const plan = await prisma.businessPlan.findUnique({ where: { id: planId } });
-    if (!plan) {
-      throw createHttpError(404, "Plan no encontrado");
-    }
-
-    const feature = await prisma.feature.findUnique({ where: { id: featureId } });
-    if (!feature) {
-      throw createHttpError(404, "Feature no encontrada");
-    }
-
-    return prisma.planFeature.upsert({
-      where: {
-        planId_featureId: { planId, featureId },
-      },
-      create: { planId, featureId, value },
-      update: { value },
-      include: { feature: true },
-    });
-  }
-
-  /**
-   * Remover una feature de un plan
-   */
-  async removeFeatureFromPlan(planId: string, featureId: string) {
-    const planFeature = await prisma.planFeature.findUnique({
-      where: {
-        planId_featureId: { planId, featureId },
-      },
-    });
-
-    if (!planFeature) {
-      throw createHttpError(404, "La feature no está asignada a este plan");
-    }
-
-    return prisma.planFeature.delete({
-      where: {
-        planId_featureId: { planId, featureId },
-      },
-    });
-  }
-
-  // ==================== FEATURES ====================
-
-  /**
-   * Crear una nueva feature
-   */
-  async createFeature(data: {
-    code: string;
-    name: string;
-    description?: string;
-    valueType: FeatureValueType;
-  }) {
-    return featureService.createFeature(data);
-  }
-
-  /**
-   * Obtener todas las features
-   */
-  async getAllFeatures() {
-    return featureService.getAllFeatures();
-  }
-
-  /**
-   * Actualizar una feature
-   */
-  async updateFeature(featureId: string, data: { name?: string; description?: string }) {
-    const feature = await prisma.feature.findUnique({ where: { id: featureId } });
-    if (!feature) {
-      throw createHttpError(404, "Feature no encontrada");
-    }
-
-    return featureService.updateFeature(featureId, data);
-  }
-
-  /**
-   * Eliminar una feature
-   */
-  async deleteFeature(featureId: string) {
-    return featureService.deleteFeature(featureId);
   }
 
   // ==================== NEGOCIOS ====================

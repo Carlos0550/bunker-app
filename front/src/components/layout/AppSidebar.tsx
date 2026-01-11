@@ -104,6 +104,7 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent className="scrollbar-thin">
+        {user?.role !== 0 && (
         <SidebarGroup>
           <SidebarGroupLabel className="text-muted-foreground text-xs uppercase tracking-wider px-4">
             {!collapsed && "Principal"}
@@ -131,6 +132,7 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        )}
 
         {/* Admin Menu - Solo para Super Admin (role 0) */}
         {user?.role === 0 && (
@@ -163,6 +165,7 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
 
+        {user?.role !== 0 && (
         <SidebarGroup className="mt-auto">
           <SidebarGroupLabel className="text-muted-foreground text-xs uppercase tracking-wider px-4">
             {!collapsed && "Sistema"}
@@ -190,6 +193,7 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        )}
       </SidebarContent>
 
       <SidebarFooter className="p-4 border-t border-sidebar-border">

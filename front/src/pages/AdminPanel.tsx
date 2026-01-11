@@ -91,14 +91,6 @@ interface SystemStats {
   recentPayments: any[];
 }
 
-interface Feature {
-  id: string;
-  code: string;
-  name: string;
-  description?: string;
-  valueType: string;
-}
-
 // API calls
 const adminApi = {
   // Stats
@@ -110,6 +102,10 @@ const adminApi = {
   // Plans
   getPlans: async (): Promise<Plan[]> => {
     const res = await client.get<{ success: boolean; data: Plan[] }>("/admin/plans?includeInactive=true");
+    return res.data.data;
+  },
+  getActivePlan: async (): Promise<Plan> => {
+    const res = await client.get<{ success: boolean; data: Plan }>("/admin/plans/active");
     return res.data.data;
   },
   createPlan: async (data: Partial<Plan>): Promise<Plan> => {
@@ -134,12 +130,6 @@ const adminApi = {
   changeBusinessPlan: async (businessId: string, planId: string): Promise<any> => {
     const res = await client.patch(`/admin/businesses/${businessId}/plan`, { planId });
     return res.data;
-  },
-
-  // Features
-  getFeatures: async (): Promise<Feature[]> => {
-    const res = await client.get<{ success: boolean; data: Feature[] }>("/admin/features");
-    return res.data.data;
   },
 };
 
@@ -172,11 +162,6 @@ export default function AdminPanel() {
   const { data: businesses, isLoading: loadingBusinesses } = useQuery({
     queryKey: ["adminBusinesses", businessPage, searchBusiness],
     queryFn: () => adminApi.getBusinesses(businessPage, searchBusiness || undefined),
-  });
-
-  const { data: features } = useQuery({
-    queryKey: ["adminFeatures"],
-    queryFn: adminApi.getFeatures,
   });
 
   // Mutations
@@ -341,104 +326,119 @@ export default function AdminPanel() {
           <TabsList className="bg-secondary/50">
             <TabsTrigger value="plans" className="gap-2">
               <CreditCard className="w-4 h-4" />
-              Planes
+              Plan de Pago
             </TabsTrigger>
             <TabsTrigger value="businesses" className="gap-2">
               <Building2 className="w-4 h-4" />
               Negocios
-            </TabsTrigger>
-            <TabsTrigger value="features" className="gap-2">
-              <Settings className="w-4 h-4" />
-              Features
             </TabsTrigger>
           </TabsList>
 
           {/* Planes Tab */}
           <TabsContent value="plans" className="space-y-4">
             <div className="flex justify-between items-center">
-              <h2 className="text-lg font-semibold">Gestión de Planes</h2>
+              <div>
+                <h2 className="text-lg font-semibold">Gestión del Plan de Pago</h2>
+                <p className="text-sm text-muted-foreground">
+                  Configura el plan único que se asignará a todos los negocios nuevos (con 7 días de prueba)
+                </p>
+              </div>
               <Button onClick={() => { resetPlanForm(); setShowPlanModal(true); }} className="bunker-glow">
                 <Plus className="w-4 h-4 mr-2" />
-                Nuevo Plan
+                {plans && plans.length > 0 ? "Editar Plan" : "Crear Plan"}
               </Button>
             </div>
 
             {loadingPlans ? (
               <div className="space-y-2">
-                {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-20" />)}
+                <Skeleton className="h-40" />
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {plans?.map((plan) => (
-                  <Card key={plan.id} className={`${!plan.isActive ? "opacity-60" : ""}`}>
-                    <CardHeader className="pb-2">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <CardTitle className="flex items-center gap-2">
-                            {plan.name}
-                            {!plan.isActive && (
-                              <Badge variant="outline" className="text-red-400">Inactivo</Badge>
-                            )}
-                          </CardTitle>
-                          <CardDescription>{plan.description}</CardDescription>
-                        </div>
-                        <p className="text-2xl font-bold text-primary">
-                          {formatCurrency(plan.price)}
-                          <span className="text-xs font-normal text-muted-foreground">/mes</span>
-                        </p>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2 mb-4">
-                        {plan.features.slice(0, 4).map((feature, i) => (
-                          <div key={i} className="flex items-center gap-2 text-sm">
-                            <Check className="w-3 h-3 text-success" />
-                            <span className="text-muted-foreground">{feature}</span>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {plans && plans.length > 0 ? (
+                  plans.map((plan) => (
+                    <Card key={plan.id} className={`${!plan.isActive ? "opacity-60" : ""}`}>
+                      <CardHeader className="pb-2">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <CardTitle className="flex items-center gap-2">
+                              {plan.name}
+                              {plan.isActive && (
+                                <Badge className="bg-green-500/20 text-green-400">Activo</Badge>
+                              )}
+                              {!plan.isActive && (
+                                <Badge variant="outline" className="text-red-400">Inactivo</Badge>
+                              )}
+                            </CardTitle>
+                            <CardDescription>{plan.description}</CardDescription>
                           </div>
-                        ))}
-                        {plan.features.length > 4 && (
-                          <p className="text-xs text-muted-foreground">
-                            +{plan.features.length - 4} más...
+                          <p className="text-2xl font-bold text-primary">
+                            {formatCurrency(plan.price)}
+                            <span className="text-xs font-normal text-muted-foreground">/mes</span>
                           </p>
-                        )}
-                      </div>
-                      
-                      <div className="flex items-center justify-between pt-4 border-t">
-                        <Badge variant="outline">
-                          {plan._count?.businesses || 0} negocios
-                        </Badge>
-                        <div className="flex gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleTogglePlanActive(plan)}
-                          >
-                            {plan.isActive ? <X className="w-4 h-4" /> : <Check className="w-4 h-4" />}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleEditPlan(plan)}
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              if (confirm("¿Eliminar este plan?")) {
-                                deletePlanMutation.mutate(plan.id);
-                              }
-                            }}
-                            disabled={(plan._count?.businesses || 0) > 0}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
                         </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-2 mb-4">
+                          {plan.features && plan.features.length > 0 ? (
+                            plan.features.map((feature, i) => (
+                              <div key={i} className="flex items-center gap-2 text-sm">
+                                <Check className="w-3 h-3 text-success" />
+                                <span className="text-muted-foreground">{feature}</span>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="text-sm text-muted-foreground italic">
+                              No hay características configuradas
+                            </p>
+                          )}
+                        </div>
+                        
+                        <div className="flex items-center justify-between pt-4 border-t">
+                          <Badge variant="outline">
+                            {plan._count?.businesses || 0} negocios
+                          </Badge>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEditPlan(plan)}
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                if (confirm("¿Eliminar este plan?")) {
+                                  deletePlanMutation.mutate(plan.id);
+                                }
+                              }}
+                              disabled={(plan._count?.businesses || 0) > 0}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                ) : (
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="text-center py-8">
+                        <CreditCard className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                        <p className="text-muted-foreground mb-4">
+                          No hay ningún plan configurado. Crea uno para que los nuevos negocios puedan registrarse.
+                        </p>
+                        <Button onClick={() => { resetPlanForm(); setShowPlanModal(true); }} className="bunker-glow">
+                          <Plus className="w-4 h-4 mr-2" />
+                          Crear Plan
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>
-                ))}
+                )}
               </div>
             )}
           </TabsContent>
@@ -550,39 +550,6 @@ export default function AdminPanel() {
             )}
           </TabsContent>
 
-          {/* Features Tab */}
-          <TabsContent value="features" className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h2 className="text-lg font-semibold">Features del Sistema</h2>
-            </div>
-
-            <div className="bunker-card overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Código</TableHead>
-                    <TableHead>Nombre</TableHead>
-                    <TableHead>Descripción</TableHead>
-                    <TableHead>Tipo</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {features?.map((feature) => (
-                    <TableRow key={feature.id}>
-                      <TableCell>
-                        <code className="text-xs bg-secondary px-2 py-1 rounded">{feature.code}</code>
-                      </TableCell>
-                      <TableCell className="font-medium">{feature.name}</TableCell>
-                      <TableCell className="text-muted-foreground">{feature.description}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{feature.valueType}</Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </TabsContent>
         </Tabs>
       </div>
 

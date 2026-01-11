@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{title}} - Bunker App</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #1a1a2e;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .email-wrapper {
+            background-color: #ffffff;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            padding: 30px;
+            text-align: center;
+        }
+        .logo {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #f5a623 0%, #f39c12 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 12px;
+        }
+        .logo svg {
+            width: 30px;
+            height: 30px;
+            fill: white;
+        }
+        .header h1 {
+            color: #ffffff;
+            font-size: 22px;
+            font-weight: 700;
+        }
+        .content {
+            padding: 30px;
+        }
+        .title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #1a1a2e;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #f5a623;
+        }
+        .trial-banner {
+            background-color: #fef3c7;
+            padding: 16px;
+            border-radius: 8px;
+            color: #92400e;
+            margin-bottom: 20px;
+            border-left: 4px solid #f59e0b;
+        }
+        .trial-banner strong {
+            display: block;
+            margin-bottom: 8px;
+        }
+        .info-box {
+            background-color: #f7fafc;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 24px 0;
+            border-left: 4px solid #3182ce;
+        }
+        .info-box p {
+            margin: 8px 0;
+            color: #4a5568;
+        }
+        .info-box p:first-child {
+            margin-top: 0;
+        }
+        .info-box p:last-child {
+            margin-bottom: 0;
+        }
+        .info-box strong {
+            color: #1a202c;
+        }
+        .button-container {
+            text-align: center;
+            margin: 30px 0;
+        }
+        .button {
+            background-color: #3182ce;
+            color: white;
+            padding: 14px 28px;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: bold;
+            display: inline-block;
+            transition: background-color 0.3s;
+        }
+        .button:hover {
+            background-color: #2c5aa0;
+        }
+        .message {
+            color: #4a5568;
+            font-size: 15px;
+            margin-bottom: 20px;
+        }
+        .footer {
+            background-color: #f7fafc;
+            padding: 20px 30px;
+            text-align: center;
+            border-top: 1px solid #e2e8f0;
+        }
+        .footer p {
+            color: #a0aec0;
+            font-size: 12px;
+            margin-bottom: 4px;
+        }
+        @media (max-width: 600px) {
+            .container {
+                padding: 10px;
+            }
+            .header, .content, .footer {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="email-wrapper">
+            <div class="header">
+                <div class="logo">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2L4 6V12C4 15.31 6.69 18.8 12 22C17.31 18.8 20 15.31 20 12V6L12 2ZM12 11.99H18C17.47 14.74 15.08 17.19 12 18.84V12H6V7.3L12 4.19V11.99Z" fill="white"/>
+                    </svg>
+                </div>
+                <h1>BUNKER</h1>
+            </div>
+            
+            <div class="content">
+                <h2 class="title">{{title}}</h2>
+                
+                {{trialBanner}}
+                
+                <div class="message">
+                    <p>Hola <strong>{{adminName}}</strong>,</p>
+                    <p>Te recordamos que la suscripción de <strong>{{businessName}}</strong> 
+                    vence el <strong>{{expiryDate}}</strong>.</p>
+                </div>
+                
+                <div class="info-box">
+                    <p><strong>Plan:</strong> {{planName}}</p>
+                    <p><strong>Precio mensual:</strong> {{planPrice}}</p>
+                    <p><strong>Días restantes:</strong> {{daysUntilExpiry}} día(s)</p>
+                </div>
+                
+                <p class="message">
+                    Para evitar interrupciones en tu servicio, te recomendamos renovar tu suscripción antes del vencimiento.
+                </p>
+                
+                <div class="button-container">
+                    <a href="{{paymentLink}}" class="button">💳 Renovar Suscripción</a>
+                </div>
+                
+                <p style="color: #718096; font-size: 14px; margin-top: 20px;">
+                    Si tienes alguna pregunta, no dudes en contactarnos.
+                </p>
+            </div>
+            
+            <div class="footer">
+                <p>Este es un correo automático, por favor no responda.</p>
+                <p>© 2024 Bunker App. Todos los derechos reservados.</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -71,31 +71,12 @@ const Landing = () => {
 
   const plans = [
     {
-      name: "Prueba gratuita",
-      price: "",
-      description: "Ideal para probar nuestra plataforma (no te comprometes a nada pero estamos seguros que no te arrepentirás).",
-      features: [
-        "1 punto de venta simultáneo",
-        "Hasta 5,000 productos en inventario",
-        "Reportes básicos de ventas e inventario",
-        "Hasta 50 clientes con cuentas corrientes",
-        "Hasta 500 ventas al mes",
-        "Hasta 2 administradores/usuarios",
-        "Gestión básica de clientes y proveedores",
-        "Búsqueda de productos por nombre, SKU o código de barras",
-        "Control de stock con alertas de bajo inventario",
-        "Historial de ventas básico",
-        "Importación de productos desde Excel/CSV (hasta 1,000 productos por importación)",
-        "Soporte por email (respuesta en 48-72 horas)"
-      ]
-    },
-    {
-      name: "Pro",
+      name: "Plan Estándar",
       price: "$30.000/mes",
-      description: "Para negocios pequeños y medianos en pleno crecimiento.",
+      description: "Todo lo que necesitas para hacer crecer tu negocio. Prueba gratis por 7 días.",
       popular: true,
+      trialBadge: true,
       features: [
-        "Todo lo incluido en el plan Gratis",
         "Puntos de venta ilimitados",
         "Hasta 25,000 productos en inventario",
         "Reportes avanzados con analíticas detalladas",
@@ -103,11 +84,14 @@ const Landing = () => {
         "Clientes ilimitados con cuentas corrientes",
         "Ventas ilimitadas al mes",
         "Hasta 10 administradores/usuarios",
+        "Gestión completa de clientes y proveedores",
+        "Búsqueda de productos por nombre, SKU o código de barras",
+        "Control de stock con alertas de bajo inventario",
+        "Historial completo de transacciones y movimientos",
         "Exportación de datos a Excel/CSV",
         "Importación masiva ilimitada de productos en cualquier de los formatos soportados (csv, xlsx, xls)",
         "Analíticas avanzadas: productos más vendidos, tendencias, comparativas",
         "Gestión avanzada de categorías y proveedores",
-        "Historial completo de transacciones y movimientos",
         "Reportes personalizados por fechas y filtros",
         "Soporte prioritario 24/7 por email y chat",
         "Acceso anticipado a nuevas funcionalidades",
@@ -366,51 +350,70 @@ const Landing = () => {
           <div className="text-center max-w-2xl mx-auto mb-16">
             <Badge variant="secondary" className="mb-4">Precios</Badge>
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Planes que se adaptan a tu negocio
+              Un plan completo para tu negocio
             </h2>
-            <p className="text-muted-foreground">
-              Sin compromisos. Cancela cuando quieras. Prueba gratis por 7 días.
+            <p className="text-muted-foreground mb-4">
+              Sin compromisos. Cancela cuando quieras.
             </p>
+            <Badge className="bg-success/20 text-success border-success/30 mb-4">
+              ✨ Prueba gratis por 7 días - Sin tarjeta de crédito
+            </Badge>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+          <div className="flex justify-center max-w-4xl mx-auto">
             {plans.map((plan, index) => (
               <Card 
                 key={index} 
-                className={`relative ${plan.popular ? 'border-primary shadow-lg shadow-primary/10' : 'border-border/50'}`}
+                className={`relative w-full ${plan.popular ? 'border-primary shadow-lg shadow-primary/10' : 'border-border/50'}`}
               >
                 {plan.popular && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                     <Badge className="bg-primary text-primary-foreground">Más Popular</Badge>
                   </div>
                 )}
-                <CardContent className="p-6">
-                  <div className="text-center mb-6">
-                    <h3 className="text-xl font-bold mb-2">{plan.name}</h3>
-                    <p className="text-sm text-muted-foreground mb-4">{plan.description}</p>
-                    <div className="flex items-baseline justify-center gap-1">
-                      <span className="text-4xl font-bold">{plan.price}</span>
-                      <span className="text-muted-foreground"></span>
+                {plan.trialBadge && (
+                  <div className="absolute -top-3 right-4">
+                    <Badge className="bg-success/20 text-success border-success/30">
+                      7 días gratis
+                    </Badge>
+                  </div>
+                )}
+                <CardContent className="p-8">
+                  <div className="text-center mb-8">
+                    <h3 className="text-2xl font-bold mb-2">{plan.name}</h3>
+                    <p className="text-sm text-muted-foreground mb-6">{plan.description}</p>
+                    <div className="flex items-baseline justify-center gap-2 mb-4">
+                      <span className="text-5xl font-bold">{plan.price}</span>
                     </div>
+                    {plan.trialBadge && (
+                      <p className="text-sm text-success font-medium">
+                        Prueba gratis por 7 días • Sin tarjeta de crédito
+                      </p>
+                    )}
                   </div>
                   
-                  <ul className="space-y-3 mb-6">
+                  <ul className="space-y-3 mb-8 grid md:grid-cols-2 gap-3">
                     {plan.features.map((feature, i) => (
-                      <li key={i} className="flex items-center gap-2 text-sm">
-                        <Check className="w-4 h-4 text-success shrink-0" />
+                      <li key={i} className="flex items-start gap-2 text-sm">
+                        <Check className="w-4 h-4 text-success shrink-0 mt-0.5" />
                         <span>{feature}</span>
                       </li>
                     ))}
                   </ul>
                   
-                  <Link to="/login">
+                  <Link to="/register">
                     <Button 
                       className={`w-full ${plan.popular ? 'bg-primary hover:bg-primary/90' : ''}`}
                       variant={plan.popular ? 'default' : 'outline'}
+                      size="lg"
                     >
-                      Comenzar Ahora
+                      Comenzar Prueba Gratis
+                      <ArrowRight className="w-4 h-4 ml-2" />
                     </Button>
                   </Link>
+                  <p className="text-xs text-center text-muted-foreground mt-3">
+                    No se requiere tarjeta de crédito • Cancela cuando quieras
+                  </p>
                 </CardContent>
               </Card>
             ))}

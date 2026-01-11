@@ -93,6 +93,27 @@ export default function Configuracion() {
     },
   });
 
+  // Mutation para crear preferencia de Mercado Pago
+  const createMercadoPagoPreferenceMutation = useMutation({
+    mutationFn: (planId: string) => subscriptionApi.createMercadoPagoPreference(planId),
+    onSuccess: (data) => {
+      // Redirigir al checkout de Mercado Pago
+      const initPoint = process.env.NODE_ENV === 'production' ? data.initPoint : data.sandboxInitPoint;
+      window.location.href = initPoint;
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error?.message || "Error al crear el pago");
+    },
+  });
+
+  const handlePayWithMercadoPago = () => {
+    if (!currentPlan?.plan?.id) {
+      toast.error("No hay un plan disponible para pagar");
+      return;
+    }
+    createMercadoPagoPreferenceMutation.mutate(currentPlan.plan.id);
+  };
+
   const handleSave = () => {
     toast.success("Configuración guardada");
   };
@@ -232,9 +253,16 @@ export default function Configuracion() {
                       {getSubscriptionBadge(currentPlan.subscription.status)}
                     </div>
                     <div className="p-4 bg-secondary/20 rounded-lg">
-                      <p className="text-sm text-muted-foreground mb-1">Días Restantes</p>
-                      <p className="text-xl font-bold text-foreground">
-                        {currentPlan.subscription.daysRemaining} días
+                      <p className="text-sm text-muted-foreground mb-1">
+                        {currentPlan.subscription.daysRemaining < 0 ? "Días Vencidos" : "Días Restantes"}
+                      </p>
+                      <p className={`text-xl font-bold ${
+                        currentPlan.subscription.daysRemaining < 0 ? "text-red-400" : "text-foreground"
+                      }`}>
+                        {currentPlan.subscription.daysRemaining < 0
+                          ? `Vencido hace ${Math.abs(currentPlan.subscription.daysRemaining)} día(s)`
+                          : `${currentPlan.subscription.daysRemaining} día(s)`
+                        }
                       </p>
                     </div>
                     <div className="p-4 bg-secondary/20 rounded-lg">
@@ -274,20 +302,93 @@ export default function Configuracion() {
                         <AlertTriangle className={`w-5 h-5 mt-0.5 ${
                           currentPlan.subscription.status === "expired" ? "text-red-400" : "text-yellow-400"
                         }`} />
-                        <div>
+                        <div className="flex-1">
                           <p className="font-medium text-foreground">
                             {currentPlan.subscription.status === "expired" 
                               ? "Tu suscripción ha expirado"
                               : "Tu pago está vencido"
                             }
                           </p>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-sm text-muted-foreground mb-3">
                             {currentPlan.subscription.status === "expired" 
-                              ? "Por favor, renueva tu suscripción para continuar usando el sistema."
-                              : `Tienes ${currentPlan.subscription.daysRemaining} días para regularizar tu pago.`
+                              ? `Tu suscripción venció hace ${Math.abs(currentPlan.subscription.daysRemaining)} día(s). Por favor, renueva tu suscripción para continuar usando el sistema.`
+                              : currentPlan.subscription.daysRemaining < 0
+                              ? `Tu suscripción venció hace ${Math.abs(currentPlan.subscription.daysRemaining)} día(s). Tienes ${3 + currentPlan.subscription.daysRemaining} día(s) para regularizar tu pago.`
+                              : `Tienes ${currentPlan.subscription.daysRemaining} día(s) para regularizar tu pago.`
+                            }
+                          </p>
+                          <Button
+                            onClick={handlePayWithMercadoPago}
+                            disabled={createMercadoPagoPreferenceMutation.isPending}
+                            className="w-full sm:w-auto bunker-glow"
+                          >
+                            {createMercadoPagoPreferenceMutation.isPending ? (
+                              <>
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                Procesando...
+                              </>
+                            ) : (
+                              <>
+                                <CreditCard className="w-4 h-4 mr-2" />
+                                Pagar con Mercado Pago
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Botón de pago si está en trial o cerca de expirar */}
+                  {(currentPlan.subscription.status === "trial" || 
+                    (currentPlan.subscription.status === "active" && currentPlan.subscription.daysRemaining <= 7)) && (
+                    <div className={`p-4 rounded-lg border ${
+                      currentPlan.subscription.daysRemaining < 0
+                        ? "border-red-500/30 bg-red-500/5"
+                        : currentPlan.subscription.daysRemaining === 0
+                        ? "border-yellow-500/30 bg-yellow-500/5"
+                        : "border-primary/30 bg-primary/5"
+                    }`}>
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <div>
+                          <p className="font-medium text-foreground mb-1">
+                            {currentPlan.subscription.status === "trial" 
+                              ? "Prueba gratuita activa"
+                              : currentPlan.subscription.daysRemaining < 0
+                              ? "Tu suscripción está vencida"
+                              : currentPlan.subscription.daysRemaining === 0
+                              ? "Tu suscripción vence hoy"
+                              : "Tu suscripción está por vencer"
+                            }
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {currentPlan.subscription.status === "trial" 
+                              ? `Quedan ${currentPlan.subscription.daysRemaining} días de prueba. Paga ahora para continuar sin interrupciones.`
+                              : currentPlan.subscription.daysRemaining < 0
+                              ? `Tu suscripción está vencida hace ${Math.abs(currentPlan.subscription.daysRemaining)} día(s). Renueva ahora para reactivar tu acceso.`
+                              : currentPlan.subscription.daysRemaining === 0
+                              ? "Tu suscripción vence hoy. Renueva ahora para evitar interrupciones."
+                              : `Renueva tu suscripción antes de que expire en ${currentPlan.subscription.daysRemaining} día(s).`
                             }
                           </p>
                         </div>
+                        <Button
+                          onClick={handlePayWithMercadoPago}
+                          disabled={createMercadoPagoPreferenceMutation.isPending}
+                          className="w-full sm:w-auto bunker-glow"
+                        >
+                          {createMercadoPagoPreferenceMutation.isPending ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Procesando...
+                            </>
+                          ) : (
+                            <>
+                              <CreditCard className="w-4 h-4 mr-2" />
+                              Pagar Suscripción
+                            </>
+                          )}
+                        </Button>
                       </div>
                     </div>
                   )}
@@ -297,7 +398,7 @@ export default function Configuracion() {
               )}
             </div>
 
-            {/* Planes Disponibles */}
+            {/* Planes Disponibles
             <div className="bunker-card p-6">
               <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
                 <Star className="w-5 h-5 text-primary" />
@@ -380,7 +481,7 @@ export default function Configuracion() {
                   No hay planes disponibles en este momento
                 </p>
               )}
-            </div>
+            </div> */}
 
             {/* Historial de Pagos */}
             <div className="bunker-card p-6">

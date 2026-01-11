@@ -9,18 +9,16 @@ class SubscriptionService {
     const business = await prisma.business.findUnique({
       where: { id: businessId },
       include: {
-        businessPlan: {
-          include: {
-            planFeatures: {
-              include: { feature: true },
-            },
-          },
-        },
+        businessPlan: true,
       },
     });
 
     if (!business) {
       throw createHttpError(404, "Negocio no encontrado");
+    }
+
+    if (!business.businessPlan) {
+      throw createHttpError(404, "El negocio no tiene un plan asignado");
     }
 
     // Obtener el último pago para mostrar estado de suscripción
@@ -41,11 +39,17 @@ class SubscriptionService {
       
       if (nextPaymentDate) {
         const diffTime = nextPaymentDate.getTime() - now.getTime();
-        daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        const diffDays = diffTime / (1000 * 60 * 60 * 24);
+        
+        // Usar Math.floor para fechas pasadas y Math.ceil para fechas futuras
+        // Esto asegura que si nextPaymentDate ya pasó, daysRemaining será negativo
+        daysRemaining = diffDays < 0 
+          ? Math.floor(diffDays)  // Para fechas pasadas, redondear hacia abajo (más negativo)
+          : Math.ceil(diffDays);   // Para fechas futuras, redondear hacia arriba
         
         if (daysRemaining < 0) {
-          // Período de gracia de 7 días
-          if (daysRemaining >= -7) {
+          // Período de gracia de 3 días (según GRACE_PERIOD_DAYS del job)
+          if (daysRemaining >= -3) {
             subscriptionStatus = "grace_period";
           } else {
             subscriptionStatus = "expired";
@@ -55,7 +59,7 @@ class SubscriptionService {
     } else {
       // Sin pagos registrados - probablemente nuevo
       subscriptionStatus = "trial";
-      daysRemaining = 14; // Período de prueba por defecto
+      daysRemaining = 7; // 7 días de prueba
     }
 
     return {
@@ -63,21 +67,16 @@ class SubscriptionService {
         id: business.id,
         name: business.name,
       },
-      plan: business.businessPlan ? {
+      plan: {
         id: business.businessPlan.id,
         name: business.businessPlan.name,
         price: business.businessPlan.price,
         description: business.businessPlan.description,
         features: business.businessPlan.features,
-        planFeatures: business.businessPlan.planFeatures.map(pf => ({
-          feature: pf.feature.name,
-          code: pf.feature.code,
-          value: pf.value,
-        })),
-      } : null,
+      },
       subscription: {
         status: subscriptionStatus,
-        daysRemaining: Math.max(0, daysRemaining),
+        daysRemaining, // Mantener el valor negativo cuando está vencido
         nextPaymentDate,
         lastPaymentDate: lastPayment?.date,
         lastPaymentAmount: lastPayment?.amount,
@@ -132,11 +131,6 @@ class SubscriptionService {
   async getAvailablePlans() {
     const plans = await prisma.businessPlan.findMany({
       where: { isActive: true },
-      include: {
-        planFeatures: {
-          include: { feature: true },
-        },
-      },
       orderBy: { price: "asc" },
     });
 
@@ -146,12 +140,6 @@ class SubscriptionService {
       price: plan.price,
       description: plan.description,
       features: plan.features,
-      planFeatures: plan.planFeatures.map(pf => ({
-        feature: pf.feature.name,
-        code: pf.feature.code,
-        value: pf.value,
-        valueType: pf.feature.valueType,
-      })),
     }));
   }
 

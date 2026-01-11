@@ -192,6 +192,12 @@ class ImportService {
       errors: [],
     };
 
+    // Calcular número de filas de datos (excluyendo el header)
+    const dataRows = data.length - 1;
+
+    // TODO: Verificar límite de productos del plan cuando el sistema de features esté implementado
+    // Por ahora, la verificación de límites se maneja en el middleware de features
+
     // Procesar cada fila
     const productsToCreate: Prisma.ProductsCreateManyInput[] = [];
 

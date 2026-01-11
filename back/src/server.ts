@@ -4,12 +4,15 @@ dotenv.config();
 
 import { env } from "@/config/env";
 
-
 import app, { logger } from "@/app";
 import { testDatabaseConnection, disconnectDatabase } from "@/config/db";
 import { testRedisConnection, disconnectRedis } from "@/config/redis";
 import { initializeMinio } from "@/config/minio";
 import { closeAllQueues } from "@/config/queue";
+import { 
+  initSubscriptionReminderWorker, 
+  scheduleSubscriptionReminderJob 
+} from "@/jobs/subscription-reminder.job";
 
 
 async function startServer(): Promise<void> {
@@ -23,10 +26,19 @@ async function startServer(): Promise<void> {
     
     await testRedisConnection();
 
-    
+    // Inicializar MinIO
     await initializeMinio();
 
-    
+    // Inicializar jobs de recordatorio de suscripciones
+    try {
+      initSubscriptionReminderWorker();
+      await scheduleSubscriptionReminderJob();
+      logger.info("📅 Job de recordatorio de suscripciones inicializado");
+    } catch (error) {
+      logger.warn({ err: error }, "⚠️ No se pudo inicializar el job de recordatorios (Redis no disponible?)");
+    }
+
+    // Iniciar servidor
     const server = app.listen(env.PORT, () => {
       logger.info(`✅ Servidor corriendo en http://localhost:${env.PORT}`);
       logger.info(`📋 Health check: http://localhost:${env.PORT}/health`);

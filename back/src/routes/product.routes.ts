@@ -2,7 +2,7 @@ import { Router } from "express";
 import { productController } from "@/controllers/product.controller";
 import { authenticate } from "@/middlewares/auth";
 import { validateBody } from "@/middlewares/validateBody";
-import { requireProductLimit, verifySubscription } from "@/middlewares";
+import { verifySubscription } from "@/middlewares";
 import { imageUploader } from "@/middlewares/upload";
 import {
   createProductSchema,
@@ -39,10 +39,9 @@ router.post("/categories", validateBody(createCategorySchema), productController
 // Obtener un producto
 router.get("/:id", productController.getProductById);
 
-// Crear producto (con verificación de límite)
+// Crear producto
 router.post(
   "/",
-  requireProductLimit,
   validateBody(createProductSchema),
   productController.createProduct
 );

@@ -65,75 +65,12 @@ class AdminController {
     }
   }
 
-  async assignFeatureToPlan(req: Request, res: Response, next: NextFunction) {
+  async getActivePlan(req: Request, res: Response, next: NextFunction) {
     try {
-      const { featureId, value } = req.body;
-      const result = await adminService.assignFeatureToPlan(req.params.id, featureId, value);
+      const plan = await adminService.getActivePlan();
       res.status(200).json({
         success: true,
-        data: result,
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  async removeFeatureFromPlan(req: Request, res: Response, next: NextFunction) {
-    try {
-      await adminService.removeFeatureFromPlan(req.params.id, req.params.featureId);
-      res.status(200).json({
-        success: true,
-        message: "Feature removida del plan",
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  // ==================== FEATURES ====================
-
-  async createFeature(req: Request, res: Response, next: NextFunction) {
-    try {
-      const feature = await adminService.createFeature(req.body);
-      res.status(201).json({
-        success: true,
-        data: feature,
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  async getAllFeatures(req: Request, res: Response, next: NextFunction) {
-    try {
-      const features = await adminService.getAllFeatures();
-      res.status(200).json({
-        success: true,
-        data: features,
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  async updateFeature(req: Request, res: Response, next: NextFunction) {
-    try {
-      const feature = await adminService.updateFeature(req.params.id, req.body);
-      res.status(200).json({
-        success: true,
-        data: feature,
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  async deleteFeature(req: Request, res: Response, next: NextFunction) {
-    try {
-      await adminService.deleteFeature(req.params.id);
-      res.status(200).json({
-        success: true,
-        message: "Feature eliminada correctamente",
+        data: plan,
       });
     } catch (error) {
       next(error);

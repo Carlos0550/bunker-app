@@ -52,4 +52,10 @@ export const authApi = {
   resetPassword: async (token: string, newPassword: string): Promise<void> => {
     await client.post('/auth/reset-password', { token, newPassword });
   },
+
+  // Verificar email
+  verifyEmail: async (token: string): Promise<{ message: string }> => {
+    const response = await client.get<{ success: boolean; message: string }>(`/auth/verify-email?token=${token}`);
+    return response.data;
+  },
 };

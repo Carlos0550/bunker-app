@@ -51,13 +51,32 @@ export class UserService {
 
     // Transacción: Crear Negocio, Usuario y Pago Inicial
     const result = await prisma.$transaction(async (tx) => {
-      // 1. Crear Negocio
+      // 0. Obtener o crear el plan activo
+      let activePlan = await tx.businessPlan.findFirst({
+        where: { isActive: true },
+      });
+
+      if (!activePlan) {
+        // Si no hay plan activo, crear uno por defecto
+        activePlan = await tx.businessPlan.create({
+          data: {
+            name: "Plan Estándar",
+            price: 0,
+            description: "Plan por defecto",
+            features: [],
+            isActive: true,
+          },
+        });
+      }
+
+      // 1. Crear Negocio con plan asignado
       const business = await tx.business.create({
         data: {
           name: data.businessName,
           address: data.businessAddress,
           contact_phone: data.businessPhone,
           contact_email: data.businessEmail,
+          businessPlanId: activePlan.id,
         },
       });
 

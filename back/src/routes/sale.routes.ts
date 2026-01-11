@@ -2,7 +2,7 @@ import { Router } from "express";
 import { saleController } from "@/controllers/sale.controller";
 import { authenticate } from "@/middlewares/auth";
 import { validateBody } from "@/middlewares/validateBody";
-import { verifySubscription, requireSalesLimit } from "@/middlewares";
+import { verifySubscription } from "@/middlewares";
 import {
   createSaleSchema,
   manualProductSchema,
@@ -27,7 +27,7 @@ router.post("/manual-products/:id/convert", saleController.convertManualProduct)
 router.post("/manual-products/:id/ignore", saleController.ignoreManualProduct);
 
 // Ventas
-router.post("/", requireSalesLimit, validateBody(createSaleSchema), saleController.createSale);
+router.post("/", validateBody(createSaleSchema), saleController.createSale);
 router.get("/", saleController.getSales);
 router.get("/:id", saleController.getSaleById);
 router.post("/:id/cancel", saleController.cancelSale);

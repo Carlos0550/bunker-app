@@ -45,12 +45,6 @@ enum ProviderStatus {
   BLOCKED
 }
 
-enum FeatureValueType {
-  BOOLEAN
-  NUMBER
-  STRING
-}
-
 enum PaymentMethod {
   CASH
   CARD
@@ -83,42 +77,16 @@ enum AccountStatus {
   PAID
 }
 
-// ==================== FEATURES & PLANS ====================
-
-model Feature {
-  id          String           @id @default(uuid())
-  code        String           @unique // "MAX_PRODUCTS", "MAX_USERS", "REPORTS_ACCESS"
-  name        String
-  description String?
-  valueType   FeatureValueType
-
-  planFeatures PlanFeature[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model PlanFeature {
-  id        String @id @default(uuid())
-  planId    String
-  featureId String
-  value     String // "true", "100", "advanced"
-
-  plan    BusinessPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
-  feature Feature      @relation(fields: [featureId], references: [id], onDelete: Cascade)
-
-  @@unique([planId, featureId])
-}
+// ==================== PLANS ====================
 
 model BusinessPlan {
   id          String   @id @default(uuid())
   name        String   @unique
   price       Float
-  features    String[] // Descripcion textual para mostrar al usuario
+  features    String[] // Descripcion textual para mostrar al usuario (solo para frontend)
   isActive    Boolean  @default(true)
   description String?
 
-  planFeatures PlanFeature[]
   businesses   Business[]
 
   createdAt DateTime @default(now())
@@ -135,12 +103,19 @@ model PaymentHistory {
   nextPaymentDate DateTime?
   isTrial         Boolean       @default(false)
 
+  // Mercado Pago fields
+  mercadoPagoPreferenceId String?
+  mercadoPagoPaymentId    String?
+  mercadoPagoStatus       String? // approved, pending, rejected, etc.
+  mercadoPagoPaymentType  String? // credit_card, debit_card, etc.
+
   businessId String
   business   Business @relation(fields: [businessId], references: [id])
 
   paymentAttempts PaymentAttempt[]
 
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model PaymentAttempt {
@@ -171,8 +146,8 @@ model Business {
   updatedAt DateTime @updatedAt
 
   // Relaciones
-  businessPlanId String?
-  businessPlan   BusinessPlan? @relation(fields: [businessPlanId], references: [id])
+  businessPlanId String
+  businessPlan   BusinessPlan @relation(fields: [businessPlanId], references: [id])
 
   paymentHistory    PaymentHistory[]
   users             User[]

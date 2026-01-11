@@ -1,5 +1,5 @@
 /**
- * Script para crear/actualizar los planes por defecto
+ * Script para crear/actualizar el plan único del sistema
  * 
  * Uso: npx ts-node --require tsconfig-paths/register scripts/seed-plans.ts
  */
@@ -18,97 +18,69 @@ const prisma = new PrismaClient({ adapter });
 
 async function main() {
   console.log("\n╔════════════════════════════════════════════════════════════╗");
-  console.log("║           BUNKER - Seed de Planes y Features              ║");
+  console.log("║           BUNKER - Seed del Plan de Pago                  ║");
   console.log("╚════════════════════════════════════════════════════════════╝\n");
 
-  // Features por defecto
-  console.log("📦 Creando/actualizando features...");
-  
-  const defaultFeatures = [
-    { code: "MAX_PRODUCTS", name: "Límite de Productos", description: "Número máximo de productos", valueType: "NUMBER" as const },
-    { code: "MAX_USERS", name: "Límite de Usuarios", description: "Número máximo de usuarios", valueType: "NUMBER" as const },
-    { code: "MAX_SALES_PER_MONTH", name: "Límite de Ventas Mensuales", description: "Ventas máximas por mes", valueType: "NUMBER" as const },
-    { code: "REPORTS_ACCESS", name: "Acceso a Reportes", description: "Permite acceder a reportes", valueType: "BOOLEAN" as const },
-    { code: "ADVANCED_ANALYTICS", name: "Analíticas Avanzadas", description: "Métricas avanzadas", valueType: "BOOLEAN" as const },
-    { code: "EXPORT_DATA", name: "Exportar Datos", description: "Exportar a Excel/CSV", valueType: "BOOLEAN" as const },
-    { code: "MULTI_BRANCH", name: "Multi-Sucursal", description: "Múltiples sucursales", valueType: "BOOLEAN" as const },
-    { code: "API_ACCESS", name: "Acceso API", description: "Acceso a la API", valueType: "BOOLEAN" as const },
-    { code: "CUSTOM_BRANDING", name: "Marca Personalizada", description: "Logo personalizado", valueType: "BOOLEAN" as const },
-    { code: "PRIORITY_SUPPORT", name: "Soporte Prioritario", description: "Soporte técnico prioritario", valueType: "BOOLEAN" as const },
-  ];
+  // ==================== PLAN ÚNICO ====================
+  console.log("📋 Creando/actualizando plan único...");
 
-  for (const feature of defaultFeatures) {
-    await prisma.feature.upsert({
-      where: { code: feature.code },
-      create: feature,
-      update: { name: feature.name, description: feature.description },
-    });
-  }
+  const planData = {
+    name: "Plan Estándar",
+    price: 30000,
+    description: "Todo lo que necesitas para hacer crecer tu negocio. Prueba gratis por 7 días.",
+    features: [
+      "Puntos de venta ilimitados",
+      "Hasta 25,000 productos en inventario",
+      "Reportes avanzados con analíticas detalladas",
+      "Dashboard con métricas en tiempo real",
+      "Clientes ilimitados con cuentas corrientes",
+      "Ventas ilimitadas al mes",
+      "Hasta 10 administradores/usuarios",
+      "Gestión completa de clientes y proveedores",
+      "Búsqueda de productos por nombre, SKU o código de barras",
+      "Control de stock con alertas de bajo inventario",
+      "Historial completo de transacciones y movimientos",
+      "Exportación de datos a Excel/CSV",
+      "Importación masiva ilimitada de productos en cualquier de los formatos soportados (csv, xlsx, xls)",
+      "Analíticas avanzadas: productos más vendidos, tendencias, comparativas",
+      "Gestión avanzada de categorías y proveedores",
+      "Reportes personalizados por fechas y filtros",
+      "Soporte prioritario 24/7 por email y chat",
+      "Acceso anticipado a nuevas funcionalidades",
+      "Funciones especiales con IA (Próximamente)",
+      "Recordatorios automáticos de pagos pendientes a tus clientes"
+    ],
+    isActive: true,
+  };
 
-  console.log(`   ✅ ${defaultFeatures.length} features creadas/actualizadas`);
+  // Desactivar todos los planes existentes primero
+  await prisma.businessPlan.updateMany({
+    where: { isActive: true },
+    data: { isActive: false },
+  });
 
-  // Planes por defecto
-  console.log("\n📋 Creando/actualizando planes...");
-
-  const defaultPlans = [
-    {
-      name: "Básico",
-      price: 299,
-      description: "Ideal para pequeños negocios",
-      features: [
-        "Hasta 100 productos",
-        "1 usuario",
-        "500 ventas/mes",
-        "Reportes básicos",
-        "Soporte por email",
-      ],
+  // Crear o actualizar el plan único
+  const plan = await prisma.businessPlan.upsert({
+    where: { name: planData.name },
+    create: planData,
+    update: {
+      price: planData.price,
+      description: planData.description,
+      features: planData.features,
+      isActive: true,
     },
-    {
-      name: "Profesional",
-      price: 599,
-      description: "Para negocios en crecimiento",
-      features: [
-        "Hasta 1,000 productos",
-        "5 usuarios",
-        "Ventas ilimitadas",
-        "Reportes avanzados",
-        "Exportar datos",
-        "Soporte prioritario",
-      ],
-    },
-    {
-      name: "Empresarial",
-      price: 999,
-      description: "Solución completa para empresas",
-      features: [
-        "Productos ilimitados",
-        "Usuarios ilimitados",
-        "Ventas ilimitadas",
-        "Analíticas avanzadas",
-        "Multi-sucursal",
-        "API access",
-        "Marca personalizada",
-        "Soporte 24/7",
-      ],
-    },
-  ];
+  });
 
-  for (const plan of defaultPlans) {
-    const created = await prisma.businessPlan.upsert({
-      where: { name: plan.name },
-      create: plan,
-      update: { 
-        price: plan.price, 
-        description: plan.description,
-        features: plan.features,
-      },
-    });
-    console.log(`   ✅ Plan "${created.name}" - $${created.price}/mes`);
-  }
+  console.log(`   ✅ Plan creado/actualizado: ${plan.name}`);
+  console.log(`   💰 Precio: $${plan.price.toLocaleString()}/mes`);
+  console.log(`   📝 Características: ${plan.features.length} configuradas`);
+  console.log(`   🎁 Prueba gratuita: 7 días para todos los negocios nuevos`);
 
   console.log("\n╔════════════════════════════════════════════════════════════╗");
   console.log("║                    ✅ SEED COMPLETADO                      ║");
   console.log("╚════════════════════════════════════════════════════════════╝\n");
+  console.log("ℹ️  Nota: Todos los negocios nuevos se asignarán automáticamente");
+  console.log("   a este plan con 7 días de prueba gratuita.\n");
 }
 
 main()

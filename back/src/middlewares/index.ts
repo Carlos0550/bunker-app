@@ -19,17 +19,6 @@ export {
   getBusinessSubscriptionStatus,
 } from "./subscription";
 
-export {
-  requireFeature,
-  requireFeatureLimit,
-  requireProductLimit,
-  requireUserLimit,
-  requireSalesLimit,
-  requireReportsAccess,
-  requireAdvancedAnalytics,
-  requireExportAccess,
-  requireApiAccess,
-} from "./feature";
 
 export { requireEmailVerified, warnEmailNotVerified } from "./emailVerified";
 

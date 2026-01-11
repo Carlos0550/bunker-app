@@ -92,4 +92,13 @@ export const subscriptionApi = {
     );
     return response.data.data;
   },
+
+  // Crear preferencia de pago en Mercado Pago
+  createMercadoPagoPreference: async (planId: string): Promise<{ preferenceId: string; initPoint: string; sandboxInitPoint: string }> => {
+    const response = await client.post<{ success: boolean; data: { preferenceId: string; initPoint: string; sandboxInitPoint: string } }>(
+      '/subscription/mercadopago/create-preference',
+      { planId }
+    );
+    return response.data.data;
+  },
 };
