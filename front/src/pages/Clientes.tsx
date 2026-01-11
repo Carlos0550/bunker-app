@@ -1,17 +1,9 @@
 import { useState } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
-import { customersApi, BusinessCustomer, CurrentAccount } from "@/api/services/customers";
+import { customersApi, BusinessCustomer, CurrentAccount, CustomerMetrics } from "@/api/services/customers";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -20,16 +12,14 @@ import {
   DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { 
   Search, 
   Plus, 
@@ -39,53 +29,61 @@ import {
   AlertTriangle,
   Phone,
   Mail,
-  MapPin,
-  Eye,
   Loader2,
   Banknote,
   Building2,
-  Receipt,
   CheckCircle,
   Clock,
+  Calendar,
+  ChevronDown,
+  ChevronRight,
+  Edit3,
+  TrendingUp,
+  FileText,
+  Receipt,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { formatDistanceToNow } from "date-fns";
+import { format, formatDistanceToNow, differenceInDays } from "date-fns";
 import { es } from "date-fns/locale";
+
+const MONTH_NAMES: Record<string, string> = {
+  "01": "Enero",
+  "02": "Febrero",
+  "03": "Marzo",
+  "04": "Abril",
+  "05": "Mayo",
+  "06": "Junio",
+  "07": "Julio",
+  "08": "Agosto",
+  "09": "Septiembre",
+  "10": "Octubre",
+  "11": "Noviembre",
+  "12": "Diciembre",
+};
 
 export default function Clientes() {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
+  const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<BusinessCustomer | null>(null);
   const [selectedAccount, setSelectedAccount] = useState<CurrentAccount | null>(null);
   const [paymentAmount, setPaymentAmount] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState<"CASH" | "CARD" | "TRANSFER">("CASH");
   const [paymentNotes, setPaymentNotes] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [accountsFilter, setAccountsFilter] = useState<string>("all");
-  const [activeTab, setActiveTab] = useState("clientes");
+  const [customerNotes, setCustomerNotes] = useState("");
+  const [expandedAccounts, setExpandedAccounts] = useState<Set<string>>(new Set());
 
   // Queries
   const { data: customersData, isLoading: loadingCustomers } = useQuery({
-    queryKey: ["customers", currentPage, searchTerm],
+    queryKey: ["customers", searchTerm],
     queryFn: () =>
       customersApi.getCustomers({
         search: searchTerm || undefined,
-        page: currentPage,
-        limit: 20,
-      }),
-  });
-
-  const { data: accountsData, isLoading: loadingAccounts } = useQuery({
-    queryKey: ["currentAccounts", accountsFilter],
-    queryFn: () =>
-      customersApi.getCurrentAccounts({
-        status: accountsFilter !== "all" ? accountsFilter : undefined,
         page: 1,
-        limit: 50,
+        limit: 100,
       }),
   });
 
@@ -94,11 +92,11 @@ export default function Clientes() {
     queryFn: () => customersApi.getAccountsSummary(),
   });
 
-  const { data: customerDetail, isLoading: loadingDetail } = useQuery({
-    queryKey: ["customerDetail", selectedCustomer?.id],
+  const { data: customerMetrics, isLoading: loadingMetrics } = useQuery({
+    queryKey: ["customerMetrics", selectedCustomer?.id],
     queryFn: () =>
-      selectedCustomer ? customersApi.getCustomerDetail(selectedCustomer.id) : null,
-    enabled: !!selectedCustomer && isDetailOpen,
+      selectedCustomer ? customersApi.getCustomerMetrics(selectedCustomer.id) : null,
+    enabled: !!selectedCustomer,
   });
 
   // Mutations
@@ -106,11 +104,26 @@ export default function Clientes() {
     mutationFn: (data: any) => customersApi.createCustomer(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["customers"] });
+      queryClient.invalidateQueries({ queryKey: ["accountsSummary"] });
       toast.success("Cliente creado exitosamente");
       setIsDialogOpen(false);
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.error?.message || "Error al crear cliente");
+    },
+  });
+
+  const updateNotesMutation = useMutation({
+    mutationFn: ({ id, notes }: { id: string; notes: string }) =>
+      customersApi.updateCustomer(id, { notes }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
+      queryClient.invalidateQueries({ queryKey: ["customerMetrics"] });
+      toast.success("Notas actualizadas");
+      setIsEditingNotes(false);
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error?.message || "Error al actualizar notas");
     },
   });
 
@@ -127,9 +140,9 @@ export default function Clientes() {
       notes?: string;
     }) => customersApi.registerPayment(accountId, { amount, paymentMethod, notes }),
     onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ["currentAccounts"] });
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
       queryClient.invalidateQueries({ queryKey: ["accountsSummary"] });
-      queryClient.invalidateQueries({ queryKey: ["customerDetail"] });
+      queryClient.invalidateQueries({ queryKey: ["customerMetrics"] });
       toast.success(result.message);
       setIsPaymentOpen(false);
       setSelectedAccount(null);
@@ -169,9 +182,27 @@ export default function Clientes() {
     });
   };
 
+  const handleSaveNotes = () => {
+    if (!selectedCustomer) return;
+    updateNotesMutation.mutate({
+      id: selectedCustomer.id,
+      notes: customerNotes,
+    });
+  };
+
+  const toggleAccountExpanded = (accountId: string) => {
+    setExpandedAccounts((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(accountId)) {
+        newSet.delete(accountId);
+      } else {
+        newSet.add(accountId);
+      }
+      return newSet;
+    });
+  };
+
   const customers = customersData?.data || [];
-  const accounts = accountsData?.data || [];
-  const pagination = customersData?.pagination;
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -186,11 +217,48 @@ export default function Clientes() {
     }
   };
 
+  const getPaymentMethodLabel = (method: string) => {
+    switch (method) {
+      case "CASH":
+        return "Efectivo";
+      case "CARD":
+        return "Tarjeta";
+      case "TRANSFER":
+        return "Transferencia";
+      default:
+        return method;
+    }
+  };
+
+  const formatMonthKey = (key: string) => {
+    const [year, month] = key.split("-");
+    return `${MONTH_NAMES[month]} ${year}`;
+  };
+
+  const getDaysInfo = (account: CurrentAccount) => {
+    const createdAt = new Date(account.createdAt);
+    
+    if (account.status === "PAID" && account.paidAt) {
+      const paidAt = new Date(account.paidAt);
+      const days = differenceInDays(paidAt, createdAt);
+      return {
+        text: `Pagado en ${days} día${days !== 1 ? "s" : ""}`,
+        color: days <= 7 ? "text-success" : days <= 30 ? "text-warning" : "text-muted-foreground",
+      };
+    }
+    
+    const days = differenceInDays(new Date(), createdAt);
+    return {
+      text: `Hace ${days} día${days !== 1 ? "s" : ""}`,
+      color: days > 30 ? "text-destructive" : days > 7 ? "text-warning" : "text-muted-foreground",
+    };
+  };
+
   return (
     <MainLayout title="Clientes">
-      <div className="space-y-6">
+      <div className="flex flex-col h-[calc(100vh-120px)]">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Gestión de Clientes</h1>
             <p className="text-muted-foreground">
@@ -255,365 +323,404 @@ export default function Clientes() {
 
         {/* Stats */}
         {!loadingSummary && summary && (
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-            <div className="stat-card">
-              <div className="flex items-center gap-3">
-                <div className="p-3 rounded-xl bg-primary/20">
-                  <Users className="w-6 h-6 text-primary" />
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+            <div className="stat-card p-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-lg bg-primary/20">
+                  <Users className="w-4 h-4 text-primary" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Total Clientes</p>
-                  <p className="text-2xl font-bold text-foreground">{customers.length}</p>
+                  <p className="text-xs text-muted-foreground">Clientes</p>
+                  <p className="text-lg font-bold text-foreground">{customers.length}</p>
                 </div>
               </div>
             </div>
-            <div className="stat-card border-destructive/30">
-              <div className="flex items-center gap-3">
-                <div className="p-3 rounded-xl bg-destructive/20">
-                  <AlertTriangle className="w-6 h-6 text-destructive" />
+            <div className="stat-card p-3 border-destructive/30">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-lg bg-destructive/20">
+                  <AlertTriangle className="w-4 h-4 text-destructive" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Deuda Total</p>
-                  <p className="text-2xl font-bold text-destructive">
+                  <p className="text-xs text-muted-foreground">Deuda Total</p>
+                  <p className="text-lg font-bold text-destructive">
                     ${summary.totalDebt.toLocaleString()}
                   </p>
                 </div>
               </div>
             </div>
-            <div className="stat-card">
-              <div className="flex items-center gap-3">
-                <div className="p-3 rounded-xl bg-warning/20">
-                  <CreditCard className="w-6 h-6 text-warning" />
+            <div className="stat-card p-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-lg bg-warning/20">
+                  <CreditCard className="w-4 h-4 text-warning" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Cuentas Activas</p>
-                  <p className="text-2xl font-bold text-foreground">
+                  <p className="text-xs text-muted-foreground">Cuentas Activas</p>
+                  <p className="text-lg font-bold text-foreground">
                     {summary.pendingAccounts + summary.partialAccounts}
                   </p>
                 </div>
               </div>
             </div>
-            <div className="stat-card">
-              <div className="flex items-center gap-3">
-                <div className="p-3 rounded-xl bg-success/20">
-                  <CheckCircle className="w-6 h-6 text-success" />
+            <div className="stat-card p-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-lg bg-success/20">
+                  <CheckCircle className="w-4 h-4 text-success" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Cuentas Pagadas</p>
-                  <p className="text-2xl font-bold text-success">{summary.paidAccounts}</p>
+                  <p className="text-xs text-muted-foreground">Pagadas</p>
+                  <p className="text-lg font-bold text-success">{summary.paidAccounts}</p>
                 </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="bg-secondary/50">
-            <TabsTrigger value="clientes">Clientes</TabsTrigger>
-            <TabsTrigger value="cuentas">
-              Cuentas Corrientes
-              {summary && (summary.pendingAccounts + summary.partialAccounts) > 0 && (
-                <Badge variant="destructive" className="ml-2">
-                  {summary.pendingAccounts + summary.partialAccounts}
-                </Badge>
-              )}
-            </TabsTrigger>
-          </TabsList>
-
-          {/* Clientes Tab */}
-          <TabsContent value="clientes" className="space-y-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por nombre, cédula, teléfono..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9 bg-card"
-              />
+        {/* Master-Detail Layout */}
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-4 min-h-0">
+          {/* Left Panel - Customer List */}
+          <div className="lg:col-span-1 bunker-card flex flex-col min-h-0">
+            <div className="p-3 border-b border-border">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar cliente..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9 bg-secondary/50"
+                />
+              </div>
             </div>
-
-            <div className="bunker-card overflow-hidden">
+            
+            <ScrollArea className="flex-1">
               {loadingCustomers ? (
-                <div className="flex items-center justify-center p-12">
-                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                <div className="flex items-center justify-center p-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
                 </div>
               ) : customers.length === 0 ? (
-                <div className="flex flex-col items-center justify-center p-12 text-muted-foreground">
-                  <Users className="w-12 h-12 mb-4 opacity-50" />
-                  <p>No hay clientes registrados</p>
+                <div className="flex flex-col items-center justify-center p-8 text-muted-foreground">
+                  <Users className="w-10 h-10 mb-3 opacity-50" />
+                  <p className="text-sm">No hay clientes</p>
                 </div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-border hover:bg-transparent">
-                      <TableHead className="text-muted-foreground">Cliente</TableHead>
-                      <TableHead className="text-muted-foreground">Identificador</TableHead>
-                      <TableHead className="text-muted-foreground">Contacto</TableHead>
-                      <TableHead className="text-muted-foreground text-right">Deuda Activa</TableHead>
-                      <TableHead className="text-muted-foreground text-right">Acciones</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {customers.map((bc) => (
-                      <TableRow key={bc.id} className="border-border">
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                              <Users className="w-5 h-5 text-primary" />
-                            </div>
-                            <div>
-                              <p className="font-medium text-foreground">{bc.customer.name}</p>
-                              {bc.notes && (
-                                <p className="text-xs text-muted-foreground truncate max-w-[200px]">
-                                  {bc.notes}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="font-mono text-sm">
-                          {bc.customer.identifier}
-                        </TableCell>
-                        <TableCell>
-                          <div className="space-y-1 text-sm text-muted-foreground">
-                            {bc.customer.phone && (
-                              <div className="flex items-center gap-1">
-                                <Phone className="w-3 h-3" />
-                                <span>{bc.customer.phone}</span>
-                              </div>
-                            )}
-                            {bc.customer.email && (
-                              <div className="flex items-center gap-1">
-                                <Mail className="w-3 h-3" />
-                                <span>{bc.customer.email}</span>
-                              </div>
+                <div className="p-2 space-y-1">
+                  {customers.map((bc) => (
+                    <button
+                      key={bc.id}
+                      onClick={() => {
+                        setSelectedCustomer(bc);
+                        setCustomerNotes(bc.notes || "");
+                        setIsEditingNotes(false);
+                      }}
+                      className={`w-full p-3 rounded-lg text-left transition-colors ${
+                        selectedCustomer?.id === bc.id
+                          ? "bg-primary/20 border border-primary/30"
+                          : "hover:bg-secondary/50"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                          (bc.totalDebt || 0) > 0 ? "bg-destructive/20" : "bg-primary/20"
+                        }`}>
+                          <Users className={`w-5 h-5 ${
+                            (bc.totalDebt || 0) > 0 ? "text-destructive" : "text-primary"
+                          }`} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="font-medium text-foreground truncate">
+                              {bc.customer.name}
+                            </p>
+                            {(bc.totalDebt || 0) > 0 && (
+                              <span className="text-sm font-bold text-destructive whitespace-nowrap">
+                                ${bc.totalDebt?.toLocaleString()}
+                              </span>
                             )}
                           </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {(bc.totalDebt || 0) > 0 ? (
-                            <span className="font-bold text-destructive">
-                              ${bc.totalDebt?.toLocaleString()}
-                            </span>
-                          ) : (
-                            <span className="text-success">Sin deuda</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              setSelectedCustomer(bc);
-                              setIsDetailOpen(true);
-                            }}
-                          >
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </div>
-          </TabsContent>
-
-          {/* Cuentas Corrientes Tab */}
-          <TabsContent value="cuentas" className="space-y-4">
-            <div className="flex gap-4">
-              <Select value={accountsFilter} onValueChange={setAccountsFilter}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Filtrar por estado" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas</SelectItem>
-                  <SelectItem value="PENDING">Pendientes</SelectItem>
-                  <SelectItem value="PARTIAL">Parciales</SelectItem>
-                  <SelectItem value="PAID">Pagadas</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="bunker-card overflow-hidden">
-              {loadingAccounts ? (
-                <div className="flex items-center justify-center p-12">
-                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                </div>
-              ) : accounts.length === 0 ? (
-                <div className="flex flex-col items-center justify-center p-12 text-muted-foreground">
-                  <CreditCard className="w-12 h-12 mb-4 opacity-50" />
-                  <p>No hay cuentas corrientes</p>
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-border hover:bg-transparent">
-                      <TableHead className="text-muted-foreground">Cliente</TableHead>
-                      <TableHead className="text-muted-foreground">Venta</TableHead>
-                      <TableHead className="text-muted-foreground text-right">Original</TableHead>
-                      <TableHead className="text-muted-foreground text-right">Pendiente</TableHead>
-                      <TableHead className="text-muted-foreground">Estado</TableHead>
-                      <TableHead className="text-muted-foreground text-right">Acciones</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {accounts.map((account) => (
-                      <TableRow key={account.id} className="border-border">
-                        <TableCell>
-                          <p className="font-medium text-foreground">
-                            {account.businessCustomer?.customer.name}
+                          <p className="text-xs text-muted-foreground font-mono">
+                            {bc.customer.identifier}
                           </p>
-                          <p className="text-xs text-muted-foreground">
-                            {formatDistanceToNow(new Date(account.createdAt), {
-                              addSuffix: true,
-                              locale: es,
-                            })}
-                          </p>
-                        </TableCell>
-                        <TableCell>
-                          <p className="font-mono text-sm">{account.sale?.saleNumber}</p>
-                        </TableCell>
-                        <TableCell className="text-right font-medium">
-                          ${account.originalAmount.toLocaleString()}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <span className={account.currentBalance > 0 ? "text-destructive font-bold" : "text-success"}>
-                            ${account.currentBalance.toLocaleString()}
-                          </span>
-                        </TableCell>
-                        <TableCell>{getStatusBadge(account.status)}</TableCell>
-                        <TableCell className="text-right">
-                          {account.status !== "PAID" && (
-                            <Button
-                              size="sm"
-                              onClick={() => {
-                                setSelectedAccount(account);
-                                setPaymentAmount(account.currentBalance);
-                                setIsPaymentOpen(true);
-                              }}
-                            >
-                              <DollarSign className="w-4 h-4 mr-1" />
-                              Abonar
-                            </Button>
+                          {(bc.activeAccounts || 0) > 0 && (
+                            <Badge variant="outline" className="mt-1 text-xs border-warning text-warning">
+                              {bc.activeAccounts} cuenta{bc.activeAccounts !== 1 ? "s" : ""} activa{bc.activeAccounts !== 1 ? "s" : ""}
+                            </Badge>
                           )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
               )}
-            </div>
-          </TabsContent>
-        </Tabs>
+            </ScrollArea>
+          </div>
 
-        {/* Customer Detail Dialog */}
-        <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Detalle del Cliente</DialogTitle>
-            </DialogHeader>
-            {loadingDetail ? (
-              <div className="flex items-center justify-center py-12">
+          {/* Right Panel - Customer Detail */}
+          <div className="lg:col-span-2 bunker-card flex flex-col min-h-0 overflow-hidden">
+            {!selectedCustomer ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground">
+                <Users className="w-16 h-16 mb-4 opacity-30" />
+                <p>Selecciona un cliente para ver su información</p>
+              </div>
+            ) : loadingMetrics ? (
+              <div className="flex-1 flex items-center justify-center">
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
               </div>
-            ) : customerDetail ? (
-              <div className="space-y-6">
-                {/* Customer Info */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Nombre</p>
-                    <p className="font-medium">{customerDetail.customer.name}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Identificador</p>
-                    <p className="font-mono">{customerDetail.customer.identifier}</p>
-                  </div>
-                  {customerDetail.customer.phone && (
+            ) : customerMetrics ? (
+              <ScrollArea className="flex-1">
+                <div className="p-4 space-y-4">
+                  {/* Customer Header */}
+                  <div className="flex items-start justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground">Teléfono</p>
-                      <p>{customerDetail.customer.phone}</p>
+                      <h2 className="text-xl font-bold text-foreground">
+                        {customerMetrics.customer.name}
+                      </h2>
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+                        <span className="font-mono">{customerMetrics.customer.identifier}</span>
+                        {customerMetrics.customer.phone && (
+                          <span className="flex items-center gap-1">
+                            <Phone className="w-3 h-3" />
+                            {customerMetrics.customer.phone}
+                          </span>
+                        )}
+                        {customerMetrics.customer.email && (
+                          <span className="flex items-center gap-1">
+                            <Mail className="w-3 h-3" />
+                            {customerMetrics.customer.email}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  )}
-                  {customerDetail.customer.email && (
-                    <div>
-                      <p className="text-sm text-muted-foreground">Email</p>
-                      <p>{customerDetail.customer.email}</p>
+                  </div>
+
+                  {/* Stats Cards */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="p-3 rounded-lg bg-destructive/10">
+                      <div className="flex items-center gap-2 mb-1">
+                        <AlertTriangle className="w-4 h-4 text-destructive" />
+                        <span className="text-xs text-muted-foreground">Deuda Actual</span>
+                      </div>
+                      <p className="text-xl font-bold text-destructive">
+                        ${customerMetrics.totalDebt.toLocaleString()}
+                      </p>
                     </div>
-                  )}
-                </div>
+                    <div className="p-3 rounded-lg bg-success/10">
+                      <div className="flex items-center gap-2 mb-1">
+                        <CheckCircle className="w-4 h-4 text-success" />
+                        <span className="text-xs text-muted-foreground">Total Pagado</span>
+                      </div>
+                      <p className="text-xl font-bold text-success">
+                        ${customerMetrics.totalPaid.toLocaleString()}
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-primary/10">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Clock className="w-4 h-4 text-primary" />
+                        <span className="text-xs text-muted-foreground">Prom. Pago</span>
+                      </div>
+                      <p className="text-xl font-bold text-primary">
+                        {customerMetrics.averagePaymentDays !== null
+                          ? `${customerMetrics.averagePaymentDays} días`
+                          : "N/A"}
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-secondary">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Receipt className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground">Cuentas</span>
+                      </div>
+                      <p className="text-xl font-bold">
+                        {customerMetrics.totalAccountsCount}
+                      </p>
+                    </div>
+                  </div>
 
-                {/* Stats */}
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="p-4 rounded-lg bg-destructive/10">
-                    <p className="text-sm text-muted-foreground">Deuda Actual</p>
-                    <p className="text-2xl font-bold text-destructive">
-                      ${customerDetail.totalDebt.toLocaleString()}
-                    </p>
-                  </div>
-                  <div className="p-4 rounded-lg bg-success/10">
-                    <p className="text-sm text-muted-foreground">Total Pagado</p>
-                    <p className="text-2xl font-bold text-success">
-                      ${customerDetail.totalPaid.toLocaleString()}
-                    </p>
-                  </div>
-                  <div className="p-4 rounded-lg bg-secondary">
-                    <p className="text-sm text-muted-foreground">Cuentas</p>
-                    <p className="text-2xl font-bold">
-                      {customerDetail.currentAccounts.length}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Accounts */}
-                {customerDetail.currentAccounts.length > 0 && (
-                  <div>
-                    <h4 className="font-medium mb-3">Historial de Cuentas</h4>
-                    <div className="space-y-3">
-                      {customerDetail.currentAccounts.map((account) => (
-                        <div
-                          key={account.id}
-                          className="p-4 rounded-lg bg-secondary/30 space-y-2"
+                  {/* Notes Section */}
+                  <div className="p-4 rounded-lg bg-secondary/30 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <FileText className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">Notas del Cliente</span>
+                      </div>
+                      {!isEditingNotes && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setIsEditingNotes(true)}
                         >
-                          <div className="flex items-center justify-between">
-                            <span className="font-medium">{account.sale?.saleNumber}</span>
-                            {getStatusBadge(account.status)}
-                          </div>
-                          <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">
-                              Original: ${account.originalAmount.toLocaleString()}
+                          <Edit3 className="w-4 h-4 mr-1" />
+                          Editar
+                        </Button>
+                      )}
+                    </div>
+                    {isEditingNotes ? (
+                      <div className="space-y-2">
+                        <Textarea
+                          value={customerNotes}
+                          onChange={(e) => setCustomerNotes(e.target.value)}
+                          placeholder="Agregar notas sobre este cliente..."
+                          rows={3}
+                        />
+                        <div className="flex gap-2 justify-end">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setCustomerNotes(customerMetrics.notes || "");
+                              setIsEditingNotes(false);
+                            }}
+                          >
+                            Cancelar
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={handleSaveNotes}
+                            disabled={updateNotesMutation.isPending}
+                          >
+                            {updateNotesMutation.isPending && (
+                              <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                            )}
+                            Guardar
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        {customerMetrics.notes || "Sin notas"}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Accounts History by Month */}
+                  {customerMetrics.accountsByMonth.length > 0 && (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-muted-foreground" />
+                        <h3 className="font-medium">Historial de Cuentas</h3>
+                      </div>
+
+                      {customerMetrics.accountsByMonth.map(({ monthKey, accounts }) => (
+                        <div key={monthKey} className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <div className="h-px flex-1 bg-border" />
+                            <span className="text-xs font-medium text-muted-foreground uppercase">
+                              {formatMonthKey(monthKey)}
                             </span>
-                            <span className={account.currentBalance > 0 ? "text-destructive" : "text-success"}>
-                              Pendiente: ${account.currentBalance.toLocaleString()}
-                            </span>
+                            <div className="h-px flex-1 bg-border" />
                           </div>
-                          {account.payments.length > 0 && (
-                            <div className="pt-2 border-t border-border">
-                              <p className="text-xs text-muted-foreground mb-1">Pagos:</p>
-                              <div className="space-y-1">
-                                {account.payments.slice(0, 3).map((payment) => (
-                                  <div key={payment.id} className="flex justify-between text-xs">
-                                    <span>
-                                      ${payment.amount.toLocaleString()} - {payment.paymentMethod}
-                                    </span>
-                                    <span className="text-muted-foreground">
-                                      {new Date(payment.createdAt).toLocaleDateString("es-ES")}
-                                    </span>
+
+                          {accounts.map((account) => {
+                            const daysInfo = getDaysInfo(account);
+                            const isExpanded = expandedAccounts.has(account.id);
+
+                            return (
+                              <Collapsible
+                                key={account.id}
+                                open={isExpanded}
+                                onOpenChange={() => toggleAccountExpanded(account.id)}
+                              >
+                                <div className="rounded-lg bg-secondary/30 overflow-hidden">
+                                  <div className="p-3 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-3">
+                                        <span className="font-mono text-sm font-medium">
+                                          {account.sale?.saleNumber || "Sin número"}
+                                        </span>
+                                        {getStatusBadge(account.status)}
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        {account.status !== "PAID" && (
+                                          <Button
+                                            size="sm"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setSelectedAccount(account);
+                                              setPaymentAmount(account.currentBalance);
+                                              setIsPaymentOpen(true);
+                                            }}
+                                          >
+                                            <DollarSign className="w-4 h-4 mr-1" />
+                                            Abonar
+                                          </Button>
+                                        )}
+                                      </div>
+                                    </div>
+
+                                    <div className="flex items-center justify-between text-sm">
+                                      <div className="flex items-center gap-4">
+                                        <span className="text-muted-foreground">
+                                          Original: <span className="font-medium text-foreground">${account.originalAmount.toLocaleString()}</span>
+                                        </span>
+                                        <span className={account.currentBalance > 0 ? "text-destructive" : "text-success"}>
+                                          Pendiente: <span className="font-bold">${account.currentBalance.toLocaleString()}</span>
+                                        </span>
+                                      </div>
+                                      <span className={`text-xs ${daysInfo.color}`}>
+                                        {daysInfo.text}
+                                      </span>
+                                    </div>
+
+                                    {account.payments.length > 0 && (
+                                      <CollapsibleTrigger asChild>
+                                        <button className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors">
+                                          {isExpanded ? (
+                                            <ChevronDown className="w-4 h-4" />
+                                          ) : (
+                                            <ChevronRight className="w-4 h-4" />
+                                          )}
+                                          Ver pagos ({account.payments.length})
+                                        </button>
+                                      </CollapsibleTrigger>
+                                    )}
                                   </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
+
+                                  <CollapsibleContent>
+                                    <div className="border-t border-border bg-background/50 p-3 space-y-2">
+                                      {account.payments.map((payment) => (
+                                        <div
+                                          key={payment.id}
+                                          className="flex items-start justify-between text-sm p-2 rounded bg-secondary/30"
+                                        >
+                                          <div className="space-y-1">
+                                            <div className="flex items-center gap-2">
+                                              <span className="font-medium text-success">
+                                                ${payment.amount.toLocaleString()}
+                                              </span>
+                                              <span className="text-xs text-muted-foreground">
+                                                - {getPaymentMethodLabel(payment.paymentMethod)}
+                                              </span>
+                                            </div>
+                                            {payment.notes && (
+                                              <p className="text-xs text-muted-foreground italic">
+                                                "{payment.notes}"
+                                              </p>
+                                            )}
+                                          </div>
+                                          <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                            {format(new Date(payment.createdAt), "dd/MM/yyyy HH:mm", { locale: es })}
+                                          </span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </CollapsibleContent>
+                                </div>
+                              </Collapsible>
+                            );
+                          })}
                         </div>
                       ))}
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
+
+                  {customerMetrics.accountsByMonth.length === 0 && (
+                    <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                      <Receipt className="w-10 h-10 mb-3 opacity-50" />
+                      <p className="text-sm">Este cliente no tiene cuentas registradas</p>
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
             ) : null}
-          </DialogContent>
-        </Dialog>
+          </div>
+        </div>
 
         {/* Payment Dialog */}
         <Dialog open={isPaymentOpen} onOpenChange={setIsPaymentOpen}>
@@ -625,9 +732,9 @@ export default function Clientes() {
               {selectedAccount && (
                 <>
                   <div className="p-4 rounded-lg bg-secondary/30">
-                    <p className="text-sm text-muted-foreground">Cliente</p>
-                    <p className="font-medium">
-                      {selectedAccount.businessCustomer?.customer.name}
+                    <p className="text-sm text-muted-foreground">Venta</p>
+                    <p className="font-medium font-mono">
+                      {selectedAccount.sale?.saleNumber}
                     </p>
                     <p className="text-sm text-muted-foreground mt-2">Saldo Pendiente</p>
                     <p className="text-2xl font-bold text-destructive">
@@ -670,6 +777,7 @@ export default function Clientes() {
                     <Textarea
                       value={paymentNotes}
                       onChange={(e) => setPaymentNotes(e.target.value)}
+                      placeholder="Ej: Abono parcial, Pago con tarjeta de crédito..."
                       rows={2}
                     />
                   </div>

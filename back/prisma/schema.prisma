@@ -399,6 +399,7 @@ model CurrentAccount {
   originalAmount Float // Monto original de la deuda
   currentBalance Float // Saldo pendiente
   status         AccountStatus @default(PENDING)
+  paidAt         DateTime? // Fecha en que se pagó completamente
 
   businessCustomer BusinessCustomer @relation(fields: [businessCustomerId], references: [id])
   sale             Sale             @relation(fields: [saleId], references: [id])

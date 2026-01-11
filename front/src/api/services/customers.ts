@@ -31,6 +31,7 @@ export interface CurrentAccount {
   originalAmount: number;
   currentBalance: number;
   status: 'PENDING' | 'PARTIAL' | 'PAID';
+  paidAt?: string;
   businessCustomer?: {
     customer: Customer;
   };
@@ -64,6 +65,23 @@ export interface AccountsSummary {
   topDebtors: {
     customer: Customer;
     debt: number;
+  }[];
+}
+
+export interface CustomerMetrics {
+  customer: Customer;
+  creditLimit?: number;
+  notes?: string;
+  totalAccountsCount: number;
+  paidAccountsCount: number;
+  pendingAccountsCount: number;
+  averagePaymentDays: number | null;
+  paidOnTimeCount: number;
+  totalDebt: number;
+  totalPaid: number;
+  accountsByMonth: {
+    monthKey: string;
+    accounts: CurrentAccount[];
   }[];
 }
 
@@ -181,6 +199,14 @@ export const customersApi = {
   getAccountsSummary: async (): Promise<AccountsSummary> => {
     const response = await client.get<{ success: boolean; data: AccountsSummary }>(
       '/customers/accounts/summary'
+    );
+    return response.data.data;
+  },
+
+  // Obtener métricas de un cliente
+  getCustomerMetrics: async (id: string): Promise<CustomerMetrics> => {
+    const response = await client.get<{ success: boolean; data: CustomerMetrics }>(
+      `/customers/${id}/metrics`
     );
     return response.data.data;
   },

@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AdminRoute } from "./components/layout/AdminRoute";
 import { ProtectedRoute } from "./components/layout/ProtectedRoute";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -42,7 +43,9 @@ const App = () => (
             <Route path="/clientes" element={<Clientes />} />
             <Route path="/reportes" element={<Reportes />} />
             <Route path="/configuracion" element={<Configuracion />} />
-            <Route path="/admin" element={<AdminPanel />} />
+            <Route element={<AdminRoute />}>
+              <Route path="/admin" element={<AdminPanel />} />
+            </Route>
           </Route>
 
           {/* Ruta 404 (Accesible siempre) */}

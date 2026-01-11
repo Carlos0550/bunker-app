@@ -17,6 +17,7 @@ router.post("/accounts/:id/payment", validateBody(registerPaymentSchema), custom
 router.get("/accounts/:id/payments", customerController.getAccountPayments);
 router.post("/", validateBody(createCustomerSchema), customerController.createCustomer);
 router.get("/", customerController.getCustomers);
+router.get("/:id/metrics", customerController.getCustomerMetrics);
 router.get("/:id", customerController.getCustomerDetail);
 router.patch("/:id", validateBody(updateBusinessCustomerSchema), customerController.updateCustomer);
 export default router;

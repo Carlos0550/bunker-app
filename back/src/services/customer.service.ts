@@ -240,6 +240,7 @@ class CustomerService {
         data: {
           currentBalance: newBalance,
           status: isPaid ? AccountStatus.PAID : AccountStatus.PARTIAL,
+          ...(isPaid && { paidAt: new Date() }),
         },
       });
       if (isPaid && currentAccount.sale) {
@@ -330,6 +331,96 @@ class CustomerService {
     return {
       ...summary,
       topDebtors,
+    };
+  }
+
+  async getCustomerMetrics(businessCustomerId: string, businessId: string) {
+    const businessCustomer = await prisma.businessCustomer.findFirst({
+      where: { id: businessCustomerId, businessId },
+      include: {
+        customer: true,
+        currentAccounts: {
+          include: {
+            sale: true,
+            payments: {
+              orderBy: { createdAt: "desc" },
+            },
+          },
+          orderBy: { createdAt: "desc" },
+        },
+      },
+    });
+
+    if (!businessCustomer) {
+      throw createHttpError(404, "Cliente no encontrado");
+    }
+
+    const accounts = businessCustomer.currentAccounts;
+    const paidAccounts = accounts.filter((a) => a.status === AccountStatus.PAID && a.paidAt);
+
+    // Calcular promedio de días de pago
+    let averagePaymentDays: number | null = null;
+    if (paidAccounts.length > 0) {
+      const totalDays = paidAccounts.reduce((acc, account) => {
+        const createdAt = new Date(account.createdAt);
+        const paidAt = new Date(account.paidAt!);
+        const diffTime = Math.abs(paidAt.getTime() - createdAt.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return acc + diffDays;
+      }, 0);
+      averagePaymentDays = Math.round(totalDays / paidAccounts.length);
+    }
+
+    // Agrupar cuentas por mes/año
+    const accountsByMonth: Record<string, typeof accounts> = {};
+    for (const account of accounts) {
+      const date = new Date(account.createdAt);
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+      if (!accountsByMonth[key]) {
+        accountsByMonth[key] = [];
+      }
+      accountsByMonth[key].push(account);
+    }
+
+    // Convertir a array ordenado por fecha descendente
+    const accountsByMonthArray = Object.entries(accountsByMonth)
+      .sort(([a], [b]) => b.localeCompare(a))
+      .map(([monthKey, monthAccounts]) => ({
+        monthKey,
+        accounts: monthAccounts,
+      }));
+
+    // Calcular métricas adicionales
+    const totalDebt = accounts
+      .filter((a) => a.status !== AccountStatus.PAID)
+      .reduce((acc, a) => acc + a.currentBalance, 0);
+
+    const totalPaid = accounts.reduce(
+      (acc, a) => acc + (a.originalAmount - a.currentBalance),
+      0
+    );
+
+    // Cuentas pagadas en menos de 7 días
+    const paidOnTimeCount = paidAccounts.filter((account) => {
+      const createdAt = new Date(account.createdAt);
+      const paidAt = new Date(account.paidAt!);
+      const diffTime = Math.abs(paidAt.getTime() - createdAt.getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      return diffDays <= 7;
+    }).length;
+
+    return {
+      customer: businessCustomer.customer,
+      creditLimit: businessCustomer.creditLimit,
+      notes: businessCustomer.notes,
+      totalAccountsCount: accounts.length,
+      paidAccountsCount: paidAccounts.length,
+      pendingAccountsCount: accounts.filter((a) => a.status !== AccountStatus.PAID).length,
+      averagePaymentDays,
+      paidOnTimeCount,
+      totalDebt,
+      totalPaid,
+      accountsByMonth: accountsByMonthArray,
     };
   }
 }
