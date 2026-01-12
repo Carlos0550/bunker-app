@@ -23,7 +23,9 @@ import {
   AlertCircle,
   FileText,
   UserPlus,
+  ScanLine,
 } from "lucide-react";
+import { BarcodeScanner } from "@/components/BarcodeScanner";
 import { toast } from "sonner";
 import {
   Select,
@@ -75,6 +77,7 @@ export default function POS() {
     dni: "",
   });
   const manualInputRef = useRef<HTMLInputElement>(null);
+  const [scannerOpen, setScannerOpen] = useState(false);
 
   // Queries
   const { data: productsData, isLoading: loadingProducts } = useQuery({
@@ -332,6 +335,15 @@ export default function POS() {
                 className="pl-10 h-12 bg-card border-border text-lg"
               />
             </div>
+            <Button
+              variant="default"
+              className="h-12 px-4"
+              onClick={() => setScannerOpen(true)}
+              title="Escanear código de barras"
+            >
+              <ScanLine className="w-5 h-5 mr-2" />
+              Escanear
+            </Button>
           </div>
 
           {/* Manual Input */}
@@ -761,6 +773,30 @@ export default function POS() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Escáner de códigos de barras */}
+      <BarcodeScanner
+        open={scannerOpen}
+        onClose={() => setScannerOpen(false)}
+        title="Escanear Producto"
+        onScan={async (code) => {
+          try {
+            const product = await productsApi.findByBarcode(code);
+            if (product) {
+              // Producto encontrado, agregarlo al carrito
+              handleAddToCart(product);
+            } else {
+              toast.error("Producto no encontrado", {
+                description: `No existe producto con código: ${code}`,
+              });
+            }
+          } catch {
+            toast.error("Producto no encontrado", {
+              description: `No existe producto con código: ${code}`,
+            });
+          }
+        }}
+      />
     </MainLayout>
   );
 }

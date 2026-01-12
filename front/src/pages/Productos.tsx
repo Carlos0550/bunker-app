@@ -59,7 +59,9 @@ import {
   ArrowUp,
   ArrowDown,
   X,
+  ScanLine,
 } from "lucide-react";
+import { BarcodeScanner } from "@/components/BarcodeScanner";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
@@ -99,6 +101,11 @@ export default function Productos() {
     price: 0,
     status: "PENDING" as "PENDING" | "LINKED" | "CONVERTED" | "IGNORED",
   });
+
+  // Estados para el escáner de códigos de barras
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [scannerMode, setScannerMode] = useState<"form" | "search">("form");
+  const [scannedBarcode, setScannedBarcode] = useState("");
 
   // Query para estadísticas (todos los productos sin filtros)
   const { data: statsData } = useQuery({
@@ -403,9 +410,17 @@ export default function Productos() {
               <Download className="w-4 h-4 mr-2" />
               Exportar
             </Button>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <Dialog open={isDialogOpen} onOpenChange={(open) => {
+              setIsDialogOpen(open);
+              if (!open) {
+                setScannedBarcode("");
+              }
+            }}>
               <DialogTrigger asChild>
-                <Button onClick={() => setEditingProduct(null)}>
+                <Button onClick={() => {
+                  setEditingProduct(null);
+                  setScannedBarcode("");
+                }}>
                   <Plus className="w-4 h-4 mr-2" />
                   Nuevo Producto
                 </Button>
@@ -437,11 +452,26 @@ export default function Productos() {
                     </div>
                     <div>
                       <Label htmlFor="barcode">Código de Barras</Label>
-                      <Input
-                        id="barcode"
-                        name="barcode"
-                        defaultValue={editingProduct?.bar_code || ""}
-                      />
+                      <div className="flex gap-2">
+                        <Input
+                          id="barcode"
+                          name="barcode"
+                          value={scannedBarcode}
+                          onChange={(e) => setScannedBarcode(e.target.value)}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          onClick={() => {
+                            setScannerMode("form");
+                            setScannerOpen(true);
+                          }}
+                          title="Escanear código de barras"
+                        >
+                          <ScanLine className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
                     <div>
                       <Label htmlFor="category">Categoría</Label>
@@ -607,17 +637,30 @@ export default function Productos() {
             {/* Buscador y Filtros de Inventario */}
             <div className="space-y-4">
               {/* Búsqueda principal */}
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar por nombre, SKU o código de barras..."
-                  value={inventorySearch}
-                  onChange={(e) => {
-                    setInventorySearch(e.target.value);
-                    setInventoryPage(1);
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por nombre, SKU o código de barras..."
+                    value={inventorySearch}
+                    onChange={(e) => {
+                      setInventorySearch(e.target.value);
+                      setInventoryPage(1);
+                    }}
+                    className="pl-9 bg-card"
+                  />
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setScannerMode("search");
+                    setScannerOpen(true);
                   }}
-                  className="pl-9 bg-card"
-                />
+                  title="Escanear código de barras"
+                >
+                  <ScanLine className="w-4 h-4 mr-2" />
+                  Escanear
+                </Button>
               </div>
 
               {/* Filtros */}
@@ -1467,6 +1510,34 @@ export default function Productos() {
         <ImportProductsModal
           open={isImportModalOpen}
           onOpenChange={setIsImportModalOpen}
+        />
+
+        {/* Escáner de códigos de barras */}
+        <BarcodeScanner
+          open={scannerOpen}
+          onClose={() => setScannerOpen(false)}
+          title={scannerMode === "form" ? "Escanear Código de Barras" : "Buscar Producto por Código"}
+          onScan={async (code) => {
+            if (scannerMode === "form") {
+              // Modo formulario: establecer el código en el input
+              setScannedBarcode(code);
+              toast.success(`Código escaneado: ${code}`);
+            } else {
+              // Modo búsqueda: buscar producto y filtrar
+              try {
+                const product = await productsApi.findByBarcode(code);
+                if (product) {
+                  setInventorySearch(code);
+                  setInventoryPage(1);
+                  toast.success(`Producto encontrado: ${product.name}`);
+                } else {
+                  toast.error("No se encontró ningún producto con ese código de barras");
+                }
+              } catch {
+                toast.error("No se encontró ningún producto con ese código de barras");
+              }
+            }
+          }}
         />
       </div>
     </MainLayout>
