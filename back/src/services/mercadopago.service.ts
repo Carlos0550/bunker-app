@@ -522,7 +522,7 @@ class MercadoPagoService {
       throw createHttpError(500, `Error al procesar pago: ${error.message}`);
     }
   }
-  private mapMercadoPagoStatus(status: string | undefined): "PENDING" | "PAID" | "FAILED" {
+  private mapMercadoPagoStatus(status: string | undefined): "PENDING" | "PAID" | "FAILED" | "REFUNDED" | "CANCELLED" {
     switch (status) {
       case "approved":
         return "PAID";
@@ -530,10 +530,12 @@ class MercadoPagoService {
       case "in_process":
         return "PENDING";
       case "rejected":
+        return "FAILED";
       case "cancelled":
+        return "CANCELLED";
       case "refunded":
       case "charged_back":
-        return "FAILED";
+        return "REFUNDED";
       default:
         return "PENDING";
     }
