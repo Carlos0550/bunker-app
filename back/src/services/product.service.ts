@@ -2,6 +2,7 @@ import { prisma } from "@/config/db";
 import { Prisma, ProductState } from "@prisma/client";
 import createHttpError from "http-errors";
 import { uploadFileWithUniqueId, getFileUrl, deleteFile } from "@/utils/minio.util";
+import { normalizeProductName } from "@/utils/text.util";
 interface ProductFilters {
   search?: string;
   categoryId?: string;
@@ -163,6 +164,11 @@ class ProductService {
     return { ...product, imageUrl };
   }
   async createProduct(businessId: string, data: CreateProductData) {
+    const normalizedName = normalizeProductName(data.name);
+    const existingByName = await this.findByNormalizedName(businessId, normalizedName);
+    if (existingByName) {
+      throw createHttpError(409, `Ya existe un producto con el nombre '${existingByName.name}'`);
+    }
     if (data.sku) {
       const existingSku = await prisma.products.findFirst({
         where: {
@@ -189,7 +195,7 @@ class ProductService {
     }
     const product = await prisma.products.create({
       data: {
-        name: data.name,
+        name: data.name.trim(),
         stock: data.stock || 0,
         bar_code: data.bar_code,
         description: data.description,
@@ -239,6 +245,12 @@ class ProductService {
     if (!product) {
       throw createHttpError(404, "Producto no encontrado");
     }
+    if (data.name !== undefined && normalizeProductName(data.name) !== normalizeProductName(product.name)) {
+      const existingByName = await this.findByNormalizedName(businessId, normalizeProductName(data.name), productId);
+      if (existingByName) {
+        throw createHttpError(409, `Ya existe un producto con el nombre '${existingByName.name}'`);
+      }
+    }
     if (data.sku && data.sku !== product.sku) {
       const existingSku = await prisma.products.findFirst({
         where: {
@@ -266,7 +278,7 @@ class ProductService {
       }
     }
     const updateData: Prisma.ProductsUpdateInput = {};
-    if (data.name !== undefined) updateData.name = data.name;
+    if (data.name !== undefined) updateData.name = data.name.trim();
     if (data.stock !== undefined) updateData.stock = data.stock;
     if (data.bar_code !== undefined) updateData.bar_code = data.bar_code;
     if (data.description !== undefined) updateData.description = data.description;
@@ -519,6 +531,62 @@ class ProductService {
     });
     return product;
   }
+  async findByNormalizedName(businessId: string, normalizedName: string, excludeProductId?: string) {
+    const products = await prisma.products.findMany({
+      where: {
+        businessId,
+        state: { not: ProductState.DELETED },
+        ...(excludeProductId && { id: { not: excludeProductId } }),
+      },
+      select: { id: true, name: true },
+    });
+    return products.find(p => normalizeProductName(p.name) === normalizedName) || null;
+  }
+  async checkNameExists(businessId: string, name: string, excludeProductId?: string): Promise<boolean> {
+    const normalized = normalizeProductName(name);
+    const existing = await this.findByNormalizedName(businessId, normalized, excludeProductId);
+    return !!existing;
+  }
+  async validateProductNames(businessId: string, names: string[]): Promise<{
+    duplicatesInDb: { name: string; existingName: string }[];
+    duplicatesInList: { name: string; count: number }[];
+  }> {
+    const existingProducts = await prisma.products.findMany({
+      where: {
+        businessId,
+        state: { not: ProductState.DELETED },
+      },
+      select: { name: true },
+    });
+    const existingNormalizedMap = new Map<string, string>();
+    existingProducts.forEach(p => {
+      existingNormalizedMap.set(normalizeProductName(p.name), p.name);
+    });
+    const duplicatesInDb: { name: string; existingName: string }[] = [];
+    const normalizedNamesInList = new Map<string, { original: string; count: number }>();
+    for (const name of names) {
+      const normalized = normalizeProductName(name);
+      const existingName = existingNormalizedMap.get(normalized);
+      if (existingName) {
+        if (!duplicatesInDb.some(d => normalizeProductName(d.name) === normalized)) {
+          duplicatesInDb.push({ name, existingName });
+        }
+      }
+      const existing = normalizedNamesInList.get(normalized);
+      if (existing) {
+        existing.count++;
+      } else {
+        normalizedNamesInList.set(normalized, { original: name, count: 1 });
+      }
+    }
+    const duplicatesInList: { name: string; count: number }[] = [];
+    normalizedNamesInList.forEach((value, _key) => {
+      if (value.count > 1) {
+        duplicatesInList.push({ name: value.original, count: value.count });
+      }
+    });
+    return { duplicatesInDb, duplicatesInList };
+  }
   async getCategories(businessId: string) {
     return prisma.categories.findMany({
       where: { businessId },
@@ -535,6 +603,40 @@ class ProductService {
     return prisma.categories.create({
       data: { name, businessId },
     });
+  }
+  async updateCategory(businessId: string, categoryId: string, name: string) {
+    const category = await prisma.categories.findFirst({
+      where: { id: categoryId, businessId },
+    });
+    if (!category) {
+      throw createHttpError(404, "Categoría no encontrada");
+    }
+    const existing = await prisma.categories.findFirst({
+      where: { businessId, name, NOT: { id: categoryId } },
+    });
+    if (existing) {
+      throw createHttpError(409, `Ya existe otra categoría con el nombre '${name}'`);
+    }
+    return prisma.categories.update({
+      where: { id: categoryId },
+      data: { name },
+    });
+  }
+  async deleteCategory(businessId: string, categoryId: string) {
+    const category = await prisma.categories.findFirst({
+      where: { id: categoryId, businessId },
+      include: { _count: { select: { products: true } } },
+    });
+    if (!category) {
+      throw createHttpError(404, "Categoría no encontrada");
+    }
+    if (category._count.products > 0) {
+      throw createHttpError(400, `No se puede eliminar la categoría porque tiene ${category._count.products} producto(s) asociado(s)`);
+    }
+    await prisma.categories.delete({
+      where: { id: categoryId },
+    });
+    return { success: true };
   }
 }
 export const productService = new ProductService();

@@ -223,4 +223,18 @@ export const productsApi = {
     );
     return response.data.data;
   },
+
+  // Actualizar categoría
+  updateCategory: async (id: string, name: string): Promise<Category> => {
+    const response = await client.patch<{ success: boolean; data: Category }>(
+      `/products/categories/${id}`,
+      { name }
+    );
+    return response.data.data;
+  },
+
+  // Eliminar categoría
+  deleteCategory: async (id: string): Promise<void> => {
+    await client.delete(`/products/categories/${id}`);
+  },
 };

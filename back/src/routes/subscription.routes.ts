@@ -18,7 +18,6 @@ router.post(
 router.post("/mercadopago/webhook", subscriptionController.mercadoPagoWebhook);
 router.get("/mercadopago/verify/:paymentId", authenticate, subscriptionController.verifyMercadoPagoPayment);
 router.post("/run-reminders", authenticate, authorize(0), subscriptionController.runReminders);
-
 router.post(
   "/manual-payment",
   authenticate,
@@ -31,5 +30,4 @@ router.post(
   })),
   subscriptionController.registerManualPayment
 );
-
 export default router;

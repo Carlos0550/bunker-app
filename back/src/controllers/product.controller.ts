@@ -256,5 +256,35 @@ class ProductController {
       next(error);
     }
   };
+  updateCategory = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) throw createHttpError(401, "Usuario no autenticado");
+      const businessId = await this.getBusinessId(userId);
+      const { id } = req.params;
+      const category = await productService.updateCategory(businessId, id, req.body.name);
+      res.json({
+        success: true,
+        data: category,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+  deleteCategory = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) throw createHttpError(401, "Usuario no autenticado");
+      const businessId = await this.getBusinessId(userId);
+      const { id } = req.params;
+      await productService.deleteCategory(businessId, id);
+      res.json({
+        success: true,
+        message: "Categoría eliminada correctamente",
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
 }
 export const productController = new ProductController();

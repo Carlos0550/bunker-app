@@ -30,6 +30,7 @@ router.use(authenticate);
 router.use(verifySubscription);
 router.get("/columns", importController.getSystemColumns);
 router.post("/analyze", upload.single("file"), importController.analyzeFile);
+router.post("/validate", importController.validateImport);
 router.post("/process", importController.processImport);
 router.post("/cancel", importController.cancelImport);
 export default router;

@@ -18,8 +18,16 @@ export interface AnalyzeResult {
 export interface ImportResult {
   imported: number;
   failed: number;
+  skipped: number;
   errors: { row: number; error: string }[];
   totalErrors: number;
+}
+
+export interface ValidationResult {
+  totalProducts: number;
+  duplicatesInDb: { name: string; existingName: string }[];
+  duplicatesInList: { name: string; count: number }[];
+  hasDuplicates: boolean;
 }
 
 export interface ColumnMapping {
@@ -50,11 +58,24 @@ export const importApi = {
     return response.data.data;
   },
 
+  // Validar importación (detectar duplicados)
+  validateImport: async (sessionId: string, columnMapping: ColumnMapping): Promise<ValidationResult> => {
+    const response = await client.post<{ success: boolean; data: ValidationResult }>(
+      '/import/validate',
+      { sessionId, columnMapping }
+    );
+    return response.data.data;
+  },
+
   // Procesar importación
-  processImport: async (sessionId: string, columnMapping: ColumnMapping): Promise<ImportResult> => {
+  processImport: async (
+    sessionId: string,
+    columnMapping: ColumnMapping,
+    skipDuplicates: boolean = false
+  ): Promise<ImportResult> => {
     const response = await client.post<{ success: boolean; data: ImportResult }>(
       '/import/process',
-      { sessionId, columnMapping }
+      { sessionId, columnMapping, skipDuplicates }
     );
     return response.data.data;
   },

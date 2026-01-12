@@ -6,7 +6,6 @@ import { Prisma, PaymentStatus } from "@prisma/client";
 import createHttpError from "http-errors";
 import { sendPasswordResetEmail, sendWelcomeEmail, sendVerificationEmail } from "@/utils";
 import { emailService } from "@/services/email.service";
-
 interface RegisterData extends Prisma.UserCreateInput {
   businessName: string;
   businessAddress: string;
@@ -218,7 +217,6 @@ export class UserService {
       throw createHttpError(401, "Credenciales inválidas");
     }
     if (user.status !== "ACTIVE") {
-      // Si el usuario está INACTIVE y tiene negocio, verificar suscripción
       if (user.status === "INACTIVE" && user.businessId) {
         const lastPayment = await prisma.paymentHistory.findFirst({
           where: {
@@ -227,9 +225,7 @@ export class UserService {
           },
           orderBy: { createdAt: "desc" },
         });
-
         const now = new Date();
-        // Si no hay pagos o el último pago venció
         if (!lastPayment || (lastPayment.nextPaymentDate && lastPayment.nextPaymentDate < now)) {
           try {
             await emailService.sendEmailWithTemplate({
@@ -243,7 +239,6 @@ export class UserService {
             });
           } catch (error) {
             console.error("Error enviando email de cuenta inactiva:", error);
-            // No bloqueamos el flujo de error si falla el email
           }
         }
       }

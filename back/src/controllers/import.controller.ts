@@ -2,7 +2,10 @@ import { Request, Response, NextFunction } from "express";
 import { importService } from "@/services/import.service";
 import { prisma } from "@/config/db";
 import createHttpError from "http-errors";
-const fileCache = new Map<string, { buffer: Buffer; fileName: string; mimeType: string; expiresAt: number }>();
+const fileCache = new Map<
+  string,
+  { buffer: Buffer; fileName: string; mimeType: string; expiresAt: number }
+>();
 setInterval(() => {
   const now = Date.now();
   for (const [key, value] of fileCache.entries()) {
@@ -36,7 +39,7 @@ class ImportController {
   };
   analyzeFile = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      await this.getBusinessId(req); 
+      await this.getBusinessId(req);
       if (!req.file) {
         throw createHttpError(400, "No se proporcionó ningún archivo");
       }
@@ -64,7 +67,7 @@ class ImportController {
       next(error);
     }
   };
-  processImport = async (req: Request, res: Response, next: NextFunction) => {
+  validateImport = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const businessId = await this.getBusinessId(req);
       const { sessionId, columnMapping } = req.body;
@@ -73,13 +76,48 @@ class ImportController {
       }
       const cachedFile = fileCache.get(sessionId);
       if (!cachedFile) {
-        throw createHttpError(400, "Sesión de importación expirada. Por favor, suba el archivo nuevamente.");
+        throw createHttpError(
+          400,
+          "Sesión de importación expirada. Por favor, suba el archivo nuevamente."
+        );
+      }
+      const result = await importService.validateImport(
+        cachedFile.buffer,
+        cachedFile.fileName,
+        cachedFile.mimeType,
+        columnMapping,
+        businessId
+      );
+      res.json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+  processImport = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const businessId = await this.getBusinessId(req);
+      const { sessionId, columnMapping, skipDuplicates = false } = req.body;
+      if (!sessionId || !columnMapping) {
+        throw createHttpError(400, "Se requiere sessionId y columnMapping");
+      }
+      const cachedFile = fileCache.get(sessionId);
+      if (!cachedFile) {
+        throw createHttpError(
+          400,
+          "Sesión de importación expirada. Por favor, suba el archivo nuevamente."
+        );
       }
       const requiredColumns = importService.getSystemColumns().filter((c) => c.required);
       const mappedSystemColumns = Object.values(columnMapping);
       for (const col of requiredColumns) {
         if (!mappedSystemColumns.includes(col.key)) {
-          throw createHttpError(400, `La columna "${col.label}" es requerida y debe ser mapeada.`);
+          throw createHttpError(
+            400,
+            `La columna "${col.label}" es requerida y debe ser mapeada.`
+          );
         }
       }
       const result = await importService.processImport(
@@ -87,7 +125,8 @@ class ImportController {
         cachedFile.fileName,
         cachedFile.mimeType,
         columnMapping,
-        businessId
+        businessId,
+        skipDuplicates
       );
       fileCache.delete(sessionId);
       res.json({
@@ -95,7 +134,8 @@ class ImportController {
         data: {
           imported: result.success,
           failed: result.failed,
-          errors: result.errors.slice(0, 10), 
+          skipped: result.skipped,
+          errors: result.errors.slice(0, 10),
           totalErrors: result.errors.length,
         },
       });

@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { importApi, AnalyzeResult, ColumnMapping, SystemColumn } from "@/api/services/import";
+import { importApi, AnalyzeResult, ColumnMapping, ValidationResult } from "@/api/services/import";
 import {
   Dialog,
   DialogContent,
@@ -32,13 +32,14 @@ import {
   FileSpreadsheet,
   ArrowRight,
   Check,
-  X,
   AlertTriangle,
   Loader2,
   FileWarning,
   CheckCircle2,
   XCircle,
   ChevronRight,
+  Copy,
+  SkipForward,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -48,7 +49,7 @@ interface ImportProductsModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
-type Step = "upload" | "mapping" | "processing" | "result";
+type Step = "upload" | "mapping" | "validation" | "processing" | "result";
 
 export function ImportProductsModal({ open, onOpenChange }: ImportProductsModalProps) {
   const queryClient = useQueryClient();
@@ -58,7 +59,8 @@ export function ImportProductsModal({ open, onOpenChange }: ImportProductsModalP
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [analyzeResult, setAnalyzeResult] = useState<AnalyzeResult | null>(null);
   const [columnMapping, setColumnMapping] = useState<ColumnMapping>({});
-  const [importResult, setImportResult] = useState<{ imported: number; failed: number; errors: any[] } | null>(null);
+  const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
+  const [importResult, setImportResult] = useState<{ imported: number; failed: number; skipped: number; errors: any[] } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
   // Reset state when modal closes
@@ -68,6 +70,7 @@ export function ImportProductsModal({ open, onOpenChange }: ImportProductsModalP
       setSelectedFile(null);
       setAnalyzeResult(null);
       setColumnMapping({});
+      setValidationResult(null);
       setImportResult(null);
     }
   }, [open]);
@@ -85,9 +88,26 @@ export function ImportProductsModal({ open, onOpenChange }: ImportProductsModalP
     },
   });
 
-  const processMutation = useMutation({
+  const validateMutation = useMutation({
     mutationFn: ({ sessionId, mapping }: { sessionId: string; mapping: ColumnMapping }) =>
-      importApi.processImport(sessionId, mapping),
+      importApi.validateImport(sessionId, mapping),
+    onSuccess: (result) => {
+      setValidationResult(result);
+      if (result.hasDuplicates) {
+        setStep("validation");
+      } else {
+        // Sin duplicados, proceder directamente
+        handleProcessImport(false);
+      }
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error?.message || "Error al validar la importación");
+    },
+  });
+
+  const processMutation = useMutation({
+    mutationFn: ({ sessionId, mapping, skipDuplicates }: { sessionId: string; mapping: ColumnMapping; skipDuplicates: boolean }) =>
+      importApi.processImport(sessionId, mapping, skipDuplicates),
     onSuccess: (result) => {
       setImportResult(result);
       setStep("result");
@@ -141,11 +161,9 @@ export function ImportProductsModal({ open, onOpenChange }: ImportProductsModalP
     setColumnMapping((prev) => {
       const newMapping = { ...prev };
       
-      // Si se selecciona "none", eliminar el mapeo
       if (systemColumn === "none") {
         delete newMapping[fileColumn];
       } else {
-        // Eliminar mapeos existentes a esta columna del sistema (evitar duplicados)
         Object.keys(newMapping).forEach((key) => {
           if (newMapping[key] === systemColumn && key !== fileColumn) {
             delete newMapping[key];
@@ -158,7 +176,7 @@ export function ImportProductsModal({ open, onOpenChange }: ImportProductsModalP
     });
   };
 
-  const handleProcessImport = () => {
+  const handleValidateAndProcess = () => {
     if (!analyzeResult) return;
 
     // Validar columnas requeridas
@@ -172,10 +190,21 @@ export function ImportProductsModal({ open, onOpenChange }: ImportProductsModalP
       }
     }
 
+    // Iniciar validación
+    validateMutation.mutate({
+      sessionId: analyzeResult.sessionId,
+      mapping: columnMapping,
+    });
+  };
+
+  const handleProcessImport = (skipDuplicates: boolean) => {
+    if (!analyzeResult) return;
+
     setStep("processing");
     processMutation.mutate({
       sessionId: analyzeResult.sessionId,
       mapping: columnMapping,
+      skipDuplicates,
     });
   };
 
@@ -209,6 +238,7 @@ export function ImportProductsModal({ open, onOpenChange }: ImportProductsModalP
           <DialogDescription>
             {step === "upload" && "Sube un archivo CSV o Excel con tus productos"}
             {step === "mapping" && "Mapea las columnas del archivo con las del sistema"}
+            {step === "validation" && "Se encontraron productos duplicados"}
             {step === "processing" && "Procesando importación..."}
             {step === "result" && "Resultado de la importación"}
           </DialogDescription>
@@ -366,7 +396,6 @@ export function ImportProductsModal({ open, onOpenChange }: ImportProductsModalP
                             value={mappedFrom || "none"}
                             onValueChange={(value) => {
                               if (value === "none") {
-                                // Encontrar y eliminar el mapeo actual
                                 const currentMapping = Object.entries(columnMapping).find(
                                   ([_, sys]) => sys === sysCol.key
                                 );
@@ -450,6 +479,121 @@ export function ImportProductsModal({ open, onOpenChange }: ImportProductsModalP
             </div>
           )}
 
+          {/* Step: Validation - Duplicates Warning */}
+          {step === "validation" && validationResult && (
+            <div className="py-6 space-y-6">
+              <div className="text-center">
+                <AlertTriangle className="w-16 h-16 mx-auto text-warning mb-4" />
+                <h3 className="text-xl font-bold mb-2">Se encontraron productos duplicados</h3>
+                <p className="text-muted-foreground">
+                  {validationResult.duplicatesInDb.length > 0 && (
+                    <>
+                      <strong>{validationResult.duplicatesInDb.length}</strong> producto(s) ya existen en tu inventario.
+                    </>
+                  )}
+                  {validationResult.duplicatesInList.length > 0 && (
+                    <>
+                      {validationResult.duplicatesInDb.length > 0 && " Además, "}
+                      <strong>{validationResult.duplicatesInList.length}</strong> producto(s) están repetidos en el archivo.
+                    </>
+                  )}
+                </p>
+              </div>
+
+              {/* Duplicados en la base de datos */}
+              {validationResult.duplicatesInDb.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="font-semibold flex items-center gap-2">
+                    <Copy className="w-4 h-4 text-warning" />
+                    Productos que ya existen en tu inventario ({validationResult.duplicatesInDb.length})
+                  </h4>
+                  <div className="border rounded-lg overflow-auto max-h-40">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Nombre en archivo</TableHead>
+                          <TableHead>Producto existente</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {validationResult.duplicatesInDb.slice(0, 10).map((dup, i) => (
+                          <TableRow key={i}>
+                            <TableCell>{dup.name}</TableCell>
+                            <TableCell className="text-muted-foreground">{dup.existingName}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  {validationResult.duplicatesInDb.length > 10 && (
+                    <p className="text-xs text-muted-foreground">
+                      Y {validationResult.duplicatesInDb.length - 10} más...
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Duplicados dentro del archivo */}
+              {validationResult.duplicatesInList.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="font-semibold flex items-center gap-2">
+                    <FileWarning className="w-4 h-4 text-warning" />
+                    Productos repetidos en el archivo ({validationResult.duplicatesInList.length})
+                  </h4>
+                  <div className="border rounded-lg overflow-auto max-h-40">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Nombre del producto</TableHead>
+                          <TableHead className="text-right">Veces repetido</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {validationResult.duplicatesInList.slice(0, 10).map((dup, i) => (
+                          <TableRow key={i}>
+                            <TableCell>{dup.name}</TableCell>
+                            <TableCell className="text-right">{dup.count}x</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              )}
+
+              {/* Opciones */}
+              <div className="p-4 bg-secondary/30 rounded-lg space-y-4">
+                <p className="font-medium">¿Qué deseas hacer?</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <button
+                    onClick={() => handleProcessImport(false)}
+                    className="p-4 border rounded-lg hover:bg-secondary/50 transition-colors text-left"
+                  >
+                    <div className="flex items-center gap-2 font-medium mb-1">
+                      <ArrowRight className="w-4 h-4" />
+                      Continuar con todos
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Importar todos los productos, incluyendo los duplicados (puede crear registros repetidos)
+                    </p>
+                  </button>
+                  <button
+                    onClick={() => handleProcessImport(true)}
+                    className="p-4 border rounded-lg hover:bg-primary/10 hover:border-primary transition-colors text-left"
+                  >
+                    <div className="flex items-center gap-2 font-medium mb-1 text-primary">
+                      <SkipForward className="w-4 h-4" />
+                      Omitir duplicados
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Solo importar productos nuevos, omitiendo los que ya existen o están repetidos
+                    </p>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Step: Processing */}
           {step === "processing" && (
             <div className="py-12 text-center space-y-6">
@@ -465,34 +609,58 @@ export function ImportProductsModal({ open, onOpenChange }: ImportProductsModalP
           )}
 
           {/* Step: Result */}
-          {step === "result" && importResult && (
+          {step === "result" && importResult && (() => {
+            // Calcular el estado de la importación
+            const totalProcessed = importResult.imported + importResult.skipped + importResult.failed;
+            const hasOnlyErrors = importResult.imported === 0 && importResult.skipped === 0 && importResult.failed > 0;
+            const isSuccess = importResult.failed === 0 || (importResult.imported > 0);
+            const isPartialSuccess = importResult.imported > 0 && importResult.failed > 0;
+            const isCompletedWithSkips = importResult.imported === 0 && importResult.skipped > 0 && !hasOnlyErrors;
+
+            return (
             <div className="py-8 space-y-6">
               <div className="text-center">
-                {importResult.failed === 0 ? (
-                  <CheckCircle2 className="w-16 h-16 mx-auto text-success mb-4" />
-                ) : importResult.imported === 0 ? (
+                {hasOnlyErrors ? (
                   <XCircle className="w-16 h-16 mx-auto text-destructive mb-4" />
-                ) : (
+                ) : isPartialSuccess ? (
                   <AlertTriangle className="w-16 h-16 mx-auto text-warning mb-4" />
+                ) : (
+                  <CheckCircle2 className="w-16 h-16 mx-auto text-success mb-4" />
                 )}
                 
                 <h3 className="text-xl font-bold mb-2">
-                  {importResult.failed === 0
-                    ? "¡Importación exitosa!"
-                    : importResult.imported === 0
+                  {hasOnlyErrors
                     ? "Error en la importación"
-                    : "Importación completada con errores"}
+                    : isPartialSuccess
+                    ? "Importación completada con algunos errores"
+                    : isCompletedWithSkips
+                    ? "Importación completada"
+                    : "¡Importación exitosa!"}
                 </h3>
+                {isCompletedWithSkips && importResult.failed > 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    Se omitieron los duplicados. {importResult.failed} fila(s) tenían datos inválidos.
+                  </p>
+                )}
+                {isCompletedWithSkips && importResult.failed === 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    Todos los productos ya existían en el inventario.
+                  </p>
+                )}
               </div>
 
-              <div className="grid grid-cols-2 gap-4 max-w-md mx-auto">
+              <div className="grid grid-cols-3 gap-4 max-w-lg mx-auto">
                 <div className="text-center p-4 bg-success/10 rounded-lg border border-success/30">
                   <p className="text-3xl font-bold text-success">{importResult.imported}</p>
-                  <p className="text-sm text-muted-foreground">Productos importados</p>
+                  <p className="text-sm text-muted-foreground">Importados</p>
+                </div>
+                <div className="text-center p-4 bg-secondary/30 rounded-lg border border-border">
+                  <p className="text-3xl font-bold text-muted-foreground">{importResult.skipped}</p>
+                  <p className="text-sm text-muted-foreground">Omitidos</p>
                 </div>
                 <div className="text-center p-4 bg-destructive/10 rounded-lg border border-destructive/30">
                   <p className="text-3xl font-bold text-destructive">{importResult.failed}</p>
-                  <p className="text-sm text-muted-foreground">Con errores</p>
+                  <p className="text-sm text-muted-foreground">Errores</p>
                 </div>
               </div>
 
@@ -528,7 +696,8 @@ export function ImportProductsModal({ open, onOpenChange }: ImportProductsModalP
                 </div>
               )}
             </div>
-          )}
+            );
+          })()}
         </div>
 
         <DialogFooter className="border-t pt-4">
@@ -544,14 +713,29 @@ export function ImportProductsModal({ open, onOpenChange }: ImportProductsModalP
                 Cancelar
               </Button>
               <Button
-                onClick={handleProcessImport}
-                disabled={processMutation.isPending}
+                onClick={handleValidateAndProcess}
+                disabled={validateMutation.isPending}
                 className="bunker-glow"
               >
-                <ArrowRight className="w-4 h-4 mr-2" />
-                Importar {analyzeResult?.totalRows} productos
+                {validateMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Validando...
+                  </>
+                ) : (
+                  <>
+                    <ArrowRight className="w-4 h-4 mr-2" />
+                    Importar {analyzeResult?.totalRows} productos
+                  </>
+                )}
               </Button>
             </>
+          )}
+
+          {step === "validation" && (
+            <Button variant="outline" onClick={() => setStep("mapping")}>
+              Volver al mapeo
+            </Button>
           )}
 
           {step === "result" && (

@@ -9,7 +9,8 @@
     "start": "node dist/server.js",
     "lint": "eslint .",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev"
+    "prisma:migrate": "prisma migrate dev",
+    "remove-comments": "ts-node -r tsconfig-paths/register scripts/remove-comments.ts"
   },
   "keywords": [],
   "author": "",

@@ -186,7 +186,6 @@ class SubscriptionService {
     });
     return payment;
   }
-
   async registerManualPayment(
     businessId: string,
     amount: number,
@@ -196,15 +195,11 @@ class SubscriptionService {
     const business = await prisma.business.findUnique({
       where: { id: businessId },
     });
-
     if (!business) {
       throw createHttpError(404, "Negocio no encontrado");
     }
-
     const nextPaymentDate = new Date();
     nextPaymentDate.setMonth(nextPaymentDate.getMonth() + months);
-
-    // Crear registro de pago
     const payment = await prisma.paymentHistory.create({
       data: {
         businessId,
@@ -213,14 +208,8 @@ class SubscriptionService {
         date: new Date(),
         nextPaymentDate,
         isTrial: false,
-        // Podríamos guardar las notas en algún campo si existiera, 
-        // pero por ahora PaymentHistory no tiene campo de notas genérico.
-        // Si es necesario, agregarlo al schema.
       },
     });
-
-    // Reactivar usuarios del negocio si estaban suspendidos por falta de pago
-    // Asumimos que todos los usuarios inactivos deben ser reactivados
     await prisma.user.updateMany({
       where: {
         businessId,
@@ -230,7 +219,6 @@ class SubscriptionService {
         status: "ACTIVE",
       },
     });
-
     return payment;
   }
 }

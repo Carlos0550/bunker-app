@@ -105,45 +105,71 @@ class SubscriptionController {
   mercadoPagoWebhook = async (req: Request, res: Response, next: NextFunction) => {
     try {
       let type: string | undefined;
-      let data: any;
-      if (req.body && Object.keys(req.body).length > 0) {
+      let paymentId: string | undefined;
+
+      // Formato 1: Body con type y data.id (webhooks v2)
+      if (req.body && req.body.type && req.body.data?.id) {
         type = req.body.type;
-        data = req.body.data;
-      } else if (req.query.type && req.query["data.id"]) {
+        paymentId = req.body.data.id;
+        console.log("📩 Webhook v2 recibido (body):", { type, paymentId });
+      }
+      // Formato 2: Body con action (payment.created, payment.updated)
+      else if (req.body && req.body.action && req.body.data?.id) {
+        type = req.body.action.includes("payment") ? "payment" : req.body.action;
+        paymentId = req.body.data.id;
+        console.log("📩 Webhook v2 recibido (action):", { action: req.body.action, paymentId });
+      }
+      // Formato 3: Query params con topic e id (IPN - webhooks legacy)
+      else if (req.query.topic && req.query.id) {
+        type = req.query.topic as string;
+        paymentId = req.query.id as string;
+        console.log("📩 Webhook IPN recibido (query):", { topic: type, id: paymentId });
+      }
+      // Formato 4: Query params con type y data.id (pruebas)
+      else if (req.query.type && req.query["data.id"]) {
         type = req.query.type as string;
-        data = { id: req.query["data.id"] };
-        console.log("⚠️ Webhook recibido en formato de prueba (query params). Para pruebas reales, usa el formato del body.");
+        paymentId = req.query["data.id"] as string;
+        console.log("📩 Webhook de prueba recibido (query):", { type, paymentId });
       }
-      if (!type || !data) {
-        console.warn("Webhook recibido sin tipo o datos:", req.body, req.query);
-        return res.status(200).json({ success: false, message: "Webhook sin tipo o datos válidos" });
+
+      if (!type || !paymentId) {
+        console.warn("⚠️ Webhook recibido sin tipo o ID válido:", {
+          body: req.body,
+          query: req.query,
+        });
+        // Siempre responder 200 a MercadoPago para que no reintente
+        return res.status(200).json({ 
+          success: false, 
+          message: "Webhook sin tipo o ID válido" 
+        });
       }
+
       const signature = req.headers["x-signature"] as string;
       const requestId = req.headers["x-request-id"] as string;
-      console.log("Webhook recibido:", {
+
+      console.log("🔔 Procesando webhook:", {
         type,
-        hasData: !!data,
-        dataId: data?.id,
+        paymentId,
         hasSignature: !!signature,
         hasRequestId: !!requestId,
-        mercadopagoTokenConfigured: !!process.env.MERCADOPAGO_ACCESS_TOKEN,
       });
+
+      // Procesar pagos
       if (type === "payment") {
-        const result = await mercadoPagoService.processWebhook(
-          { type, data },
-          signature,
-          requestId
-        );
+        const result = await mercadoPagoService.processPayment(paymentId);
+        console.log("✅ Webhook procesado:", result);
         return res.status(200).json({ success: true, data: result });
       }
-      console.log("Webhook recibido pero no procesado:", type);
-      res.status(200).json({ success: true, message: "Webhook recibido pero no procesado" });
+
+      console.log("ℹ️ Webhook recibido pero tipo no procesado:", type);
+      res.status(200).json({ success: true, message: `Webhook tipo '${type}' recibido pero no procesado` });
     } catch (error: any) {
-      console.error("Error en webhook de Mercado Pago:", {
+      console.error("❌ Error en webhook de Mercado Pago:", {
         message: error.message,
         status: error.status,
         statusCode: error.statusCode,
       });
+      // Siempre responder 200 para que MercadoPago no reintente infinitamente
       res.status(200).json({ 
         success: false, 
         error: error.message || "Error procesando webhook" 
@@ -170,22 +196,18 @@ class SubscriptionController {
       next(error);
     }
   };
-
   registerManualPayment = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { businessId, amount, months, notes } = req.body;
-      
       if (!businessId || amount === undefined || !months) {
         throw createHttpError(400, "Faltan datos requeridos (businessId, amount, months)");
       }
-
       const payment = await subscriptionService.registerManualPayment(
         businessId,
         amount,
         months,
         notes
       );
-
       res.json({
         success: true,
         data: payment,

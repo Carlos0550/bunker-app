@@ -163,7 +163,6 @@ class CustomerController {
       next(error);
     }
   };
-
   getCustomerMetrics = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const userId = req.user?.userId;

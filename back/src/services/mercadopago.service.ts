@@ -128,7 +128,7 @@ class MercadoPagoService {
       const preferenceBody: any = {
         items: [
           {
-            title: `Suscripción ${business.businessPlan?.name || "Plan"}`.substring(0, 127),
+            title: `${business.businessPlan?.name || "Plan"}`.substring(0, 127),
             quantity: 1,
             unit_price: Number(data.amount.toFixed(2)), 
           },
@@ -174,7 +174,7 @@ class MercadoPagoService {
           planId: data.planId,
         };
       }
-      const notificationUrl = `${process.env.APP_URL || process.env.BACKEND_URL || ""}/api/subscription/mercadopago/webhook`;
+      const notificationUrl = `${process.env.BACKEND_URL || ""}/api/subscription/mercadopago/webhook`;
       if (notificationUrl && 
           notificationUrl.startsWith("https://") &&
           !notificationUrl.includes("localhost") && 
@@ -353,58 +353,115 @@ class MercadoPagoService {
         },
       });
       if (existingPayment) {
-        if (existingPayment.status !== this.mapMercadoPagoStatus(paymentData.status)) {
+        const newStatus = this.mapMercadoPagoStatus(paymentData.status);
+        const statusChanged = existingPayment.status !== newStatus;
+        
+        if (statusChanged) {
+          console.log(`🔄 Actualizando pago ${existingPayment.id}: ${existingPayment.status} → ${newStatus} (MP: ${paymentData.status})`);
+          
+          // Calcular próxima fecha de pago si cambia a aprobado
+          let nextPaymentDate: Date | undefined;
+          if (paymentData.status === "approved" && existingPayment.status !== "PAID") {
+            nextPaymentDate = new Date();
+            nextPaymentDate.setMonth(nextPaymentDate.getMonth() + 1);
+          }
+
           await prisma.paymentHistory.update({
             where: { id: existingPayment.id },
             data: {
-              status: this.mapMercadoPagoStatus(paymentData.status),
+              status: newStatus,
               mercadoPagoStatus: paymentData.status || undefined,
               mercadoPagoPaymentType: paymentData.payment_type_id || undefined,
+              ...(nextPaymentDate && { nextPaymentDate }),
             },
           });
-        }
-        return { processed: true, paymentId: existingPayment.id, updated: true };
-      }
-      if (paymentData.status === "approved") {
-        let plan = null;
-        if (planId) {
-          plan = await prisma.businessPlan.findUnique({
-            where: { id: planId },
-          });
-        }
-        if (!plan) {
-          plan = await prisma.businessPlan.findFirst({
-            where: { isActive: true },
-            orderBy: { price: "asc" },
-          });
-          if (plan) {
-            planId = plan.id;
-            console.log(`📋 Usando plan activo por defecto: ${plan.name}`);
+
+          // Acciones adicionales según el nuevo estado
+          if (paymentData.status === "approved" && existingPayment.status !== "PAID") {
+            // Reactivar usuarios si el pago fue aprobado
+            const reactivatedUsers = await prisma.user.updateMany({
+              where: {
+                businessId,
+                status: "INACTIVE",
+              },
+              data: {
+                status: "ACTIVE",
+              },
+            });
+            if (reactivatedUsers.count > 0) {
+              console.log(`✅ Reactivados ${reactivatedUsers.count} usuario(s) del negocio ${businessId}`);
+            }
           }
+
+          console.log(`✅ Pago actualizado: ${existingPayment.id} → ${newStatus}`);
+        } else {
+          console.log(`ℹ️ Pago ${existingPayment.id} ya tiene estado ${existingPayment.status}, sin cambios`);
         }
-        const nextPaymentDate = new Date();
-        nextPaymentDate.setMonth(nextPaymentDate.getMonth() + 1);
-        const preferenceId = (paymentData as any).preference_id || (paymentData as any).order?.id || undefined;
-        const paymentHistory = await prisma.paymentHistory.create({
-          data: {
-            businessId,
-            amount: paymentData.transaction_amount || plan?.price || 0,
-            status: "PAID",
-            date: new Date(),
-            nextPaymentDate,
-            isTrial: false,
-            mercadoPagoPreferenceId: preferenceId,
-            mercadoPagoPaymentId: paymentId,
-            mercadoPagoStatus: paymentData.status || undefined,
-            mercadoPagoPaymentType: paymentData.payment_type_id || undefined,
-          },
+
+        return { 
+          processed: true, 
+          paymentId: existingPayment.id, 
+          updated: statusChanged,
+          status: paymentData.status,
+          previousStatus: existingPayment.mercadoPagoStatus,
+        };
+      }
+      // Obtener datos del plan si existe
+      let plan = null;
+      if (planId) {
+        plan = await prisma.businessPlan.findUnique({
+          where: { id: planId },
         });
+      }
+      if (!plan) {
+        plan = await prisma.businessPlan.findFirst({
+          where: { isActive: true },
+          orderBy: { price: "asc" },
+        });
+        if (plan) {
+          planId = plan.id;
+          console.log(`📋 Usando plan activo por defecto: ${plan.name}`);
+        }
+      }
+
+      const preferenceId = (paymentData as any).preference_id || (paymentData as any).order?.id || undefined;
+      const mappedStatus = this.mapMercadoPagoStatus(paymentData.status);
+
+      // Calcular próxima fecha de pago solo si está aprobado
+      let nextPaymentDate: Date | undefined;
+      if (paymentData.status === "approved") {
+        nextPaymentDate = new Date();
+        nextPaymentDate.setMonth(nextPaymentDate.getMonth() + 1);
+      }
+
+      // GUARDAR TODOS los pagos en la DB para mantener trazabilidad
+      const paymentHistory = await prisma.paymentHistory.create({
+        data: {
+          businessId,
+          amount: paymentData.transaction_amount || plan?.price || 0,
+          status: mappedStatus,
+          date: new Date(),
+          nextPaymentDate,
+          isTrial: false,
+          mercadoPagoPreferenceId: preferenceId,
+          mercadoPagoPaymentId: paymentId,
+          mercadoPagoStatus: paymentData.status || undefined,
+          mercadoPagoPaymentType: paymentData.payment_type_id || undefined,
+        },
+      });
+
+      console.log(`📝 Pago guardado en DB con estado: ${mappedStatus} (MP: ${paymentData.status})`);
+
+      // Acciones adicionales según el estado
+      if (paymentData.status === "approved") {
+        // Actualizar plan del negocio
         if (planId) {
           await prisma.business.update({
             where: { id: businessId },
             data: { businessPlanId: planId },
           });
         }
+        // Reactivar usuarios inactivos
         const reactivatedUsers = await prisma.user.updateMany({
           where: {
             businessId,
@@ -417,27 +474,28 @@ class MercadoPagoService {
         if (reactivatedUsers.count > 0) {
           console.log(`✅ Reactivados ${reactivatedUsers.count} usuario(s) del negocio ${businessId}`);
         }
-        console.log(`✅ Pago procesado exitosamente: ${paymentHistory.id}`);
-        return { processed: true, paymentId: paymentHistory.id, created: true };
+        console.log(`✅ Pago APROBADO procesado: ${paymentHistory.id}`);
+        return { processed: true, paymentId: paymentHistory.id, created: true, status: "approved" };
       }
+
       if (paymentData.status === "pending" || paymentData.status === "in_process") {
-        const preferenceId = (paymentData as any).preference_id || (paymentData as any).order?.id || undefined;
-        const paymentHistory = await prisma.paymentHistory.create({
-          data: {
-            businessId,
-            amount: paymentData.transaction_amount || 0,
-            status: "PENDING",
-            date: new Date(),
-            isTrial: false,
-            mercadoPagoPreferenceId: preferenceId,
-            mercadoPagoPaymentId: paymentId,
-            mercadoPagoStatus: paymentData.status || undefined,
-            mercadoPagoPaymentType: paymentData.payment_type_id || undefined,
-          },
-        });
-        return { processed: true, paymentId: paymentHistory.id, created: true, pending: true };
+        console.log(`⏳ Pago PENDIENTE registrado: ${paymentHistory.id}`);
+        return { processed: true, paymentId: paymentHistory.id, created: true, status: "pending" };
       }
-      return { processed: false, message: `Estado de pago no procesado: ${paymentData.status}` };
+
+      if (paymentData.status === "rejected" || paymentData.status === "cancelled") {
+        console.log(`❌ Pago RECHAZADO/CANCELADO registrado: ${paymentHistory.id} (${paymentData.status_detail || paymentData.status})`);
+        return { processed: true, paymentId: paymentHistory.id, created: true, status: paymentData.status };
+      }
+
+      if (paymentData.status === "refunded" || paymentData.status === "charged_back") {
+        console.log(`↩️ Pago REEMBOLSADO registrado: ${paymentHistory.id}`);
+        return { processed: true, paymentId: paymentHistory.id, created: true, status: paymentData.status };
+      }
+
+      // Cualquier otro estado también se guarda
+      console.log(`ℹ️ Pago con estado '${paymentData.status}' registrado: ${paymentHistory.id}`);
+      return { processed: true, paymentId: paymentHistory.id, created: true, status: paymentData.status };
     } catch (error: any) {
       console.error("Error processing payment:", {
         message: error.message,

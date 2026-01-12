@@ -333,7 +333,6 @@ class CustomerService {
       topDebtors,
     };
   }
-
   async getCustomerMetrics(businessCustomerId: string, businessId: string) {
     const businessCustomer = await prisma.businessCustomer.findFirst({
       where: { id: businessCustomerId, businessId },
@@ -350,15 +349,11 @@ class CustomerService {
         },
       },
     });
-
     if (!businessCustomer) {
       throw createHttpError(404, "Cliente no encontrado");
     }
-
     const accounts = businessCustomer.currentAccounts;
     const paidAccounts = accounts.filter((a) => a.status === AccountStatus.PAID && a.paidAt);
-
-    // Calcular promedio de días de pago
     let averagePaymentDays: number | null = null;
     if (paidAccounts.length > 0) {
       const totalDays = paidAccounts.reduce((acc, account) => {
@@ -370,8 +365,6 @@ class CustomerService {
       }, 0);
       averagePaymentDays = Math.round(totalDays / paidAccounts.length);
     }
-
-    // Agrupar cuentas por mes/año
     const accountsByMonth: Record<string, typeof accounts> = {};
     for (const account of accounts) {
       const date = new Date(account.createdAt);
@@ -381,26 +374,19 @@ class CustomerService {
       }
       accountsByMonth[key].push(account);
     }
-
-    // Convertir a array ordenado por fecha descendente
     const accountsByMonthArray = Object.entries(accountsByMonth)
       .sort(([a], [b]) => b.localeCompare(a))
       .map(([monthKey, monthAccounts]) => ({
         monthKey,
         accounts: monthAccounts,
       }));
-
-    // Calcular métricas adicionales
     const totalDebt = accounts
       .filter((a) => a.status !== AccountStatus.PAID)
       .reduce((acc, a) => acc + a.currentBalance, 0);
-
     const totalPaid = accounts.reduce(
       (acc, a) => acc + (a.originalAmount - a.currentBalance),
       0
     );
-
-    // Cuentas pagadas en menos de 7 días
     const paidOnTimeCount = paidAccounts.filter((account) => {
       const createdAt = new Date(account.createdAt);
       const paidAt = new Date(account.paidAt!);
@@ -408,7 +394,6 @@ class CustomerService {
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
       return diffDays <= 7;
     }).length;
-
     return {
       customer: businessCustomer.customer,
       creditLimit: businessCustomer.creditLimit,

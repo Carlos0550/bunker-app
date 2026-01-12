@@ -85,7 +85,7 @@ export default function POS() {
     queryFn: () =>
       productsApi.getProducts(
         { search: searchTerm || undefined, state: "ACTIVE" },
-        { page: 1, limit: 50 }
+        { page: 1, limit: 8 }
       ),
     staleTime: 30000,
   });

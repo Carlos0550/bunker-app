@@ -30,6 +30,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -60,6 +67,13 @@ import {
   ArrowDown,
   X,
   ScanLine,
+  ImagePlus,
+  MoreVertical,
+  Power,
+  PowerOff,
+  CheckCircle,
+  FolderPlus,
+  Tag,
 } from "lucide-react";
 import { BarcodeScanner } from "@/components/BarcodeScanner";
 import { toast } from "sonner";
@@ -106,6 +120,18 @@ export default function Productos() {
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scannerMode, setScannerMode] = useState<"form" | "search">("form");
   const [scannedBarcode, setScannedBarcode] = useState("");
+
+  // Estado para la imagen del producto
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+  // Estados para gestión de categorías
+  const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [isCreatingNewCategory, setIsCreatingNewCategory] = useState(false);
+  const [newCategoryInline, setNewCategoryInline] = useState("");
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
 
   // Query para estadísticas (todos los productos sin filtros)
   const { data: statsData } = useQuery({
@@ -201,13 +227,23 @@ export default function Productos() {
   // Mutations
   const createMutation = useMutation({
     mutationFn: (data: any) => productsApi.createProduct(data),
-    onSuccess: () => {
+    onSuccess: async (product) => {
+      // Subir imagen si se seleccionó una
+      if (selectedImage) {
+        try {
+          await productsApi.updateProductImage(product.id, selectedImage);
+        } catch {
+          toast.error("El producto se creó pero hubo un error al subir la imagen");
+        }
+      }
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["productsStats"] });
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
       toast.success("Producto creado exitosamente");
       setIsDialogOpen(false);
       setEditingProduct(null);
+      setSelectedImage(null);
+      setImagePreview(null);
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.error?.message || "Error al crear producto");
@@ -217,7 +253,15 @@ export default function Productos() {
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) =>
       productsApi.updateProduct(id, data),
-    onSuccess: () => {
+    onSuccess: async (product) => {
+      // Subir imagen si se seleccionó una nueva
+      if (selectedImage) {
+        try {
+          await productsApi.updateProductImage(product.id, selectedImage);
+        } catch {
+          toast.error("El producto se actualizó pero hubo un error al subir la imagen");
+        }
+      }
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["productsStats"] });
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
@@ -225,6 +269,8 @@ export default function Productos() {
       toast.success("Producto actualizado");
       setIsDialogOpen(false);
       setEditingProduct(null);
+      setSelectedImage(null);
+      setImagePreview(null);
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.error?.message || "Error al actualizar");
@@ -334,6 +380,52 @@ export default function Productos() {
     },
   });
 
+  // Mutations para categorías
+  const createCategoryMutation = useMutation({
+    mutationFn: (name: string) => productsApi.createCategory(name),
+    onSuccess: (category) => {
+      queryClient.invalidateQueries({ queryKey: ["categories"] });
+      toast.success("Categoría creada exitosamente");
+      setIsCategoryDialogOpen(false);
+      setNewCategoryName("");
+      setEditingCategory(null);
+      // Si se creó desde el formulario inline, seleccionar la categoría
+      if (isCreatingNewCategory) {
+        setSelectedCategoryId(category.id);
+        setIsCreatingNewCategory(false);
+        setNewCategoryInline("");
+      }
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error?.message || "Error al crear categoría");
+    },
+  });
+
+  const updateCategoryMutation = useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) => productsApi.updateCategory(id, name),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["categories"] });
+      toast.success("Categoría actualizada");
+      setIsCategoryDialogOpen(false);
+      setNewCategoryName("");
+      setEditingCategory(null);
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error?.message || "Error al actualizar categoría");
+    },
+  });
+
+  const deleteCategoryMutation = useMutation({
+    mutationFn: (id: string) => productsApi.deleteCategory(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["categories"] });
+      toast.success("Categoría eliminada");
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error?.message || "Error al eliminar categoría");
+    },
+  });
+
   const handleSave = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
@@ -414,12 +506,22 @@ export default function Productos() {
               setIsDialogOpen(open);
               if (!open) {
                 setScannedBarcode("");
+                setSelectedImage(null);
+                setImagePreview(null);
+                setSelectedCategoryId("");
+                setIsCreatingNewCategory(false);
+                setNewCategoryInline("");
               }
             }}>
               <DialogTrigger asChild>
                 <Button onClick={() => {
                   setEditingProduct(null);
                   setScannedBarcode("");
+                  setSelectedImage(null);
+                  setImagePreview(null);
+                  setSelectedCategoryId("");
+                  setIsCreatingNewCategory(false);
+                  setNewCategoryInline("");
                 }}>
                   <Plus className="w-4 h-4 mr-2" />
                   Nuevo Producto
@@ -433,6 +535,69 @@ export default function Productos() {
                 </DialogHeader>
                 <form onSubmit={handleSave} className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
+                    {/* Imagen del producto */}
+                    <div className="col-span-2">
+                      <Label>Imagen del producto</Label>
+                      <div className="flex items-center gap-4 mt-2">
+                        <div className="w-24 h-24 rounded-lg border-2 border-dashed border-border bg-secondary/30 flex items-center justify-center overflow-hidden">
+                          {imagePreview || editingProduct?.imageUrl ? (
+                            <img
+                              src={imagePreview || editingProduct?.imageUrl}
+                              alt="Preview"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <Package className="w-8 h-8 text-muted-foreground" />
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            id="product-image"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                if (file.size > 5 * 1024 * 1024) {
+                                  toast.error("La imagen no puede superar 5MB");
+                                  return;
+                                }
+                                setSelectedImage(file);
+                                setImagePreview(URL.createObjectURL(file));
+                              }
+                            }}
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => document.getElementById("product-image")?.click()}
+                          >
+                            <ImagePlus className="w-4 h-4 mr-2" />
+                            {imagePreview || editingProduct?.imageUrl ? "Cambiar imagen" : "Subir imagen"}
+                          </Button>
+                          {(imagePreview || selectedImage) && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="ml-2 text-destructive"
+                              onClick={() => {
+                                setSelectedImage(null);
+                                setImagePreview(null);
+                              }}
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          )}
+                          <p className="text-xs text-muted-foreground mt-1">
+                            JPG, PNG o WebP (máx. 5MB)
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
                     <div className="col-span-2">
                       <Label htmlFor="name">Nombre *</Label>
                       <Input
@@ -475,18 +640,79 @@ export default function Productos() {
                     </div>
                     <div>
                       <Label htmlFor="category">Categoría</Label>
-                      <Select name="category" defaultValue={editingProduct?.categoryId || ""}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Seleccionar" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {categories.map((cat) => (
-                            <SelectItem key={cat.id} value={cat.id}>
-                              {cat.name}
+                      {isCreatingNewCategory ? (
+                        <div className="flex gap-2">
+                          <Input
+                            value={newCategoryInline}
+                            onChange={(e) => setNewCategoryInline(e.target.value)}
+                            placeholder="Nombre de la nueva categoría"
+                            autoFocus
+                          />
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => {
+                              if (newCategoryInline.trim()) {
+                                createCategoryMutation.mutate(newCategoryInline.trim());
+                              }
+                            }}
+                            disabled={!newCategoryInline.trim() || createCategoryMutation.isPending}
+                          >
+                            {createCategoryMutation.isPending ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <CheckCircle className="w-4 h-4" />
+                            )}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setIsCreatingNewCategory(false);
+                              setNewCategoryInline("");
+                            }}
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <Select 
+                          value={selectedCategoryId || editingProduct?.categoryId || ""}
+                          onValueChange={(value) => {
+                            if (value === "__new__") {
+                              setIsCreatingNewCategory(true);
+                            } else {
+                              setSelectedCategoryId(value);
+                            }
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleccionar" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__new__" className="text-primary">
+                              <div className="flex items-center gap-2">
+                                <FolderPlus className="w-4 h-4" />
+                                <span>+ Crear nueva categoría</span>
+                              </div>
                             </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                            {categories.length > 0 && (
+                              <div className="border-t my-1" />
+                            )}
+                            {categories.map((cat) => (
+                              <SelectItem key={cat.id} value={cat.id}>
+                                {cat.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                      <input 
+                        type="hidden" 
+                        name="category" 
+                        value={selectedCategoryId || editingProduct?.categoryId || ""} 
+                      />
                     </div>
                     <div>
                       <Label htmlFor="price">Precio de Venta</Label>
@@ -629,6 +855,9 @@ export default function Productos() {
                   {pendingManualProducts.length}
                 </Badge>
               )}
+            </TabsTrigger>
+            <TabsTrigger value="categorias">
+              Categorías ({categories.length})
             </TabsTrigger>
           </TabsList>
 
@@ -822,7 +1051,7 @@ export default function Productos() {
                       <TableHead className="text-muted-foreground text-center">Stock Mínimo</TableHead>
                       <TableHead className="text-muted-foreground text-center">Reservado</TableHead>
                       <TableHead className="text-muted-foreground">Estado</TableHead>
-                      <TableHead className="text-muted-foreground text-center">Ajustar</TableHead>
+                      <TableHead className="text-muted-foreground text-center">Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -872,17 +1101,79 @@ export default function Productos() {
                           {getStateBadge(product.state, product.stock, product.min_stock || 5)}
                         </TableCell>
                         <TableCell className="text-center">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setStockProduct(product);
-                              setIsStockDialogOpen(true);
-                            }}
-                          >
-                            <RefreshCw className="w-4 h-4 mr-1" />
-                            Ajustar
-                          </Button>
+                          <div className="flex items-center justify-center gap-1">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setStockProduct(product);
+                                setIsStockDialogOpen(true);
+                              }}
+                              title="Ajustar stock"
+                            >
+                              <RefreshCw className="w-4 h-4" />
+                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm">
+                                  <MoreVertical className="w-4 h-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    setEditingProduct(product);
+                                    setScannedBarcode(product.bar_code || "");
+                                    setSelectedCategoryId(product.categoryId || "");
+                                    setIsCreatingNewCategory(false);
+                                    setNewCategoryInline("");
+                                    setIsDialogOpen(true);
+                                  }}
+                                >
+                                  <Edit2 className="w-4 h-4 mr-2" />
+                                  Editar
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                {product.state === "DISABLED" ? (
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      updateMutation.mutate({
+                                        id: product.id,
+                                        data: { state: "ACTIVE" },
+                                      });
+                                    }}
+                                  >
+                                    <CheckCircle className="w-4 h-4 mr-2 text-success" />
+                                    Activar
+                                  </DropdownMenuItem>
+                                ) : (
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      updateMutation.mutate({
+                                        id: product.id,
+                                        data: { state: "DISABLED" },
+                                      });
+                                    }}
+                                  >
+                                    <Ban className="w-4 h-4 mr-2 text-warning" />
+                                    Deshabilitar
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  className="text-destructive focus:text-destructive"
+                                  onClick={() => {
+                                    if (confirm(`¿Estás seguro de eliminar "${product.name}"?`)) {
+                                      deleteMutation.mutate(product.id);
+                                    }
+                                  }}
+                                >
+                                  <Trash2 className="w-4 h-4 mr-2" />
+                                  Eliminar
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -1199,7 +1490,185 @@ export default function Productos() {
               </div>
             )}
           </TabsContent>
+
+          {/* Tab Categorías */}
+          <TabsContent value="categorias" className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-medium">Gestión de Categorías</h3>
+                <p className="text-sm text-muted-foreground">
+                  Organiza tus productos creando y gestionando categorías
+                </p>
+              </div>
+              <Button
+                onClick={() => {
+                  setEditingCategory(null);
+                  setNewCategoryName("");
+                  setIsCategoryDialogOpen(true);
+                }}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Nueva Categoría
+              </Button>
+            </div>
+
+            {categories.length === 0 ? (
+              <div className="bunker-card p-12 text-center">
+                <Tag className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                <p className="text-lg font-medium text-foreground">No hay categorías</p>
+                <p className="text-muted-foreground mb-4">
+                  Crea categorías para organizar mejor tus productos
+                </p>
+                <Button
+                  onClick={() => {
+                    setEditingCategory(null);
+                    setNewCategoryName("");
+                    setIsCategoryDialogOpen(true);
+                  }}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Crear primera categoría
+                </Button>
+              </div>
+            ) : (
+              <div className="bunker-card overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-border hover:bg-transparent">
+                      <TableHead className="text-muted-foreground">Nombre</TableHead>
+                      <TableHead className="text-muted-foreground text-center">Productos</TableHead>
+                      <TableHead className="text-muted-foreground text-right">Acciones</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {categories.map((category) => {
+                      // Contar productos de esta categoría
+                      const productCount = statsData?.data.filter(
+                        (p) => p.categoryId === category.id
+                      ).length || 0;
+                      
+                      return (
+                        <TableRow key={category.id} className="border-border">
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                                <Tag className="w-5 h-5 text-primary" />
+                              </div>
+                              <span className="font-medium text-foreground">{category.name}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge variant="secondary">{productCount}</Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setEditingCategory(category);
+                                  setNewCategoryName(category.name);
+                                  setIsCategoryDialogOpen(true);
+                                }}
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-destructive hover:text-destructive"
+                                onClick={() => {
+                                  if (productCount > 0) {
+                                    toast.error(
+                                      `No se puede eliminar "${category.name}" porque tiene ${productCount} producto(s) asociado(s)`
+                                    );
+                                    return;
+                                  }
+                                  if (confirm(`¿Estás seguro de eliminar la categoría "${category.name}"?`)) {
+                                    deleteCategoryMutation.mutate(category.id);
+                                  }
+                                }}
+                                disabled={productCount > 0}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </TabsContent>
         </Tabs>
+
+        {/* Dialog para crear/editar categoría */}
+        <Dialog open={isCategoryDialogOpen} onOpenChange={(open) => {
+          setIsCategoryDialogOpen(open);
+          if (!open) {
+            setEditingCategory(null);
+            setNewCategoryName("");
+          }
+        }}>
+          <DialogContent className="sm:max-w-[400px]">
+            <DialogHeader>
+              <DialogTitle>
+                {editingCategory ? "Editar Categoría" : "Nueva Categoría"}
+              </DialogTitle>
+              <DialogDescription>
+                {editingCategory 
+                  ? "Modifica el nombre de la categoría"
+                  : "Crea una nueva categoría para organizar tus productos"
+                }
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="categoryName">Nombre de la categoría</Label>
+                <Input
+                  id="categoryName"
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  placeholder="Ej: Bebidas, Lácteos, Limpieza..."
+                  autoFocus
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsCategoryDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={() => {
+                  if (!newCategoryName.trim()) {
+                    toast.error("El nombre de la categoría es requerido");
+                    return;
+                  }
+                  if (editingCategory) {
+                    updateCategoryMutation.mutate({
+                      id: editingCategory.id,
+                      name: newCategoryName.trim(),
+                    });
+                  } else {
+                    createCategoryMutation.mutate(newCategoryName.trim());
+                  }
+                }}
+                disabled={
+                  !newCategoryName.trim() ||
+                  createCategoryMutation.isPending ||
+                  updateCategoryMutation.isPending
+                }
+              >
+                {(createCategoryMutation.isPending || updateCategoryMutation.isPending) && (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                )}
+                {editingCategory ? "Guardar Cambios" : "Crear Categoría"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Dialog para vincular producto manual */}
         <Dialog 

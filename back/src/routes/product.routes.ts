@@ -20,6 +20,8 @@ router.get("/low-stock", productController.getLowStockProducts);
 router.get("/barcode/:barcode", productController.findByBarcode);
 router.get("/categories", productController.getCategories);
 router.post("/categories", validateBody(createCategorySchema), productController.createCategory);
+router.patch("/categories/:id", validateBody(createCategorySchema), productController.updateCategory);
+router.delete("/categories/:id", productController.deleteCategory);
 router.get("/:id", productController.getProductById);
 router.post(
   "/",
