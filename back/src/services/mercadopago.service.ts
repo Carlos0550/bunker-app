@@ -2,6 +2,7 @@ import { MercadoPagoConfig, Preference, Payment } from "mercadopago";
 import { prisma } from "@/config/db";
 import createHttpError from "http-errors";
 import crypto from "crypto";
+import { emailService } from "@/services/email.service";
 function getMercadoPagoClient() {
   let accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
   if (accessToken) {
@@ -106,7 +107,12 @@ class MercadoPagoService {
       const preferenceClient = new Preference(client);
       const business = await prisma.business.findUnique({
         where: { id: data.businessId },
-        include: { businessPlan: true },
+        include: { 
+          businessPlan: true,
+          paymentResponsibleUser: {
+            select: { email: true, name: true },
+          },
+        },
       });
       if (!business) {
         throw createHttpError(404, "Negocio no encontrado");
@@ -119,6 +125,8 @@ class MercadoPagoService {
       };
       if (business.contact_email) {
         payerData.email = business.contact_email;
+      } else if (business.paymentResponsibleUser?.email) {
+        payerData.email = business.paymentResponsibleUser.email;
       }
       if (business.contact_phone) {
         payerData.phone = {
@@ -355,17 +363,13 @@ class MercadoPagoService {
       if (existingPayment) {
         const newStatus = this.mapMercadoPagoStatus(paymentData.status);
         const statusChanged = existingPayment.status !== newStatus;
-        
         if (statusChanged) {
           console.log(`🔄 Actualizando pago ${existingPayment.id}: ${existingPayment.status} → ${newStatus} (MP: ${paymentData.status})`);
-          
-          // Calcular próxima fecha de pago si cambia a aprobado
           let nextPaymentDate: Date | undefined;
           if (paymentData.status === "approved" && existingPayment.status !== "PAID") {
             nextPaymentDate = new Date();
             nextPaymentDate.setMonth(nextPaymentDate.getMonth() + 1);
           }
-
           await prisma.paymentHistory.update({
             where: { id: existingPayment.id },
             data: {
@@ -375,10 +379,7 @@ class MercadoPagoService {
               ...(nextPaymentDate && { nextPaymentDate }),
             },
           });
-
-          // Acciones adicionales según el nuevo estado
           if (paymentData.status === "approved" && existingPayment.status !== "PAID") {
-            // Reactivar usuarios si el pago fue aprobado
             const reactivatedUsers = await prisma.user.updateMany({
               where: {
                 businessId,
@@ -392,12 +393,10 @@ class MercadoPagoService {
               console.log(`✅ Reactivados ${reactivatedUsers.count} usuario(s) del negocio ${businessId}`);
             }
           }
-
           console.log(`✅ Pago actualizado: ${existingPayment.id} → ${newStatus}`);
         } else {
           console.log(`ℹ️ Pago ${existingPayment.id} ya tiene estado ${existingPayment.status}, sin cambios`);
         }
-
         return { 
           processed: true, 
           paymentId: existingPayment.id, 
@@ -406,7 +405,6 @@ class MercadoPagoService {
           previousStatus: existingPayment.mercadoPagoStatus,
         };
       }
-      // Obtener datos del plan si existe
       let plan = null;
       if (planId) {
         plan = await prisma.businessPlan.findUnique({
@@ -423,18 +421,13 @@ class MercadoPagoService {
           console.log(`📋 Usando plan activo por defecto: ${plan.name}`);
         }
       }
-
       const preferenceId = (paymentData as any).preference_id || (paymentData as any).order?.id || undefined;
       const mappedStatus = this.mapMercadoPagoStatus(paymentData.status);
-
-      // Calcular próxima fecha de pago solo si está aprobado
       let nextPaymentDate: Date | undefined;
       if (paymentData.status === "approved") {
         nextPaymentDate = new Date();
         nextPaymentDate.setMonth(nextPaymentDate.getMonth() + 1);
       }
-
-      // GUARDAR TODOS los pagos en la DB para mantener trazabilidad
       const paymentHistory = await prisma.paymentHistory.create({
         data: {
           businessId,
@@ -449,19 +442,20 @@ class MercadoPagoService {
           mercadoPagoPaymentType: paymentData.payment_type_id || undefined,
         },
       });
-
       console.log(`📝 Pago guardado en DB con estado: ${mappedStatus} (MP: ${paymentData.status})`);
-
-      // Acciones adicionales según el estado
+      await this.sendPaymentNotification(businessId, mappedStatus, {
+        amount: paymentData.transaction_amount || plan?.price || 0,
+        date: new Date(),
+        statusMessage: paymentData.status_detail || paymentData.status || "Desconocido",
+        actionRequired: paymentData.status === "rejected" ? "Por favor, verifica los datos de pago e intenta nuevamente" : undefined,
+      });
       if (paymentData.status === "approved") {
-        // Actualizar plan del negocio
         if (planId) {
           await prisma.business.update({
             where: { id: businessId },
             data: { businessPlanId: planId },
           });
         }
-        // Reactivar usuarios inactivos
         const reactivatedUsers = await prisma.user.updateMany({
           where: {
             businessId,
@@ -477,23 +471,18 @@ class MercadoPagoService {
         console.log(`✅ Pago APROBADO procesado: ${paymentHistory.id}`);
         return { processed: true, paymentId: paymentHistory.id, created: true, status: "approved" };
       }
-
       if (paymentData.status === "pending" || paymentData.status === "in_process") {
         console.log(`⏳ Pago PENDIENTE registrado: ${paymentHistory.id}`);
         return { processed: true, paymentId: paymentHistory.id, created: true, status: "pending" };
       }
-
       if (paymentData.status === "rejected" || paymentData.status === "cancelled") {
         console.log(`❌ Pago RECHAZADO/CANCELADO registrado: ${paymentHistory.id} (${paymentData.status_detail || paymentData.status})`);
         return { processed: true, paymentId: paymentHistory.id, created: true, status: paymentData.status };
       }
-
       if (paymentData.status === "refunded" || paymentData.status === "charged_back") {
         console.log(`↩️ Pago REEMBOLSADO registrado: ${paymentHistory.id}`);
         return { processed: true, paymentId: paymentHistory.id, created: true, status: paymentData.status };
       }
-
-      // Cualquier otro estado también se guarda
       console.log(`ℹ️ Pago con estado '${paymentData.status}' registrado: ${paymentHistory.id}`);
       return { processed: true, paymentId: paymentHistory.id, created: true, status: paymentData.status };
     } catch (error: any) {
@@ -520,6 +509,50 @@ class MercadoPagoService {
         throw createHttpError(404, `Pago no encontrado: ${error.message}`);
       }
       throw createHttpError(500, `Error al procesar pago: ${error.message}`);
+    }
+  }
+  private async sendPaymentNotification(
+    businessId: string,
+    paymentStatus: string,
+    paymentData: {
+      amount: number;
+      date: Date;
+      statusMessage: string;
+      actionRequired?: string;
+    }
+  ) {
+    try {
+      const business = await prisma.business.findUnique({
+        where: { id: businessId },
+        include: {
+          paymentResponsibleUser: {
+            select: { email: true, name: true },
+          },
+          users: {
+            where: { role: 1, status: "ACTIVE" },
+            select: { email: true, name: true },
+            take: 1,
+          },
+        },
+      });
+      if (!business) {
+        console.warn(`No se pudo enviar notificación: negocio ${businessId} no encontrado`);
+        return;
+      }
+      const recipient = business.paymentResponsibleUser || business.users[0];
+      if (!recipient) {
+        console.warn(`No se pudo enviar notificación: no hay responsable ni admin para negocio ${businessId}`);
+        return;
+      }
+      await emailService.sendPaymentWebhookNotificationEmail(
+        recipient,
+        business,
+        paymentStatus,
+        paymentData
+      );
+      console.log(`📧 Notificación de pago enviada a ${recipient.email}`);
+    } catch (error) {
+      console.error("Error enviando notificación de pago:", error);
     }
   }
   private mapMercadoPagoStatus(status: string | undefined): "PENDING" | "PAID" | "FAILED" | "REFUNDED" | "CANCELLED" {

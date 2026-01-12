@@ -79,6 +79,7 @@ export interface User {
   email: string;
   role: number; // 0 = Super Admin, 1 = Admin, 2 = Empleado
   profilePhoto?: string;
+  businessId?: string;
 }
 
 export interface LoginCredentials {

@@ -26,3 +26,19 @@ export const createAdminSchema = z.object({
   password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres"),
   businessId: z.string().uuid("ID de negocio inválido"),
 });
+export const createUserByAdminSchema = z.object({
+  name: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
+  email: z.string().email("El correo electrónico no es válido"),
+  password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres"),
+  role: z.number().int().min(1).max(2),
+  permissions: z.array(z.string()).optional(),
+  businessId: z.string().uuid("ID de negocio inválido"),
+});
+export const updateUserByAdminSchema = z.object({
+  name: z.string().min(2, "El nombre debe tener al menos 2 caracteres").optional(),
+  email: z.string().email("El correo electrónico no es válido").optional(),
+  password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres").optional(),
+  role: z.number().int().min(1).max(2).optional(),
+  permissions: z.array(z.string()).optional(),
+  status: z.enum(["ACTIVE", "INACTIVE", "DELETED"]).optional(),
+});

@@ -30,6 +30,9 @@ async function getSubscriptionsToNotify(): Promise<BusinessSubscription[]> {
   const businesses = await prisma.business.findMany({
     include: {
       businessPlan: true,
+      paymentResponsibleUser: {
+        select: { email: true, name: true },
+      },
       users: {
         where: { role: 1, status: "ACTIVE" }, 
         select: { email: true, name: true },
@@ -44,7 +47,7 @@ async function getSubscriptionsToNotify(): Promise<BusinessSubscription[]> {
   });
   for (const business of businesses) {
     const lastPayment = business.paymentHistory[0];
-    const admin = business.users[0];
+    const admin = business.paymentResponsibleUser || business.users[0];
     if (!lastPayment?.nextPaymentDate || !admin) continue;
     const nextPaymentDate = new Date(lastPayment.nextPaymentDate);
     const diffTime = nextPaymentDate.getTime() - now.getTime();
@@ -210,6 +213,9 @@ async function suspendExpiredBusinesses(): Promise<void> {
         orderBy: { date: "desc" },
         take: 1,
       },
+      paymentResponsibleUser: {
+        select: { email: true, name: true },
+      },
       users: {
         where: { role: 1, status: "ACTIVE" },
         select: { id: true, email: true, name: true },
@@ -229,17 +235,17 @@ async function suspendExpiredBusinesses(): Promise<void> {
           status: "INACTIVE",
         },
       });
-      const admin = business.users[0];
-      if (admin) {
+      const recipient = business.paymentResponsibleUser || business.users[0];
+      if (recipient) {
         const subject = `🔒 Acceso desactivado - ${business.name}`;
         await emailService.sendEmailWithTemplate({
-          to: admin.email,
+          to: recipient.email,
           subject,
           templateName: "subscription-suspended",
           data: {
-            email: admin.email,
+            email: recipient.email,
             title: subject,
-            adminName: admin.name,
+            adminName: recipient.name,
             businessName: business.name,
             paymentLink: getPaymentLink(business.id),
           },

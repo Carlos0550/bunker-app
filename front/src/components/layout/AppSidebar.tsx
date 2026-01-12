@@ -40,6 +40,10 @@ const mainMenuItems = [
   { title: "Reportes", url: "/reportes", icon: BarChart3 },
 ];
 
+const adminOnlyItems = [
+  { title: "Usuarios", url: "/usuarios", icon: Users },
+];
+
 const configItems = [
   { title: "Configuración", url: "/configuracion", icon: Settings },
 ];
@@ -134,11 +138,42 @@ export function AppSidebar() {
         </SidebarGroup>
         )}
 
-        {/* Admin Menu - Solo para Super Admin (role 0) */}
-        {user?.role === 0 && (
+        {/* Admin Only Menu - Para Admins (role 1) */}
+        {user?.role === 1 && (
           <SidebarGroup>
             <SidebarGroupLabel className="text-muted-foreground text-xs uppercase tracking-wider px-4">
               {!collapsed && "Administración"}
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {adminOnlyItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive(item.url)}
+                      tooltip={item.title}
+                    >
+                      <NavLink 
+                        to={item.url}
+                        className="flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 hover:bg-sidebar-accent"
+                        activeClassName="bg-sidebar-accent text-primary font-medium"
+                      >
+                        <item.icon className="w-5 h-5 flex-shrink-0" />
+                        {!collapsed && <span>{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {/* Super Admin Menu - Solo para Super Admin (role 0) */}
+        {user?.role === 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="text-muted-foreground text-xs uppercase tracking-wider px-4">
+              {!collapsed && "Super Admin"}
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>

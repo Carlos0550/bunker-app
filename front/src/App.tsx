@@ -13,6 +13,7 @@ import Productos from "./pages/Productos";
 import Clientes from "./pages/Clientes";
 import Reportes from "./pages/Reportes";
 import Configuracion from "./pages/Configuracion";
+import Usuarios from "./pages/Usuarios";
 import AdminPanel from "./pages/AdminPanel";
 import NotFound from "./pages/NotFound";
 import Landing from "./pages/Landing";
@@ -42,6 +43,7 @@ const App = () => (
             <Route path="/productos" element={<Productos />} />
             <Route path="/clientes" element={<Clientes />} />
             <Route path="/reportes" element={<Reportes />} />
+            <Route path="/usuarios" element={<Usuarios />} />
             <Route path="/configuracion" element={<Configuracion />} />
             <Route element={<AdminRoute />}>
               <Route path="/admin" element={<AdminPanel />} />

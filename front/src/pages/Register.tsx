@@ -159,7 +159,7 @@ export default function Register() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="businessPhone">Teléfono</Label>
+                    <Label htmlFor="businessPhone">Teléfono (opcional)</Label>
                     <Input 
                       id="businessPhone" 
                       placeholder="+52 555..." 
@@ -168,7 +168,7 @@ export default function Register() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="businessEmail">Email de Contacto</Label>
+                    <Label htmlFor="businessEmail">Email de Contacto (opcional)</Label>
                     <Input 
                       id="businessEmail" 
                       type="email"

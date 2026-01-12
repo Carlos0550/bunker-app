@@ -18,6 +18,21 @@ interface CreateAdminData {
   password: string;
   businessId: string;
 }
+interface CreateUserByAdminData {
+  name: string;
+  email: string;
+  password: string;
+  role: number;
+  permissions?: string[];
+}
+interface UpdateUserData {
+  name?: string;
+  email?: string;
+  password?: string;
+  role?: number;
+  permissions?: string[];
+  status?: string;
+}
 export class UserService {
   private generateVerificationData() {
     const verificationToken = generateSecureToken(32);
@@ -267,23 +282,6 @@ export class UserService {
     const { password, verificationToken, ...userWithoutSensitiveData } = user;
     return userWithoutSensitiveData;
   }
-  async updateUser(userId: string, data: Prisma.UserUpdateInput) {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-    });
-    if (!user) {
-      throw createHttpError(404, "Usuario no encontrado");
-    }
-    if (data.password && typeof data.password === "string") {
-      data.password = await hashPassword(data.password);
-    }
-    const updatedUser = await prisma.user.update({
-      where: { id: userId },
-      data,
-    });
-    const { password, verificationToken, ...userWithoutSensitiveData } = updatedUser;
-    return userWithoutSensitiveData;
-  }
   async updateProfilePhoto(userId: string, file: Express.Multer.File) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -341,6 +339,192 @@ export class UserService {
       data: { password: hashedPassword },
     });
     return true;
+  }
+  async createUserByAdmin(creatorId: string, businessId: string, data: CreateUserByAdminData) {
+    const creator = await prisma.user.findUnique({
+      where: { id: creatorId },
+      select: { role: true, businessId: true },
+    });
+    if (!creator) {
+      throw createHttpError(404, "Usuario creador no encontrado");
+    }
+    if (creator.role !== 1 && creator.role !== 0) {
+      throw createHttpError(403, "No tiene permisos para crear usuarios");
+    }
+    if (creator.role === 1 && creator.businessId !== businessId) {
+      throw createHttpError(403, "No puede crear usuarios para otro negocio");
+    }
+    const existingUser = await prisma.user.findFirst({
+      where: { email: data.email, businessId },
+    });
+    if (existingUser) {
+      throw createHttpError(409, "Ya existe un usuario con ese correo en este negocio");
+    }
+    let { role, permissions = [] } = data;
+    const ALL_PERMISSIONS = ["POS", "PRODUCTOS", "VENTAS", "CLIENTES", "REPORTES", "CONFIGURACION"];
+    if (role === 2 && permissions.length === ALL_PERMISSIONS.length) {
+      role = 1;
+      permissions = [];
+    }
+    const hashedPassword = await hashPassword(data.password);
+    const { verificationToken, verificationExpires } = this.generateVerificationData();
+    const user = await prisma.user.create({
+      data: {
+        name: data.name,
+        email: data.email,
+        password: hashedPassword,
+        role,
+        permissions: role === 1 ? [] : permissions,
+        status: "ACTIVE",
+        businessId,
+        emailVerified: false,
+        verificationToken,
+        verificationExpires,
+      },
+    });
+    await sendVerificationEmail({
+      email: user.email,
+      name: user.name,
+      verificationToken,
+      appUrl: process.env.APP_URL ?? "",
+    });
+    const { password: _, verificationToken: __, ...userWithoutSensitive } = user;
+    return userWithoutSensitive;
+  }
+  async updateOwnProfile(userId: string, data: Prisma.UserUpdateInput) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+    if (!user) {
+      throw createHttpError(404, "Usuario no encontrado");
+    }
+    if (data.password && typeof data.password === "string") {
+      data.password = await hashPassword(data.password);
+    }
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data,
+    });
+    const { password, verificationToken, ...userWithoutSensitiveData } = updatedUser;
+    return userWithoutSensitiveData;
+  }
+  async updateUser(userId: string, updaterId: string, data: UpdateUserData) {
+    const updater = await prisma.user.findUnique({
+      where: { id: updaterId },
+      select: { role: true, businessId: true },
+    });
+    if (!updater) {
+      throw createHttpError(404, "Usuario actualizador no encontrado");
+    }
+    if (updater.role !== 1 && updater.role !== 0) {
+      throw createHttpError(403, "No tiene permisos para actualizar usuarios");
+    }
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { businessId: true, role: true },
+    });
+    if (!user) {
+      throw createHttpError(404, "Usuario no encontrado");
+    }
+    if (updater.role === 1 && updater.businessId !== user.businessId) {
+      throw createHttpError(403, "No puede actualizar usuarios de otro negocio");
+    }
+    let { role, permissions } = data;
+    if (role !== undefined && permissions !== undefined) {
+      const ALL_PERMISSIONS = ["POS", "PRODUCTOS", "VENTAS", "CLIENTES", "REPORTES", "CONFIGURACION"];
+      if (role === 2 && permissions.length === ALL_PERMISSIONS.length) {
+        role = 1;
+        permissions = [];
+      }
+    }
+    const updateData: any = {};
+    if (data.name) updateData.name = data.name;
+    if (data.email) updateData.email = data.email;
+    if (data.password) updateData.password = await hashPassword(data.password);
+    if (role !== undefined) updateData.role = role;
+    if (permissions !== undefined) updateData.permissions = role === 1 ? [] : permissions;
+    if (data.status) updateData.status = data.status;
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+    });
+    const { password: _, verificationToken: __, ...userWithoutSensitive } = updatedUser;
+    return userWithoutSensitive;
+  }
+  async deleteUser(userId: string, deleterId: string) {
+    const deleter = await prisma.user.findUnique({
+      where: { id: deleterId },
+      select: { role: true, businessId: true },
+    });
+    if (!deleter) {
+      throw createHttpError(404, "Usuario eliminador no encontrado");
+    }
+    if (deleter.role !== 1 && deleter.role !== 0) {
+      throw createHttpError(403, "No tiene permisos para eliminar usuarios");
+    }
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { businessId: true, role: true },
+    });
+    if (!user) {
+      throw createHttpError(404, "Usuario no encontrado");
+    }
+    if (deleter.role === 1 && deleter.businessId !== user.businessId) {
+      throw createHttpError(403, "No puede eliminar usuarios de otro negocio");
+    }
+    if (user.role === 1) {
+      const adminCount = await prisma.user.count({
+        where: {
+          businessId: user.businessId,
+          role: 1,
+          status: { not: "DELETED" },
+        },
+      });
+      if (adminCount <= 1) {
+        throw createHttpError(400, "No se puede eliminar el último administrador del negocio");
+      }
+    }
+    await prisma.user.update({
+      where: { id: userId },
+      data: { status: "DELETED" },
+    });
+    return { success: true };
+  }
+  async getUsersByBusiness(businessId: string, requesterId: string) {
+    const requester = await prisma.user.findUnique({
+      where: { id: requesterId },
+      select: { role: true, businessId: true },
+    });
+    if (!requester) {
+      throw createHttpError(404, "Usuario solicitante no encontrado");
+    }
+    if (requester.role !== 1 && requester.role !== 0) {
+      throw createHttpError(403, "No tiene permisos para ver usuarios");
+    }
+    if (requester.role === 1 && requester.businessId !== businessId) {
+      throw createHttpError(403, "No puede ver usuarios de otro negocio");
+    }
+    const users = await prisma.user.findMany({
+      where: {
+        businessId,
+        status: { not: "DELETED" },
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        permissions: true,
+        status: true,
+        emailVerified: true,
+        createdAt: true,
+      },
+      orderBy: [
+        { role: "asc" },
+        { name: "asc" },
+      ],
+    });
+    return users;
   }
   async getBusinessAdmins(businessId: string) {
     const admins = await prisma.user.findMany({

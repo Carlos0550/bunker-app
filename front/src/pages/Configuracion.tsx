@@ -17,6 +17,17 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  Alert,
+  AlertDescription,
+} from "@/components/ui/alert";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -26,6 +37,9 @@ import {
 } from "@/components/ui/table";
 import { useBusinessStore } from "@/store/useBusinessStore";
 import { subscriptionApi, Plan } from "@/api/services/subscription";
+import { businessApi } from "@/api/services/business";
+import { usersApi, User as UserType } from "@/api/services/users";
+import { useAuthStore } from "@/store/useAuthStore";
 import { 
   Building2, 
   Bell, 
@@ -45,7 +59,9 @@ import {
   Loader2,
   CheckCircle2,
   XCircle,
-  Star
+  Star,
+  Phone,
+  User,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useEffect } from "react";
@@ -54,13 +70,23 @@ import { es } from "date-fns/locale";
 
 export default function Configuracion() {
   const { businessData, fetchBusinessData } = useBusinessStore();
+  const { user: currentUser } = useAuthStore();
   const queryClient = useQueryClient();
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [showPlanDialog, setShowPlanDialog] = useState(false);
+  
+  // Estados para datos de contacto del negocio
+  const [contactPhone, setContactPhone] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  
+  // Estados para responsable de pagos
+  const [selectedResponsibleId, setSelectedResponsibleId] = useState<string>("");
 
   useEffect(() => {
-    fetchBusinessData();
-  }, [fetchBusinessData]);
+    if (currentUser?.businessId) {
+      fetchBusinessData(currentUser.businessId);
+    }
+  }, [fetchBusinessData, currentUser?.businessId]);
 
   // Queries para suscripción
   const { data: currentPlan, isLoading: loadingCurrentPlan } = useQuery({
@@ -77,6 +103,30 @@ export default function Configuracion() {
     queryKey: ["availablePlans"],
     queryFn: subscriptionApi.getAvailablePlans,
   });
+
+  // Query para datos del negocio
+  const { data: businessDetails, isLoading: loadingBusiness } = useQuery({
+    queryKey: ["businessDetails", currentUser?.businessId],
+    queryFn: () => businessApi.getBusiness(currentUser?.businessId || ""),
+    enabled: !!currentUser?.businessId,
+  });
+
+  // Query para administradores del negocio
+  const { data: admins = [] } = useQuery({
+    queryKey: ["admins", currentUser?.businessId],
+    queryFn: () => usersApi.getUsersByBusiness(currentUser?.businessId || ""),
+    enabled: !!currentUser?.businessId,
+    select: (data) => data.filter((u: UserType) => u.role === 1),
+  });
+
+  // Actualizar estados cuando se carguen los datos del negocio
+  useEffect(() => {
+    if (businessDetails) {
+      setContactPhone(businessDetails.contact_phone || "");
+      setContactEmail(businessDetails.contact_email || "");
+      setSelectedResponsibleId(businessDetails.paymentResponsibleUserId || "");
+    }
+  }, [businessDetails]);
 
   // Mutation para cambiar plan
   const changePlanMutation = useMutation({
@@ -106,6 +156,32 @@ export default function Configuracion() {
     },
   });
 
+  // Mutation para actualizar contacto del negocio
+  const updateContactMutation = useMutation({
+    mutationFn: (data: { businessId: string; contact_phone?: string; contact_email?: string }) =>
+      businessApi.updateContact(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["businessDetails"] });
+      toast.success("Datos de contacto actualizados");
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error?.message || "Error al actualizar contacto");
+    },
+  });
+
+  // Mutation para cambiar responsable de pagos
+  const setPaymentResponsibleMutation = useMutation({
+    mutationFn: (data: { businessId: string; userId: string }) =>
+      businessApi.setPaymentResponsible(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["businessDetails"] });
+      toast.success("Responsable de pagos actualizado. Se enviaron notificaciones por email.");
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error?.message || "Error al cambiar responsable");
+    },
+  });
+
   const handlePayWithMercadoPago = () => {
     if (!currentPlan?.plan?.id) {
       toast.error("No hay un plan disponible para pagar");
@@ -116,6 +192,28 @@ export default function Configuracion() {
 
   const handleSave = () => {
     toast.success("Configuración guardada");
+  };
+
+  const handleSaveContact = () => {
+    if (!currentUser?.businessId) return;
+    
+    updateContactMutation.mutate({
+      businessId: currentUser.businessId,
+      contact_phone: contactPhone || undefined,
+      contact_email: contactEmail || undefined,
+    });
+  };
+
+  const handleSavePaymentResponsible = () => {
+    if (!currentUser?.businessId || !selectedResponsibleId) {
+      toast.error("Debes seleccionar un administrador");
+      return;
+    }
+    
+    setPaymentResponsibleMutation.mutate({
+      businessId: currentUser.businessId,
+      userId: selectedResponsibleId,
+    });
   };
 
   const handleSelectPlan = (plan: Plan) => {
@@ -192,6 +290,10 @@ export default function Configuracion() {
             <TabsTrigger value="empresa" className="gap-2">
               <Building2 className="w-4 h-4" />
               <span className="hidden sm:inline">Empresa</span>
+            </TabsTrigger>
+            <TabsTrigger value="negocio" className="gap-2">
+              <Building2 className="w-4 h-4" />
+              <span className="hidden sm:inline">Negocio</span>
             </TabsTrigger>
             <TabsTrigger value="notificaciones" className="gap-2">
               <Bell className="w-4 h-4" />
@@ -573,6 +675,162 @@ export default function Configuracion() {
                   <Input id="email" type="email" value={businessData?.contact_email || ""} />
                 </div>
               </div>
+            </div>
+          </TabsContent>
+
+          {/* Tab Negocio */}
+          <TabsContent value="negocio" className="space-y-6">
+            {/* Datos de Contacto */}
+            <div className="bunker-card p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground">Datos de Contacto</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Información de contacto para pagos y comunicaciones
+                  </p>
+                </div>
+              </div>
+
+              {loadingBusiness ? (
+                <div className="space-y-4">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="contact-phone">Teléfono (opcional)</Label>
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        id="contact-phone"
+                        value={contactPhone}
+                        onChange={(e) => setContactPhone(e.target.value)}
+                        placeholder="+52 555 123 4567"
+                        className="pl-10"
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Si no se proporciona, se usará el teléfono del responsable de pagos
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="contact-email">Email de Contacto (opcional)</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        id="contact-email"
+                        type="email"
+                        value={contactEmail}
+                        onChange={(e) => setContactEmail(e.target.value)}
+                        placeholder="contacto@negocio.com"
+                        className="pl-10"
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Si no se proporciona, se usará el email del responsable de pagos
+                    </p>
+                  </div>
+
+                  <Button
+                    onClick={handleSaveContact}
+                    disabled={updateContactMutation.isPending}
+                  >
+                    {updateContactMutation.isPending && (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    )}
+                    <Save className="w-4 h-4 mr-2" />
+                    Guardar Cambios
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {/* Responsable de Pagos */}
+            <div className="bunker-card p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground">Responsable de Pagos</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Administrador encargado de recibir notificaciones de pagos
+                  </p>
+                </div>
+              </div>
+
+              {loadingBusiness ? (
+                <Skeleton className="h-20 w-full" />
+              ) : (
+                <div className="space-y-4">
+                  <Alert>
+                    <AlertDescription className="text-sm">
+                      El responsable de pagos recibirá todas las notificaciones relacionadas con:
+                      pagos de MercadoPago, recordatorios de vencimiento, y alertas de suscripción.
+                    </AlertDescription>
+                  </Alert>
+
+                  {businessDetails?.paymentResponsibleUser && (
+                    <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                          <User className="w-5 h-5 text-primary" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-foreground">
+                            {businessDetails.paymentResponsibleUser.name}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {businessDetails.paymentResponsibleUser.email}
+                          </p>
+                        </div>
+                        <Badge className="ml-auto">Responsable Actual</Badge>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <Label htmlFor="payment-responsible">Seleccionar Responsable</Label>
+                    <Select
+                      value={selectedResponsibleId}
+                      onValueChange={setSelectedResponsibleId}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar administrador" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {admins.map((admin: UserType) => (
+                          <SelectItem key={admin.id} value={admin.id}>
+                            {admin.name} ({admin.email})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <Button
+                    onClick={handleSavePaymentResponsible}
+                    disabled={
+                      !selectedResponsibleId ||
+                      selectedResponsibleId === businessDetails?.paymentResponsibleUserId ||
+                      setPaymentResponsibleMutation.isPending
+                    }
+                  >
+                    {setPaymentResponsibleMutation.isPending && (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    )}
+                    <Save className="w-4 h-4 mr-2" />
+                    Cambiar Responsable
+                  </Button>
+
+                  {selectedResponsibleId && selectedResponsibleId !== businessDetails?.paymentResponsibleUserId && (
+                    <Alert className="bg-blue-500/10 border-blue-500/20">
+                      <AlertDescription className="text-sm text-blue-400">
+                        Se notificará por email tanto al nuevo responsable como al anterior
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+              )}
             </div>
           </TabsContent>
 

@@ -47,6 +47,15 @@ enum ProviderStatus {
   BLOCKED
 }
 
+enum Permission {
+  POS
+  PRODUCTOS
+  VENTAS
+  CLIENTES
+  REPORTES
+  CONFIGURACION
+}
+
 enum PaymentMethod {
   CASH
   CARD
@@ -151,6 +160,9 @@ model Business {
   businessPlanId String
   businessPlan   BusinessPlan @relation(fields: [businessPlanId], references: [id])
 
+  paymentResponsibleUserId String?
+  paymentResponsibleUser   User?   @relation("PaymentResponsible", fields: [paymentResponsibleUserId], references: [id])
+
   paymentHistory    PaymentHistory[]
   users             User[]
   categories        Categories[]
@@ -174,11 +186,13 @@ model User {
   emailVerified       Boolean    @default(false)
   verificationToken   String?
   verificationExpires DateTime?
+  permissions         String[]   @default([]) // Array de permisos/vistas
 
   businessId String?
   business   Business? @relation(fields: [businessId], references: [id])
 
   sales Sale[]
+  businessesAsPaymentResponsible Business[] @relation("PaymentResponsible")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

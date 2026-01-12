@@ -1,1 +1,16 @@
-import businessController from "@/controllers/business.controller";import { authenticate } from "@/middlewares";import { Router } from "express";const router = Router();router.get("/", authenticate, businessController.getBusinessData);export default router;
+import { Router } from "express";
+import { businessController } from "@/controllers/business.controller";
+import { authenticate } from "@/middlewares/auth";
+import { validateBody } from "@/middlewares/validateBody";
+import { verifySubscription } from "@/middlewares";
+import {
+  updateBusinessContactSchema,
+  setPaymentResponsibleSchema,
+} from "@/schemas/business.schemas";
+const router = Router();
+router.use(authenticate);
+router.use(verifySubscription);
+router.get("/:businessId", businessController.getBusiness);
+router.patch("/contact", validateBody(updateBusinessContactSchema), businessController.updateContact);
+router.patch("/payment-responsible", validateBody(setPaymentResponsibleSchema), businessController.setPaymentResponsible);
+export default router;
