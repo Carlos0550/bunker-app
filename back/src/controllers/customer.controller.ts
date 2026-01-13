@@ -196,5 +196,71 @@ class CustomerController {
       next(error);
     }
   };
+
+  // ==================== SALE ITEMS MANAGEMENT ====================
+
+  getSaleItems = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) throw createHttpError(401, "Usuario no autenticado");
+      const businessId = await this.getBusinessId(userId);
+      const { saleId } = req.params;
+      const sale = await customerService.getSaleItems(saleId, businessId);
+      res.json({ success: true, data: sale });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  addSaleItem = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) throw createHttpError(401, "Usuario no autenticado");
+      const businessId = await this.getBusinessId(userId);
+      const { saleId } = req.params;
+      const result = await customerService.addSaleItem(saleId, businessId, req.body);
+      res.json({ 
+        success: true, 
+        data: result,
+        message: "Item agregado exitosamente"
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  updateSaleItem = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) throw createHttpError(401, "Usuario no autenticado");
+      const businessId = await this.getBusinessId(userId);
+      const { itemId } = req.params;
+      const result = await customerService.updateSaleItem(itemId, businessId, req.body);
+      res.json({ 
+        success: true, 
+        data: result,
+        message: "Item actualizado exitosamente"
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  deleteSaleItem = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) throw createHttpError(401, "Usuario no autenticado");
+      const businessId = await this.getBusinessId(userId);
+      const { itemId } = req.params;
+      const result = await customerService.deleteSaleItem(itemId, businessId);
+      res.json({ 
+        success: true, 
+        data: result,
+        message: "Item eliminado exitosamente"
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
 }
 export const customerController = new CustomerController();

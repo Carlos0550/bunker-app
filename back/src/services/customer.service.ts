@@ -418,5 +418,277 @@ class CustomerService {
       }
     })
   }
+
+  // ==================== SALE ITEMS MANAGEMENT ====================
+  
+  async getSaleItems(saleId: string, businessId: string) {
+    const sale = await prisma.sale.findFirst({
+      where: { 
+        id: saleId,
+        businessId,
+      },
+      include: {
+        items: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                sku: true,
+                sale_price: true,
+                stock: true,
+              }
+            }
+          },
+          orderBy: { productName: 'asc' }
+        },
+        currentAccount: true,
+      }
+    });
+
+    if (!sale) {
+      throw createHttpError(404, "Venta no encontrada");
+    }
+
+    return sale;
+  }
+
+  async addSaleItem(saleId: string, businessId: string, itemData: {
+    productId?: string;
+    productName: string;
+    quantity: number;
+    unitPrice: number;
+    isManual?: boolean;
+  }) {
+    const sale = await prisma.sale.findFirst({
+      where: { id: saleId, businessId },
+      include: { 
+        items: true,
+        currentAccount: true,
+      }
+    });
+
+    if (!sale) {
+      throw createHttpError(404, "Venta no encontrada");
+    }
+
+    if (!sale.isCredit) {
+      throw createHttpError(400, "Solo se pueden modificar ventas a crédito");
+    }
+
+    return await prisma.$transaction(async (tx) => {
+      // Crear el nuevo item
+      const newItem = await tx.saleItem.create({
+        data: {
+          saleId,
+          productId: itemData.productId,
+          productName: itemData.productName,
+          productSku: itemData.productId ? (await tx.products.findUnique({ where: { id: itemData.productId }, select: { sku: true } }))?.sku : null,
+          quantity: itemData.quantity,
+          unitPrice: itemData.unitPrice,
+          totalPrice: itemData.quantity * itemData.unitPrice,
+          isManual: itemData.isManual || !itemData.productId,
+        },
+      });
+
+      // Recalcular totales de la venta
+      const allItems = [...sale.items, newItem];
+      const newSubtotal = allItems.reduce((sum, item) => sum + item.totalPrice, 0);
+      const newTaxAmount = newSubtotal * sale.taxRate;
+      let newTotal = newSubtotal + newTaxAmount;
+
+      if (sale.discountType && sale.discountValue) {
+        const discount = sale.discountType === 'PERCENTAGE' 
+          ? newTotal * (sale.discountValue / 100)
+          : sale.discountValue;
+        newTotal -= discount;
+      }
+
+      // Actualizar la venta
+      const updatedSale = await tx.sale.update({
+        where: { id: saleId },
+        data: {
+          subtotal: newSubtotal,
+          taxAmount: newTaxAmount,
+          total: newTotal,
+        },
+      });
+
+      // Actualizar la cuenta corriente si existe
+      if (sale.currentAccount) {
+        const difference = newTotal - sale.total;
+        await tx.currentAccount.update({
+          where: { id: sale.currentAccount.id },
+          data: {
+            originalAmount: { increment: difference },
+            currentBalance: { increment: difference },
+          },
+        });
+      }
+
+      return { item: newItem, sale: updatedSale };
+    });
+  }
+
+  async updateSaleItem(itemId: string, businessId: string, updateData: {
+    productId?: string;
+    productName?: string;
+    quantity?: number;
+    unitPrice?: number;
+  }) {
+    const item = await prisma.saleItem.findFirst({
+      where: { 
+        id: itemId,
+        sale: { businessId }
+      },
+      include: {
+        sale: {
+          include: {
+            items: true,
+            currentAccount: true,
+          }
+        }
+      }
+    });
+
+    if (!item) {
+      throw createHttpError(404, "Item no encontrado");
+    }
+
+    if (!item.sale.isCredit) {
+      throw createHttpError(400, "Solo se pueden modificar items de ventas a crédito");
+    }
+
+    return await prisma.$transaction(async (tx) => {
+      const oldTotal = item.sale.total;
+
+      // Actualizar el item
+      const updatedItem = await tx.saleItem.update({
+        where: { id: itemId },
+        data: {
+          ...(updateData.productId !== undefined && { productId: updateData.productId }),
+          ...(updateData.productName !== undefined && { productName: updateData.productName }),
+          ...(updateData.quantity !== undefined && { quantity: updateData.quantity }),
+          ...(updateData.unitPrice !== undefined && { unitPrice: updateData.unitPrice }),
+          totalPrice: (updateData.quantity ?? item.quantity) * (updateData.unitPrice ?? item.unitPrice),
+          isManual: !updateData.productId && updateData.productId !== undefined ? true : item.isManual,
+        },
+      });
+
+      // Recalcular totales de la venta
+      const allItems = item.sale.items.map(i => 
+        i.id === itemId ? updatedItem : i
+      );
+      const newSubtotal = allItems.reduce((sum, i) => sum + i.totalPrice, 0);
+      const newTaxAmount = newSubtotal * item.sale.taxRate;
+      let newTotal = newSubtotal + newTaxAmount;
+
+      if (item.sale.discountType && item.sale.discountValue) {
+        const discount = item.sale.discountType === 'PERCENTAGE' 
+          ? newTotal * (item.sale.discountValue / 100)
+          : item.sale.discountValue;
+        newTotal -= discount;
+      }
+
+      // Actualizar la venta
+      const updatedSale = await tx.sale.update({
+        where: { id: item.sale.id },
+        data: {
+          subtotal: newSubtotal,
+          taxAmount: newTaxAmount,
+          total: newTotal,
+        },
+      });
+
+      // Actualizar la cuenta corriente si existe
+      if (item.sale.currentAccount) {
+        const difference = newTotal - oldTotal;
+        await tx.currentAccount.update({
+          where: { id: item.sale.currentAccount.id },
+          data: {
+            originalAmount: { increment: difference },
+            currentBalance: { increment: difference },
+          },
+        });
+      }
+
+      return { item: updatedItem, sale: updatedSale };
+    });
+  }
+
+  async deleteSaleItem(itemId: string, businessId: string) {
+    const item = await prisma.saleItem.findFirst({
+      where: { 
+        id: itemId,
+        sale: { businessId }
+      },
+      include: {
+        sale: {
+          include: {
+            items: true,
+            currentAccount: true,
+          }
+        }
+      }
+    });
+
+    if (!item) {
+      throw createHttpError(404, "Item no encontrado");
+    }
+
+    if (!item.sale.isCredit) {
+      throw createHttpError(400, "Solo se pueden eliminar items de ventas a crédito");
+    }
+
+    if (item.sale.items.length <= 1) {
+      throw createHttpError(400, "No se puede eliminar el único item de la venta. Elimina la venta completa en su lugar.");
+    }
+
+    return await prisma.$transaction(async (tx) => {
+      const oldTotal = item.sale.total;
+
+      // Eliminar el item
+      await tx.saleItem.delete({
+        where: { id: itemId },
+      });
+
+      // Recalcular totales de la venta
+      const remainingItems = item.sale.items.filter(i => i.id !== itemId);
+      const newSubtotal = remainingItems.reduce((sum, i) => sum + i.totalPrice, 0);
+      const newTaxAmount = newSubtotal * item.sale.taxRate;
+      let newTotal = newSubtotal + newTaxAmount;
+
+      if (item.sale.discountType && item.sale.discountValue) {
+        const discount = item.sale.discountType === 'PERCENTAGE' 
+          ? newTotal * (item.sale.discountValue / 100)
+          : item.sale.discountValue;
+        newTotal -= discount;
+      }
+
+      // Actualizar la venta
+      const updatedSale = await tx.sale.update({
+        where: { id: item.sale.id },
+        data: {
+          subtotal: newSubtotal,
+          taxAmount: newTaxAmount,
+          total: newTotal,
+        },
+      });
+
+      // Actualizar la cuenta corriente si existe
+      if (item.sale.currentAccount) {
+        const difference = newTotal - oldTotal;
+        await tx.currentAccount.update({
+          where: { id: item.sale.currentAccount.id },
+          data: {
+            originalAmount: { increment: difference },
+            currentBalance: { increment: difference },
+          },
+        });
+      }
+
+      return { sale: updatedSale };
+    });
+  }
 }
 export const customerService = new CustomerService();

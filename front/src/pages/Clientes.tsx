@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
-import { customersApi, BusinessCustomer, CurrentAccount, CustomerMetrics } from "@/api/services/customers";
+import { customersApi, BusinessCustomer, CurrentAccount, CustomerMetrics, SaleItem, SaleWithItems } from "@/api/services/customers";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -70,14 +70,23 @@ export default function Clientes() {
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isSaleItemsDialogOpen, setIsSaleItemsDialogOpen] = useState(false);
+  const [isEditItemDialogOpen, setIsEditItemDialogOpen] = useState(false);
   const [customerToDelete, setCustomerToDelete] = useState<BusinessCustomer | null>(null);
   const [selectedCustomer, setSelectedCustomer] = useState<BusinessCustomer | null>(null);
   const [selectedAccount, setSelectedAccount] = useState<CurrentAccount | null>(null);
+  const [selectedSale, setSelectedSale] = useState<SaleWithItems | null>(null);
+  const [selectedItem, setSelectedItem] = useState<SaleItem | null>(null);
   const [paymentAmount, setPaymentAmount] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState<"CASH" | "CARD" | "TRANSFER">("CASH");
   const [paymentNotes, setPaymentNotes] = useState("");
   const [customerNotes, setCustomerNotes] = useState("");
   const [expandedAccounts, setExpandedAccounts] = useState<Set<string>>(new Set());
+  
+  // Item editing states
+  const [itemProductName, setItemProductName] = useState("");
+  const [itemQuantity, setItemQuantity] = useState(1);
+  const [itemUnitPrice, setItemUnitPrice] = useState(0);
 
   // Queries
   const { data: customersData, isLoading: loadingCustomers } = useQuery({
@@ -172,6 +181,49 @@ export default function Clientes() {
     },
   });
 
+  // Sale items mutations
+  const addItemMutation = useMutation({
+    mutationFn: ({ saleId, data }: { saleId: string; data: any }) => 
+      customersApi.addSaleItem(saleId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["saleItems"] });
+      queryClient.invalidateQueries({ queryKey: ["customerMetrics"] });
+      toast.success("Item agregado exitosamente");
+      setIsEditItemDialogOpen(false);
+      resetItemForm();
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error?.message || "Error al agregar item");
+    },
+  });
+
+  const updateItemMutation = useMutation({
+    mutationFn: ({ itemId, data }: { itemId: string; data: any }) => 
+      customersApi.updateSaleItem(itemId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["saleItems"] });
+      queryClient.invalidateQueries({ queryKey: ["customerMetrics"] });
+      toast.success("Item actualizado exitosamente");
+      setIsEditItemDialogOpen(false);
+      resetItemForm();
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error?.message || "Error al actualizar item");
+    },
+  });
+
+  const deleteItemMutation = useMutation({
+    mutationFn: (itemId: string) => customersApi.deleteSaleItem(itemId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["saleItems"] });
+      queryClient.invalidateQueries({ queryKey: ["customerMetrics"] });
+      toast.success("Item eliminado exitosamente");
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error?.message || "Error al eliminar item");
+    },
+  });
+
   const handleSaveCustomer = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
@@ -219,6 +271,60 @@ export default function Clientes() {
   const handleConfirmDelete = () => {
     if (!customerToDelete) return;
     deleteMutation.mutate(customerToDelete.id);
+  };
+
+  const handleViewSaleItems = async (saleId: string) => {
+    try {
+      const sale = await customersApi.getSaleItems(saleId);
+      setSelectedSale(sale);
+      setIsSaleItemsDialogOpen(true);
+    } catch (error: any) {
+      toast.error(error.response?.data?.error?.message || "Error al cargar items");
+    }
+  };
+
+  const handleOpenEditItem = (item?: SaleItem) => {
+    if (item) {
+      setSelectedItem(item);
+      setItemProductName(item.productName);
+      setItemQuantity(item.quantity);
+      setItemUnitPrice(item.unitPrice);
+    } else {
+      setSelectedItem(null);
+      resetItemForm();
+    }
+    setIsEditItemDialogOpen(true);
+  };
+
+  const resetItemForm = () => {
+    setSelectedItem(null);
+    setItemProductName("");
+    setItemQuantity(1);
+    setItemUnitPrice(0);
+  };
+
+  const handleSaveItem = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedSale) return;
+
+    const data = {
+      productName: itemProductName,
+      quantity: itemQuantity,
+      unitPrice: itemUnitPrice,
+      isManual: true,
+    };
+
+    if (selectedItem) {
+      updateItemMutation.mutate({ itemId: selectedItem.id, data });
+    } else {
+      addItemMutation.mutate({ saleId: selectedSale.id, data });
+    }
+  };
+
+  const handleDeleteItem = (itemId: string) => {
+    if (window.confirm("¿Estás seguro de eliminar este item?")) {
+      deleteItemMutation.mutate(itemId);
+    }
   };
 
   const toggleAccountExpanded = (accountId: string) => {
@@ -677,6 +783,19 @@ export default function Clientes() {
                                         {getStatusBadge(account.status)}
                                       </div>
                                       <div className="flex items-center gap-2">
+                                        {account.sale && (
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleViewSaleItems(account.sale.id);
+                                            }}
+                                          >
+                                            <FileText className="w-4 h-4 mr-1" />
+                                            Ver Items
+                                          </Button>
+                                        )}
                                         {account.status !== "PAID" && (
                                           <Button
                                             size="sm"
@@ -906,6 +1025,165 @@ export default function Clientes() {
                 Eliminar Permanentemente
               </Button>
             </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Sale Items Dialog */}
+        <Dialog open={isSaleItemsDialogOpen} onOpenChange={setIsSaleItemsDialogOpen}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <FileText className="w-5 h-5" />
+                Detalle de Venta {selectedSale?.saleNumber || ""}
+              </DialogTitle>
+            </DialogHeader>
+            {selectedSale && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4 p-4 bg-secondary/30 rounded-lg">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Subtotal</p>
+                    <p className="text-lg font-bold">${selectedSale.subtotal.toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total</p>
+                    <p className="text-lg font-bold text-primary">${selectedSale.total.toLocaleString()}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <h3 className="font-medium">Productos ({selectedSale.items.length})</h3>
+                  <Button
+                    size="sm"
+                    onClick={() => handleOpenEditItem()}
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    Agregar Item
+                  </Button>
+                </div>
+
+                <div className="space-y-2">
+                  {selectedSale.items.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors"
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium">{item.productName}</p>
+                          {item.isManual && (
+                            <Badge variant="outline" className="text-xs">Manual</Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+                          <span>Cantidad: {item.quantity}</span>
+                          <span>Precio Unit.: ${item.unitPrice.toLocaleString()}</span>
+                          <span className="font-medium text-foreground">
+                            Total: ${item.totalPrice.toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleOpenEditItem(item)}
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => handleDeleteItem(item.id)}
+                          disabled={selectedSale.items.length <= 1}
+                        >
+                          <Trash className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsSaleItemsDialogOpen(false)}>
+                Cerrar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit/Add Item Dialog */}
+        <Dialog open={isEditItemDialogOpen} onOpenChange={setIsEditItemDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {selectedItem ? "Editar Item" : "Agregar Item"}
+              </DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSaveItem}>
+              <div className="space-y-4 py-4">
+                <div>
+                  <Label htmlFor="productName">Nombre del Producto *</Label>
+                  <Input
+                    id="productName"
+                    value={itemProductName}
+                    onChange={(e) => setItemProductName(e.target.value)}
+                    placeholder="Ej: Coca Cola 2L"
+                    required
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="quantity">Cantidad *</Label>
+                    <Input
+                      id="quantity"
+                      type="number"
+                      min="1"
+                      value={itemQuantity}
+                      onChange={(e) => setItemQuantity(parseInt(e.target.value) || 1)}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="unitPrice">Precio Unitario *</Label>
+                    <Input
+                      id="unitPrice"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={itemUnitPrice}
+                      onChange={(e) => setItemUnitPrice(parseFloat(e.target.value) || 0)}
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="p-3 bg-secondary/30 rounded-lg">
+                  <p className="text-sm text-muted-foreground">Total del Item</p>
+                  <p className="text-xl font-bold">
+                    ${(itemQuantity * itemUnitPrice).toLocaleString()}
+                  </p>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsEditItemDialogOpen(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={addItemMutation.isPending || updateItemMutation.isPending}
+                >
+                  {(addItemMutation.isPending || updateItemMutation.isPending) && (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  )}
+                  {selectedItem ? "Actualizar" : "Agregar"}
+                </Button>
+              </DialogFooter>
+            </form>
           </DialogContent>
         </Dialog>
       </div>

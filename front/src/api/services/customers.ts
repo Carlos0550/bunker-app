@@ -95,6 +95,62 @@ export interface CreateCustomerData {
   notes?: string;
 }
 
+export interface SaleItem {
+  id: string;
+  saleId: string;
+  productId: string | null;
+  productName: string;
+  productSku: string | null;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  isManual: boolean;
+  product?: {
+    id: string;
+    name: string;
+    sku: string | null;
+    sale_price: number | null;
+    stock: number;
+  };
+}
+
+export interface SaleWithItems {
+  id: string;
+  saleNumber: string | null;
+  businessId: string;
+  customerId: string | null;
+  userId: string;
+  subtotal: number;
+  taxRate: number;
+  taxAmount: number;
+  discountType: string | null;
+  discountValue: number | null;
+  total: number;
+  paymentMethod: string;
+  status: string;
+  isCredit: boolean;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  items: SaleItem[];
+  currentAccount: CurrentAccount | null;
+}
+
+export interface AddSaleItemData {
+  productId?: string;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  isManual?: boolean;
+}
+
+export interface UpdateSaleItemData {
+  productId?: string;
+  productName?: string;
+  quantity?: number;
+  unitPrice?: number;
+}
+
 export const customersApi = {
   // Crear cliente
   createCustomer: async (data: CreateCustomerData): Promise<BusinessCustomer> => {
@@ -216,5 +272,36 @@ export const customersApi = {
       `/customers/${id}`
     );
     return response.data.message;
+  },
+
+  // Sale items management
+  getSaleItems: async (saleId: string): Promise<SaleWithItems> => {
+    const response = await client.get<{ success: boolean; data: SaleWithItems }>(
+      `/customers/sales/${saleId}/items`
+    );
+    return response.data.data;
+  },
+
+  addSaleItem: async (saleId: string, itemData: AddSaleItemData): Promise<{ item: SaleItem; sale: any }> => {
+    const response = await client.post<{ success: boolean; data: { item: SaleItem; sale: any } }>(
+      `/customers/sales/${saleId}/items`,
+      itemData
+    );
+    return response.data.data;
+  },
+
+  updateSaleItem: async (itemId: string, updateData: UpdateSaleItemData): Promise<{ item: SaleItem; sale: any }> => {
+    const response = await client.patch<{ success: boolean; data: { item: SaleItem; sale: any } }>(
+      `/customers/sales/items/${itemId}`,
+      updateData
+    );
+    return response.data.data;
+  },
+
+  deleteSaleItem: async (itemId: string): Promise<{ sale: any }> => {
+    const response = await client.delete<{ success: boolean; data: { sale: any } }>(
+      `/customers/sales/items/${itemId}`
+    );
+    return response.data.data;
   },
 };

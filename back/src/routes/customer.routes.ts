@@ -21,4 +21,11 @@ router.get("/:id/metrics", customerController.getCustomerMetrics);
 router.get("/:id", customerController.getCustomerDetail);
 router.patch("/:id", validateBody(updateBusinessCustomerSchema), customerController.updateCustomer);
 router.delete("/:id", authorize(1), customerController.deleteCustomer);
+
+// Sale items management
+router.get("/sales/:saleId/items", customerController.getSaleItems);
+router.post("/sales/:saleId/items", customerController.addSaleItem);
+router.patch("/sales/items/:itemId", customerController.updateSaleItem);
+router.delete("/sales/items/:itemId", customerController.deleteSaleItem);
+
 export default router;
