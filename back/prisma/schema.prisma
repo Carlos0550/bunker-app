@@ -60,6 +60,7 @@ enum PaymentMethod {
   CASH
   CARD
   TRANSFER
+  CREDIT // Para ventas a crédito/fiadas
   OTHER
 }
 
@@ -416,6 +417,7 @@ model CurrentAccount {
   currentBalance Float // Saldo pendiente
   status         AccountStatus @default(PENDING)
   paidAt         DateTime? // Fecha en que se pagó completamente
+  notes          String? // Notas específicas de esta deuda
 
   businessCustomer BusinessCustomer @relation(fields: [businessCustomerId], references: [id])
   sale             Sale             @relation(fields: [saleId], references: [id])

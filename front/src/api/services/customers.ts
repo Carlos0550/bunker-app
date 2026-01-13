@@ -32,6 +32,7 @@ export interface CurrentAccount {
   currentBalance: number;
   status: 'PENDING' | 'PARTIAL' | 'PAID';
   paidAt?: string;
+  notes?: string;
   businessCustomer?: {
     customer: Customer;
   };
@@ -301,6 +302,15 @@ export const customersApi = {
   deleteSaleItem: async (itemId: string): Promise<{ sale: any }> => {
     const response = await client.delete<{ success: boolean; data: { sale: any } }>(
       `/customers/sales/items/${itemId}`
+    );
+    return response.data.data;
+  },
+
+  // Account notes
+  updateAccountNotes: async (accountId: string, notes: string): Promise<CurrentAccount> => {
+    const response = await client.patch<{ success: boolean; data: CurrentAccount }>(
+      `/customers/accounts/${accountId}/notes`,
+      { notes }
     );
     return response.data.data;
   },

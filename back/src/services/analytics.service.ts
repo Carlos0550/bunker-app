@@ -76,27 +76,74 @@ class AnalyticsService {
       acc + sale.items.reduce((itemAcc, item) => itemAcc + item.quantity, 0), 0
     );
     const averageTicket = totalSales > 0 ? totalRevenue / totalSales : 0;
-    const salesByPaymentMethod = await prisma.sale.groupBy({
+    // Para ventas de contado, usar el método de pago de la venta
+    const cashSales = await prisma.sale.groupBy({
       by: ["paymentMethod"],
       where: {
         businessId,
         createdAt: { gte: startDate, lte: endDate },
         status: SaleStatus.COMPLETED,
+        isCredit: false,
       },
       _count: true,
       _sum: { total: true },
     });
+
+    // Para ventas a crédito pagadas, usar los métodos de pago de los abonos
+    const creditPayments = await prisma.accountPayment.groupBy({
+      by: ["paymentMethod"],
+      where: {
+        currentAccount: {
+          businessCustomer: { businessId },
+          sale: {
+            createdAt: { gte: startDate, lte: endDate },
+            status: SaleStatus.COMPLETED,
+            isCredit: true,
+          },
+        },
+      },
+      _sum: { amount: true },
+      _count: true,
+    });
+
+    // Combinar ambos resultados
+    const paymentMethodMap = new Map<string, { count: number; total: number }>();
+
+    // Agregar ventas de contado
+    cashSales.forEach((s) => {
+      paymentMethodMap.set(s.paymentMethod, {
+        count: s._count,
+        total: s._sum.total || 0,
+      });
+    });
+
+    // Agregar pagos de crédito
+    creditPayments.forEach((p) => {
+      const existing = paymentMethodMap.get(p.paymentMethod);
+      if (existing) {
+        existing.total += p._sum.amount || 0;
+        // No incrementar count porque ya contamos la venta
+      } else {
+        paymentMethodMap.set(p.paymentMethod, {
+          count: 0, // No contar como venta nueva, solo el monto
+          total: p._sum.amount || 0,
+        });
+      }
+    });
+
+    const salesByPaymentMethod = Array.from(paymentMethodMap.entries()).map(([method, data]) => ({
+      paymentMethod: method,
+      count: data.count,
+      total: data.total,
+    }));
+
     return {
       period: { startDate, endDate },
       totalSales,
       totalRevenue,
       totalItems,
       averageTicket,
-      salesByPaymentMethod: salesByPaymentMethod.map((s) => ({
-        paymentMethod: s.paymentMethod,
-        count: s._count,
-        total: s._sum.total || 0,
-      })),
+      salesByPaymentMethod,
     };
   }
   async getTopProducts(businessId: string, limit: number = 10, period?: Period) {

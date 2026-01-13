@@ -72,15 +72,18 @@ export default function Clientes() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isSaleItemsDialogOpen, setIsSaleItemsDialogOpen] = useState(false);
   const [isEditItemDialogOpen, setIsEditItemDialogOpen] = useState(false);
+  const [editingAccountNotes, setEditingAccountNotes] = useState<string | null>(null);
   const [customerToDelete, setCustomerToDelete] = useState<BusinessCustomer | null>(null);
   const [selectedCustomer, setSelectedCustomer] = useState<BusinessCustomer | null>(null);
   const [selectedAccount, setSelectedAccount] = useState<CurrentAccount | null>(null);
   const [selectedSale, setSelectedSale] = useState<SaleWithItems | null>(null);
   const [selectedItem, setSelectedItem] = useState<SaleItem | null>(null);
+  const [isLoadingSaleItems, setIsLoadingSaleItems] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState<"CASH" | "CARD" | "TRANSFER">("CASH");
   const [paymentNotes, setPaymentNotes] = useState("");
   const [customerNotes, setCustomerNotes] = useState("");
+  const [accountNotes, setAccountNotes] = useState("");
   const [expandedAccounts, setExpandedAccounts] = useState<Set<string>>(new Set());
   
   // Item editing states
@@ -185,9 +188,16 @@ export default function Clientes() {
   const addItemMutation = useMutation({
     mutationFn: ({ saleId, data }: { saleId: string; data: any }) => 
       customersApi.addSaleItem(saleId, data),
-    onSuccess: () => {
+    onSuccess: async () => {
+      // Recargar los items de la venta actual
+      if (selectedSale) {
+        const updatedSale = await customersApi.getSaleItems(selectedSale.id);
+        setSelectedSale(updatedSale);
+      }
+      // Invalidar queries para actualizar la vista principal
       queryClient.invalidateQueries({ queryKey: ["saleItems"] });
       queryClient.invalidateQueries({ queryKey: ["customerMetrics"] });
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
       toast.success("Item agregado exitosamente");
       setIsEditItemDialogOpen(false);
       resetItemForm();
@@ -200,9 +210,16 @@ export default function Clientes() {
   const updateItemMutation = useMutation({
     mutationFn: ({ itemId, data }: { itemId: string; data: any }) => 
       customersApi.updateSaleItem(itemId, data),
-    onSuccess: () => {
+    onSuccess: async () => {
+      // Recargar los items de la venta actual
+      if (selectedSale) {
+        const updatedSale = await customersApi.getSaleItems(selectedSale.id);
+        setSelectedSale(updatedSale);
+      }
+      // Invalidar queries para actualizar la vista principal
       queryClient.invalidateQueries({ queryKey: ["saleItems"] });
       queryClient.invalidateQueries({ queryKey: ["customerMetrics"] });
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
       toast.success("Item actualizado exitosamente");
       setIsEditItemDialogOpen(false);
       resetItemForm();
@@ -214,13 +231,33 @@ export default function Clientes() {
 
   const deleteItemMutation = useMutation({
     mutationFn: (itemId: string) => customersApi.deleteSaleItem(itemId),
-    onSuccess: () => {
+    onSuccess: async () => {
+      // Recargar los items de la venta actual
+      if (selectedSale) {
+        const updatedSale = await customersApi.getSaleItems(selectedSale.id);
+        setSelectedSale(updatedSale);
+      }
+      // Invalidar queries para actualizar la vista principal
       queryClient.invalidateQueries({ queryKey: ["saleItems"] });
       queryClient.invalidateQueries({ queryKey: ["customerMetrics"] });
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
       toast.success("Item eliminado exitosamente");
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.error?.message || "Error al eliminar item");
+    },
+  });
+
+  const updateAccountNotesMutation = useMutation({
+    mutationFn: ({ accountId, notes }: { accountId: string; notes: string }) =>
+      customersApi.updateAccountNotes(accountId, notes),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["customerMetrics"] });
+      toast.success("Notas actualizadas exitosamente");
+      setEditingAccountNotes(null);
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error?.message || "Error al actualizar notas");
     },
   });
 
@@ -275,11 +312,14 @@ export default function Clientes() {
 
   const handleViewSaleItems = async (saleId: string) => {
     try {
+      setIsLoadingSaleItems(true);
       const sale = await customersApi.getSaleItems(saleId);
       setSelectedSale(sale);
       setIsSaleItemsDialogOpen(true);
     } catch (error: any) {
       toast.error(error.response?.data?.error?.message || "Error al cargar items");
+    } finally {
+      setIsLoadingSaleItems(false);
     }
   };
 
@@ -316,8 +356,12 @@ export default function Clientes() {
 
     if (selectedItem) {
       updateItemMutation.mutate({ itemId: selectedItem.id, data });
+      setIsSaleItemsDialogOpen(false);
+      setIsLoadingSaleItems(false);
     } else {
       addItemMutation.mutate({ saleId: selectedSale.id, data });
+      setIsSaleItemsDialogOpen(false);
+      setIsLoadingSaleItems(false);
     }
   };
 
@@ -325,6 +369,20 @@ export default function Clientes() {
     if (window.confirm("¿Estás seguro de eliminar este item?")) {
       deleteItemMutation.mutate(itemId);
     }
+  };
+
+  const handleEditAccountNotes = (account: CurrentAccount) => {
+    setEditingAccountNotes(account.id);
+    setAccountNotes(account.notes || "");
+  };
+
+  const handleSaveAccountNotes = (accountId: string) => {
+    updateAccountNotesMutation.mutate({ accountId, notes: accountNotes });
+  };
+
+  const handleCancelAccountNotes = () => {
+    setEditingAccountNotes(null);
+    setAccountNotes("");
   };
 
   const toggleAccountExpanded = (accountId: string) => {
@@ -374,19 +432,43 @@ export default function Clientes() {
 
   const getDaysInfo = (account: CurrentAccount) => {
     const createdAt = new Date(account.createdAt);
-    
+
     if (account.status === "PAID" && account.paidAt) {
       const paidAt = new Date(account.paidAt);
-      const days = differenceInDays(paidAt, createdAt);
+      const diffMs = paidAt.getTime() - createdAt.getTime();
+      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+      const days = Math.floor(diffHours / 24);
+      
+      let text: string;
+      if (diffHours < 24) {
+        text = diffHours === 0 
+          ? "Pagado hace menos de 1 hora"
+          : `Pagado en ${diffHours} hora${diffHours !== 1 ? "s" : ""}`;
+      } else {
+        text = `Pagado en ${days} día${days !== 1 ? "s" : ""}`;
+      }
+      
       return {
-        text: `Pagado en ${days} día${days !== 1 ? "s" : ""}`,
+        text,
         color: days <= 7 ? "text-success" : days <= 30 ? "text-warning" : "text-muted-foreground",
       };
     }
+
+    const diffMs = new Date().getTime() - createdAt.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const days = Math.floor(diffHours / 24);
     
-    const days = differenceInDays(new Date(), createdAt);
+    let text: string;
+    if (diffHours < 24) {
+      text = diffHours === 0 
+        ? "Hace menos de 1 hora"
+        : `Hace ${diffHours} hora${diffHours !== 1 ? "s" : ""}`;
+    } else {
+      text = `Hace ${days} día${days !== 1 ? "s" : ""}`;
+    }
+    
     return {
-      text: `Hace ${days} día${days !== 1 ? "s" : ""}`,
+      text,
       color: days > 30 ? "text-destructive" : days > 7 ? "text-warning" : "text-muted-foreground",
     };
   };
@@ -789,11 +871,12 @@ export default function Clientes() {
                                             variant="outline"
                                             onClick={(e) => {
                                               e.stopPropagation();
-                                              handleViewSaleItems(account.sale.id);
+                                              handleViewSaleItems(account.saleId);
                                             }}
+                                            disabled={isLoadingSaleItems}
                                           >
                                             <FileText className="w-4 h-4 mr-1" />
-                                            Ver Items
+                                            Ver Items {isLoadingSaleItems && <Loader2 className="w-4 h-4 ml-1 animate-spin" />}
                                           </Button>
                                         )}
                                         {account.status !== "PAID" && (
@@ -827,9 +910,65 @@ export default function Clientes() {
                                       </span>
                                     </div>
 
+                                    {/* Notas de la cuenta */}
+                                    <div className="mt-2">
+                                      {editingAccountNotes === account.id ? (
+                                        <div className="space-y-2">
+                                          <Textarea
+                                            value={accountNotes}
+                                            onChange={(e) => setAccountNotes(e.target.value)}
+                                            placeholder="Agregar notas sobre esta deuda..."
+                                            rows={2}
+                                            className="text-sm"
+                                          />
+                                          <div className="flex items-center gap-2">
+                                            <Button
+                                              size="sm"
+                                              variant="outline"
+                                              onClick={handleCancelAccountNotes}
+                                            >
+                                              Cancelar
+                                            </Button>
+                                            <Button
+                                              size="sm"
+                                              onClick={() => handleSaveAccountNotes(account.id)}
+                                              disabled={updateAccountNotesMutation.isPending}
+                                            >
+                                              {updateAccountNotesMutation.isPending && (
+                                                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                                              )}
+                                              Guardar
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <div className="flex items-start justify-between gap-2">
+                                          <div className="flex-1">
+                                            {account.notes ? (
+                                              <p className="text-xs text-muted-foreground italic bg-secondary/30 p-2 rounded">
+                                                📝 {account.notes}
+                                              </p>
+                                            ) : (
+                                              <p className="text-xs text-muted-foreground">
+                                                Sin notas
+                                              </p>
+                                            )}
+                                          </div>
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            onClick={() => handleEditAccountNotes(account)}
+                                            className="h-6 px-2"
+                                          >
+                                            <Edit3 className="w-3 h-3" />
+                                          </Button>
+                                        </div>
+                                      )}
+                                    </div>
+
                                     {account.payments.length > 0 && (
                                       <CollapsibleTrigger asChild>
-                                        <button className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors">
+                                        <button className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors mt-2">
                                           {isExpanded ? (
                                             <ChevronDown className="w-4 h-4" />
                                           ) : (

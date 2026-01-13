@@ -119,7 +119,8 @@ class SaleService {
           discountType: data.discountType || null,
           discountValue: data.discountValue || null,
           total,
-          paymentMethod: data.paymentMethod,
+          // Si es crédito, usar CREDIT como método de pago, sino usar el método proporcionado
+          paymentMethod: data.isCredit ? PaymentMethod.CREDIT : data.paymentMethod,
           status: data.isCredit ? SaleStatus.PENDING : SaleStatus.COMPLETED,
           isCredit: data.isCredit || false,
           notes: data.notes || null,

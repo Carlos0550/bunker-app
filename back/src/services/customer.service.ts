@@ -419,6 +419,25 @@ class CustomerService {
     })
   }
 
+  async updateAccountNotes(accountId: string, businessId: string, notes: string) {
+    // Verificar que la cuenta pertenece al negocio
+    const account = await prisma.currentAccount.findFirst({
+      where: {
+        id: accountId,
+        businessCustomer: { businessId },
+      },
+    });
+
+    if (!account) {
+      throw createHttpError(404, "Cuenta corriente no encontrada");
+    }
+
+    return await prisma.currentAccount.update({
+      where: { id: accountId },
+      data: { notes },
+    });
+  }
+
   // ==================== SALE ITEMS MANAGEMENT ====================
   
   async getSaleItems(saleId: string, businessId: string) {
@@ -517,11 +536,27 @@ class CustomerService {
       // Actualizar la cuenta corriente si existe
       if (sale.currentAccount) {
         const difference = newTotal - sale.total;
+        const newBalance = sale.currentAccount.currentBalance + difference;
+        const newOriginalAmount = sale.currentAccount.originalAmount + difference;
+        
+        // Determinar el nuevo estado basado en el balance
+        let newStatus: 'PENDING' | 'PARTIAL' | 'PAID';
+        if (newBalance <= 0) {
+          newStatus = 'PAID';
+        } else if (newBalance < newOriginalAmount) {
+          newStatus = 'PARTIAL';
+        } else {
+          newStatus = 'PENDING';
+        }
+
         await tx.currentAccount.update({
           where: { id: sale.currentAccount.id },
           data: {
-            originalAmount: { increment: difference },
-            currentBalance: { increment: difference },
+            originalAmount: newOriginalAmount,
+            currentBalance: newBalance,
+            status: newStatus,
+            // Si vuelve a tener deuda, quitar la fecha de pago
+            ...(newBalance > 0 && { paidAt: null }),
           },
         });
       }
@@ -603,11 +638,27 @@ class CustomerService {
       // Actualizar la cuenta corriente si existe
       if (item.sale.currentAccount) {
         const difference = newTotal - oldTotal;
+        const newBalance = item.sale.currentAccount.currentBalance + difference;
+        const newOriginalAmount = item.sale.currentAccount.originalAmount + difference;
+        
+        // Determinar el nuevo estado basado en el balance
+        let newStatus: 'PENDING' | 'PARTIAL' | 'PAID';
+        if (newBalance <= 0) {
+          newStatus = 'PAID';
+        } else if (newBalance < newOriginalAmount) {
+          newStatus = 'PARTIAL';
+        } else {
+          newStatus = 'PENDING';
+        }
+
         await tx.currentAccount.update({
           where: { id: item.sale.currentAccount.id },
           data: {
-            originalAmount: { increment: difference },
-            currentBalance: { increment: difference },
+            originalAmount: newOriginalAmount,
+            currentBalance: newBalance,
+            status: newStatus,
+            // Si vuelve a tener deuda, quitar la fecha de pago
+            ...(newBalance > 0 && { paidAt: null }),
           },
         });
       }
@@ -678,11 +729,27 @@ class CustomerService {
       // Actualizar la cuenta corriente si existe
       if (item.sale.currentAccount) {
         const difference = newTotal - oldTotal;
+        const newBalance = item.sale.currentAccount.currentBalance + difference;
+        const newOriginalAmount = item.sale.currentAccount.originalAmount + difference;
+        
+        // Determinar el nuevo estado basado en el balance
+        let newStatus: 'PENDING' | 'PARTIAL' | 'PAID';
+        if (newBalance <= 0) {
+          newStatus = 'PAID';
+        } else if (newBalance < newOriginalAmount) {
+          newStatus = 'PARTIAL';
+        } else {
+          newStatus = 'PENDING';
+        }
+
         await tx.currentAccount.update({
           where: { id: item.sale.currentAccount.id },
           data: {
-            originalAmount: { increment: difference },
-            currentBalance: { increment: difference },
+            originalAmount: newOriginalAmount,
+            currentBalance: newBalance,
+            status: newStatus,
+            // Si vuelve a tener deuda, quitar la fecha de pago
+            ...(newBalance > 0 && { paidAt: null }),
           },
         });
       }

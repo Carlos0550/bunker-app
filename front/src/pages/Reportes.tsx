@@ -125,7 +125,8 @@ export default function Reportes() {
   const paymentMethodData = (salesSummary?.salesByPaymentMethod || []).map((pm, index) => ({
     name: pm.paymentMethod === "CASH" ? "Efectivo" :
           pm.paymentMethod === "CARD" ? "Tarjeta" :
-          pm.paymentMethod === "TRANSFER" ? "Transferencia" : "Otro",
+          pm.paymentMethod === "TRANSFER" ? "Transferencia" :
+          pm.paymentMethod === "CREDIT" ? "Crédito" : "Otro",
     value: pm.total,
     count: pm.count,
     fill: COLORS[index % COLORS.length],
@@ -164,6 +165,7 @@ export default function Reportes() {
       case "CASH": return "Efectivo";
       case "CARD": return "Tarjeta";
       case "TRANSFER": return "Transferencia";
+      case "CREDIT": return "Crédito";
       default: return "Otro";
     }
   };

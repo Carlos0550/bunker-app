@@ -22,6 +22,9 @@ router.get("/:id", customerController.getCustomerDetail);
 router.patch("/:id", validateBody(updateBusinessCustomerSchema), customerController.updateCustomer);
 router.delete("/:id", authorize(1), customerController.deleteCustomer);
 
+// Account notes
+router.patch("/accounts/:accountId/notes", customerController.updateAccountNotes);
+
 // Sale items management
 router.get("/sales/:saleId/items", customerController.getSaleItems);
 router.post("/sales/:saleId/items", customerController.addSaleItem);

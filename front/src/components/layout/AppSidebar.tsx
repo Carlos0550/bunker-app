@@ -31,13 +31,15 @@ import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ProfileEditModal } from "@/components/ProfileEditModal";
 import { useState } from "react";
+import { usePermissions } from "@/hooks/usePermissions";
+import { Permission } from "@/types";
 
 const mainMenuItems = [
-  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Punto de Venta", url: "/pos", icon: ShoppingCart },
-  { title: "Productos", url: "/productos", icon: Package },
-  { title: "Clientes", url: "/clientes", icon: Users },
-  { title: "Reportes", url: "/reportes", icon: BarChart3 },
+  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, permission: null }, // Todos pueden ver dashboard
+  { title: "Punto de Venta", url: "/pos", icon: ShoppingCart, permission: Permission.POS },
+  { title: "Productos", url: "/productos", icon: Package, permission: Permission.PRODUCTOS },
+  { title: "Clientes", url: "/clientes", icon: Users, permission: Permission.CLIENTES },
+  { title: "Reportes", url: "/reportes", icon: BarChart3, permission: Permission.REPORTES },
 ];
 
 // const adminOnlyItems = [
@@ -45,7 +47,7 @@ const mainMenuItems = [
 // ];
 
 const configItems = [
-  { title: "Configuración", url: "/configuracion", icon: Settings },
+  { title: "Configuración", url: "/configuracion", icon: Settings, permission: Permission.CONFIGURACION },
 ];
 
 // Items exclusivos para Super Admin (role 0)
@@ -59,9 +61,19 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, logout } = useAuthStore();
+  const { hasPermission, isAdmin, isSuperAdmin } = usePermissions();
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   
   const collapsed = state === "collapsed";
+
+  // Filtrar items del menú según permisos
+  const filteredMainMenuItems = mainMenuItems.filter(item => 
+    !item.permission || hasPermission(item.permission)
+  );
+
+  const filteredConfigItems = configItems.filter(item =>
+    !item.permission || hasPermission(item.permission)
+  );
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -108,14 +120,14 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent className="scrollbar-thin">
-        {user?.role !== 0 && (
+        {!isSuperAdmin() && filteredMainMenuItems.length > 0 && (
         <SidebarGroup>
           <SidebarGroupLabel className="text-muted-foreground text-xs uppercase tracking-wider px-4">
             {!collapsed && "Principal"}
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {mainMenuItems.map((item) => (
+              {filteredMainMenuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
@@ -170,7 +182,7 @@ export function AppSidebar() {
         )} */}
 
         {/* Super Admin Menu - Solo para Super Admin (role 0) */}
-        {user?.role === 0 && (
+        {isSuperAdmin() && (
           <SidebarGroup>
             <SidebarGroupLabel className="text-muted-foreground text-xs uppercase tracking-wider px-4">
               {!collapsed && "Super Admin"}
@@ -200,14 +212,14 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
 
-        {user?.role !== 0 && (
+        {!isSuperAdmin() && filteredConfigItems.length > 0 && (
         <SidebarGroup className="mt-auto">
           <SidebarGroupLabel className="text-muted-foreground text-xs uppercase tracking-wider px-4">
             {!collapsed && "Sistema"}
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {configItems.map((item) => (
+              {filteredConfigItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild

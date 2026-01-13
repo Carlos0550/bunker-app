@@ -197,6 +197,25 @@ class CustomerController {
     }
   };
 
+  updateAccountNotes = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) throw createHttpError(401, "Usuario no autenticado");
+      const businessId = await this.getBusinessId(userId);
+      const { accountId } = req.params;
+      const { notes } = req.body;
+      
+      const account = await customerService.updateAccountNotes(accountId, businessId, notes);
+      res.json({ 
+        success: true, 
+        data: account,
+        message: "Notas actualizadas exitosamente"
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   // ==================== SALE ITEMS MANAGEMENT ====================
 
   getSaleItems = async (req: Request, res: Response, next: NextFunction) => {
