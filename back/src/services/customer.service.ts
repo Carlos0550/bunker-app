@@ -408,5 +408,15 @@ class CustomerService {
       accountsByMonth: accountsByMonthArray,
     };
   }
+
+  async deleteBusinessCustomer(businessCustomerId: string, businessId: string) {
+    return await prisma.businessCustomer.delete({
+      where: { id: businessCustomerId, businessId },
+      include:{
+        currentAccounts: true,
+        customer: true,
+      }
+    })
+  }
 }
 export const customerService = new CustomerService();

@@ -1,6 +1,7 @@
 import { prisma } from "@/config/db";
 import createHttpError from "http-errors";
 import { emailService } from "@/services/email.service";
+import { Business } from "@prisma/client";
 export class BusinessService {
   async updateBusinessContact(
     businessId: string,
@@ -117,5 +118,15 @@ export class BusinessService {
     }
     return business;
   }
+
+  async updateBusinessData(businessId:string, data: { name?: string; address?: string }): Promise<Business> {
+    return await prisma.business.update({
+      where: { id: businessId },
+      data: {
+        name: data.name,
+        address: data.address,
+      },
+    });
+  } 
 }
 export const businessService = new BusinessService();

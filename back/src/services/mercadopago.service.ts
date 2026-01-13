@@ -3,6 +3,7 @@ import { prisma } from "@/config/db";
 import createHttpError from "http-errors";
 import crypto from "crypto";
 import { emailService } from "@/services/email.service";
+import { PaymentStatus } from "@prisma/client";
 function getMercadoPagoClient() {
   let accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
   if (accessToken) {
@@ -360,6 +361,8 @@ class MercadoPagoService {
           mercadoPagoPaymentId: paymentId,
         },
       });
+      
+      // Si el pago ya existe, solo actualizarlo si cambió de estado
       if (existingPayment) {
         const newStatus = this.mapMercadoPagoStatus(paymentData.status);
         const statusChanged = existingPayment.status !== newStatus;
@@ -405,6 +408,50 @@ class MercadoPagoService {
           previousStatus: existingPayment.mercadoPagoStatus,
         };
       }
+      
+      // VALIDACIÓN CRÍTICA: Verificar si ya existe una suscripción activa antes de crear un nuevo pago
+      const latestPayment = await prisma.paymentHistory.findFirst({
+        where: {
+          businessId,
+          status: { in: [PaymentStatus.PAID, PaymentStatus.REFUNDED] },
+        },
+        orderBy: { date: "desc" },
+      });
+
+      // Si existe un pago exitoso reciente y el nuevo pago es PENDING, evitar crear duplicado
+      if (latestPayment && paymentData.status === "pending") {
+        const paymentDate = paymentData.date_created ? new Date(paymentData.date_created) : new Date();
+        const latestPaymentDate = latestPayment.date;
+        
+        // Si el pago pendiente es más antiguo que el último pago exitoso, ignorarlo
+        if (paymentDate < latestPaymentDate) {
+          console.warn(`⚠️ Ignorando pago pendiente antiguo ${paymentId} (fecha: ${paymentDate.toISOString()}) - Ya existe pago exitoso más reciente (fecha: ${latestPaymentDate.toISOString()})`);
+          return { 
+            processed: false, 
+            message: "Pago pendiente antiguo ignorado - ya existe suscripción activa",
+            paymentId,
+            status: paymentData.status,
+          };
+        }
+
+        // Si hay un pago exitoso reciente (menos de 25 días) y llega un pending nuevo, validar
+        const daysSinceLastPayment = Math.floor((Date.now() - latestPaymentDate.getTime()) / (1000 * 60 * 60 * 24));
+        if (daysSinceLastPayment < 25) {
+          console.warn(`⚠️ Pago pendiente recibido pero hay un pago exitoso de hace ${daysSinceLastPayment} días. Requiere validación manual.`);
+          console.warn(`   Último pago exitoso: ${latestPayment.id} (${latestPaymentDate.toISOString()})`);
+          console.warn(`   Nuevo pago pendiente: ${paymentId} (${paymentDate.toISOString()})`);
+          
+          // No crear el pago automáticamente, solo loguearlo para revisión
+          return {
+            processed: false,
+            message: `Pago pendiente requiere validación - suscripción activa vigente (${daysSinceLastPayment} días desde último pago)`,
+            paymentId,
+            status: paymentData.status,
+            warning: "Posible webhook duplicado o pago innecesario",
+          };
+        }
+      }
+
       let plan = null;
       if (planId) {
         plan = await prisma.businessPlan.findUnique({
@@ -428,6 +475,8 @@ class MercadoPagoService {
         nextPaymentDate = new Date();
         nextPaymentDate.setMonth(nextPaymentDate.getMonth() + 1);
       }
+      
+      console.log(`📝 Creando nuevo pago en DB - businessId: ${businessId}, status: ${mappedStatus}, MP status: ${paymentData.status}`);
       const paymentHistory = await prisma.paymentHistory.create({
         data: {
           businessId,

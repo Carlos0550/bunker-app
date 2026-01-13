@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { customerController } from "@/controllers/customer.controller";
-import { authenticate } from "@/middlewares/auth";
+import { authenticate, authorize } from "@/middlewares/auth";
 import { validateBody } from "@/middlewares/validateBody";
 import { verifySubscription } from "@/middlewares";
 import {
@@ -20,4 +20,5 @@ router.get("/", customerController.getCustomers);
 router.get("/:id/metrics", customerController.getCustomerMetrics);
 router.get("/:id", customerController.getCustomerDetail);
 router.patch("/:id", validateBody(updateBusinessCustomerSchema), customerController.updateCustomer);
+router.delete("/:id", authorize(1), customerController.deleteCustomer);
 export default router;

@@ -39,6 +39,18 @@ export const businessApi = {
     return response.data.data;
   },
 
+  updateBusinessData: async (data: {
+    businessId: string;
+    name?: string;
+    address?: string;
+  }): Promise<string> => {
+    const response = await client.patch<{ success: boolean; message: string }>(
+      '/business/data',
+      data
+    );
+    return response.data.message;
+  },
+
   setPaymentResponsible: async (data: {
     businessId: string;
     userId: string;
@@ -49,4 +61,6 @@ export const businessApi = {
     }>('/business/payment-responsible', data);
     return response.data.data;
   },
+
+  
 };

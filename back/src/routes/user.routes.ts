@@ -33,10 +33,10 @@ router.post(
 );
 router.patch("/", authenticate, validateBody(updateUserSchema), userController.updateUser);
 router.patch("/profile-photo", authenticate, imageUploader.single("photo"), userController.updateProfilePhoto);
-router.post("/create", authenticate, verifySubscription, validateBody(createUserByAdminSchema), userController.createUserByAdmin);
-router.get("/business", authenticate, verifySubscription, userController.getUsersByBusiness);
-router.patch("/:id", authenticate, verifySubscription, validateBody(updateUserByAdminSchema), userController.updateUserByAdmin);
-router.delete("/:id", authenticate, verifySubscription, userController.deleteUser);
-router.post("/admins", authorize(0, 1), validateBody(createAdminSchema), userController.createAdmin);
-router.get("/admins", authorize(0, 1), userController.getBusinessAdmins);
+router.post("/users/create", authenticate, verifySubscription, validateBody(createUserByAdminSchema), userController.createUserByAdmin);
+router.get("/users/business", authenticate, verifySubscription, userController.getUsersByBusiness);
+router.patch("/users/:id", authenticate, verifySubscription, validateBody(updateUserByAdminSchema), userController.updateUserByAdmin);
+router.delete("/users/:id", authenticate, verifySubscription, userController.deleteUser);
+router.post("/admins", authenticate, authorize(0, 1), validateBody(createAdminSchema), userController.createAdmin);
+router.get("/admins", authenticate, authorize(0, 1), userController.getBusinessAdmins);
 export default router;

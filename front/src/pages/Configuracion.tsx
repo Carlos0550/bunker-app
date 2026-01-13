@@ -40,10 +40,10 @@ import { subscriptionApi, Plan } from "@/api/services/subscription";
 import { businessApi } from "@/api/services/business";
 import { usersApi, User as UserType } from "@/api/services/users";
 import { useAuthStore } from "@/store/useAuthStore";
-import { 
-  Building2, 
-  Bell, 
-  Shield, 
+import {
+  Building2,
+  Bell,
+  Shield,
   CreditCard,
   Printer,
   Mail,
@@ -74,11 +74,15 @@ export default function Configuracion() {
   const queryClient = useQueryClient();
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [showPlanDialog, setShowPlanDialog] = useState(false);
-  
+
   // Estados para datos de contacto del negocio
   const [contactPhone, setContactPhone] = useState("");
   const [contactEmail, setContactEmail] = useState("");
-  
+
+  //estados para datos del negocio
+  const [businessName, setBusinessName] = useState("");
+  const [businessAddress, setBusinessAddress] = useState("");
+
   // Estados para responsable de pagos
   const [selectedResponsibleId, setSelectedResponsibleId] = useState<string>("");
 
@@ -124,6 +128,8 @@ export default function Configuracion() {
     if (businessDetails) {
       setContactPhone(businessDetails.contact_phone || "");
       setContactEmail(businessDetails.contact_email || "");
+      setBusinessName(businessDetails.name || "");
+      setBusinessAddress(businessDetails.address || "");
       setSelectedResponsibleId(businessDetails.paymentResponsibleUserId || "");
     }
   }, [businessDetails]);
@@ -169,6 +175,18 @@ export default function Configuracion() {
     },
   });
 
+  const updateBusinessDataMutation = useMutation({
+    mutationFn: (data: { businessId: string; name?: string; address?: string }) =>
+      businessApi.updateBusinessData(data),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["businessDetails"] });
+      toast.success(result);
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error?.message || "Error al actualizar datos del negocio");
+    },
+  });
+
   // Mutation para cambiar responsable de pagos
   const setPaymentResponsibleMutation = useMutation({
     mutationFn: (data: { businessId: string; userId: string }) =>
@@ -196,7 +214,7 @@ export default function Configuracion() {
 
   const handleSaveContact = () => {
     if (!currentUser?.businessId) return;
-    
+
     updateContactMutation.mutate({
       businessId: currentUser.businessId,
       contact_phone: contactPhone || undefined,
@@ -209,10 +227,19 @@ export default function Configuracion() {
       toast.error("Debes seleccionar un administrador");
       return;
     }
-    
+
     setPaymentResponsibleMutation.mutate({
       businessId: currentUser.businessId,
       userId: selectedResponsibleId,
+    });
+  };
+
+  const handleSaveBusinessData = () => {
+    if (!currentUser?.businessId) return;
+    updateBusinessDataMutation.mutate({
+      businessId: currentUser.businessId,
+      name: businessName || undefined,
+      address: businessAddress || undefined,
     });
   };
 
@@ -287,26 +314,22 @@ export default function Configuracion() {
               <CreditCard className="w-4 h-4" />
               <span className="hidden sm:inline">Suscripción</span>
             </TabsTrigger>
-            <TabsTrigger value="empresa" className="gap-2">
-              <Building2 className="w-4 h-4" />
-              <span className="hidden sm:inline">Empresa</span>
-            </TabsTrigger>
             <TabsTrigger value="negocio" className="gap-2">
               <Building2 className="w-4 h-4" />
               <span className="hidden sm:inline">Negocio</span>
             </TabsTrigger>
-            <TabsTrigger value="notificaciones" className="gap-2">
+            {/* <TabsTrigger value="notificaciones" className="gap-2">
               <Bell className="w-4 h-4" />
               <span className="hidden sm:inline">Notificaciones</span>
-            </TabsTrigger>
-            <TabsTrigger value="facturacion" className="gap-2">
+            </TabsTrigger> */}
+            {/* <TabsTrigger value="facturacion" className="gap-2">
               <Printer className="w-4 h-4" />
               <span className="hidden sm:inline">Facturación</span>
             </TabsTrigger>
             <TabsTrigger value="seguridad" className="gap-2">
               <Shield className="w-4 h-4" />
               <span className="hidden sm:inline">Seguridad</span>
-            </TabsTrigger>
+            </TabsTrigger> */}
           </TabsList>
 
           {/* Tab Suscripción */}
@@ -317,7 +340,7 @@ export default function Configuracion() {
                 <Crown className="w-5 h-5 text-primary" />
                 Tu Plan Actual
               </h3>
-              
+
               {loadingCurrentPlan ? (
                 <div className="space-y-4">
                   <Skeleton className="h-20" />
@@ -358,9 +381,8 @@ export default function Configuracion() {
                       <p className="text-sm text-muted-foreground mb-1">
                         {currentPlan.subscription.daysRemaining < 0 ? "Días Vencidos" : "Días Restantes"}
                       </p>
-                      <p className={`text-xl font-bold ${
-                        currentPlan.subscription.daysRemaining < 0 ? "text-red-400" : "text-foreground"
-                      }`}>
+                      <p className={`text-xl font-bold ${currentPlan.subscription.daysRemaining < 0 ? "text-red-400" : "text-foreground"
+                        }`}>
                         {currentPlan.subscription.daysRemaining < 0
                           ? `Vencido hace ${Math.abs(currentPlan.subscription.daysRemaining)} día(s)`
                           : `${currentPlan.subscription.daysRemaining} día(s)`
@@ -370,7 +392,7 @@ export default function Configuracion() {
                     <div className="p-4 bg-secondary/20 rounded-lg">
                       <p className="text-sm text-muted-foreground mb-1">Próximo Pago</p>
                       <p className="text-lg font-medium text-foreground">
-                        {currentPlan.subscription.nextPaymentDate 
+                        {currentPlan.subscription.nextPaymentDate
                           ? format(new Date(currentPlan.subscription.nextPaymentDate), "dd MMM yyyy", { locale: es })
                           : "No programado"
                         }
@@ -395,28 +417,26 @@ export default function Configuracion() {
 
                   {/* Alerta si está en período de gracia o expirado */}
                   {(currentPlan.subscription.status === "grace_period" || currentPlan.subscription.status === "expired") && (
-                    <div className={`p-4 rounded-lg border ${
-                      currentPlan.subscription.status === "expired" 
-                        ? "bg-red-500/10 border-red-500/30" 
+                    <div className={`p-4 rounded-lg border ${currentPlan.subscription.status === "expired"
+                        ? "bg-red-500/10 border-red-500/30"
                         : "bg-yellow-500/10 border-yellow-500/30"
-                    }`}>
+                      }`}>
                       <div className="flex items-start gap-3">
-                        <AlertTriangle className={`w-5 h-5 mt-0.5 ${
-                          currentPlan.subscription.status === "expired" ? "text-red-400" : "text-yellow-400"
-                        }`} />
+                        <AlertTriangle className={`w-5 h-5 mt-0.5 ${currentPlan.subscription.status === "expired" ? "text-red-400" : "text-yellow-400"
+                          }`} />
                         <div className="flex-1">
                           <p className="font-medium text-foreground">
-                            {currentPlan.subscription.status === "expired" 
+                            {currentPlan.subscription.status === "expired"
                               ? "Tu suscripción ha expirado"
                               : "Tu pago está vencido"
                             }
                           </p>
                           <p className="text-sm text-muted-foreground mb-3">
-                            {currentPlan.subscription.status === "expired" 
+                            {currentPlan.subscription.status === "expired"
                               ? `Tu suscripción venció hace ${Math.abs(currentPlan.subscription.daysRemaining)} día(s). Por favor, renueva tu suscripción para continuar usando el sistema.`
                               : currentPlan.subscription.daysRemaining < 0
-                              ? `Tu suscripción venció hace ${Math.abs(currentPlan.subscription.daysRemaining)} día(s). Tienes ${3 + currentPlan.subscription.daysRemaining} día(s) para regularizar tu pago.`
-                              : `Tienes ${currentPlan.subscription.daysRemaining} día(s) para regularizar tu pago.`
+                                ? `Tu suscripción venció hace ${Math.abs(currentPlan.subscription.daysRemaining)} día(s). Tienes ${3 + currentPlan.subscription.daysRemaining} día(s) para regularizar tu pago.`
+                                : `Tienes ${currentPlan.subscription.daysRemaining} día(s) para regularizar tu pago.`
                             }
                           </p>
                           <Button
@@ -442,58 +462,57 @@ export default function Configuracion() {
                   )}
 
                   {/* Botón de pago si está en trial o cerca de expirar */}
-                  {(currentPlan.subscription.status === "trial" || 
+                  {(currentPlan.subscription.status === "trial" ||
                     (currentPlan.subscription.status === "active" && currentPlan.subscription.daysRemaining <= 7)) && (
-                    <div className={`p-4 rounded-lg border ${
-                      currentPlan.subscription.daysRemaining < 0
-                        ? "border-red-500/30 bg-red-500/5"
-                        : currentPlan.subscription.daysRemaining === 0
-                        ? "border-yellow-500/30 bg-yellow-500/5"
-                        : "border-primary/30 bg-primary/5"
-                    }`}>
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                        <div>
-                          <p className="font-medium text-foreground mb-1">
-                            {currentPlan.subscription.status === "trial" 
-                              ? "Prueba gratuita activa"
-                              : currentPlan.subscription.daysRemaining < 0
-                              ? "Tu suscripción está vencida"
-                              : currentPlan.subscription.daysRemaining === 0
-                              ? "Tu suscripción vence hoy"
-                              : "Tu suscripción está por vencer"
-                            }
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {currentPlan.subscription.status === "trial" 
-                              ? `Quedan ${currentPlan.subscription.daysRemaining} días de prueba. Paga ahora para continuar sin interrupciones.`
-                              : currentPlan.subscription.daysRemaining < 0
-                              ? `Tu suscripción está vencida hace ${Math.abs(currentPlan.subscription.daysRemaining)} día(s). Renueva ahora para reactivar tu acceso.`
-                              : currentPlan.subscription.daysRemaining === 0
-                              ? "Tu suscripción vence hoy. Renueva ahora para evitar interrupciones."
-                              : `Renueva tu suscripción antes de que expire en ${currentPlan.subscription.daysRemaining} día(s).`
-                            }
-                          </p>
+                      <div className={`p-4 rounded-lg border ${currentPlan.subscription.daysRemaining < 0
+                          ? "border-red-500/30 bg-red-500/5"
+                          : currentPlan.subscription.daysRemaining === 0
+                            ? "border-yellow-500/30 bg-yellow-500/5"
+                            : "border-primary/30 bg-primary/5"
+                        }`}>
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                          <div>
+                            <p className="font-medium text-foreground mb-1">
+                              {currentPlan.subscription.status === "trial"
+                                ? "Prueba gratuita activa"
+                                : currentPlan.subscription.daysRemaining < 0
+                                  ? "Tu suscripción está vencida"
+                                  : currentPlan.subscription.daysRemaining === 0
+                                    ? "Tu suscripción vence hoy"
+                                    : "Tu suscripción está por vencer"
+                              }
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {currentPlan.subscription.status === "trial"
+                                ? `Quedan ${currentPlan.subscription.daysRemaining} días de prueba. Paga ahora para continuar sin interrupciones.`
+                                : currentPlan.subscription.daysRemaining < 0
+                                  ? `Tu suscripción está vencida hace ${Math.abs(currentPlan.subscription.daysRemaining)} día(s). Renueva ahora para reactivar tu acceso.`
+                                  : currentPlan.subscription.daysRemaining === 0
+                                    ? "Tu suscripción vence hoy. Renueva ahora para evitar interrupciones."
+                                    : `Renueva tu suscripción antes de que expire en ${currentPlan.subscription.daysRemaining} día(s).`
+                              }
+                            </p>
+                          </div>
+                          <Button
+                            onClick={handlePayWithMercadoPago}
+                            disabled={createMercadoPagoPreferenceMutation.isPending}
+                            className="w-full sm:w-auto bunker-glow"
+                          >
+                            {createMercadoPagoPreferenceMutation.isPending ? (
+                              <>
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                Procesando...
+                              </>
+                            ) : (
+                              <>
+                                <CreditCard className="w-4 h-4 mr-2" />
+                                Pagar Suscripción
+                              </>
+                            )}
+                          </Button>
                         </div>
-                        <Button
-                          onClick={handlePayWithMercadoPago}
-                          disabled={createMercadoPagoPreferenceMutation.isPending}
-                          className="w-full sm:w-auto bunker-glow"
-                        >
-                          {createMercadoPagoPreferenceMutation.isPending ? (
-                            <>
-                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                              Procesando...
-                            </>
-                          ) : (
-                            <>
-                              <CreditCard className="w-4 h-4 mr-2" />
-                              Pagar Suscripción
-                            </>
-                          )}
-                        </Button>
                       </div>
-                    </div>
-                  )}
+                    )}
                 </div>
               ) : (
                 <p className="text-muted-foreground">No se pudo cargar la información del plan</p>
@@ -633,7 +652,7 @@ export default function Configuracion() {
                             )}
                           </TableCell>
                           <TableCell>
-                            {payment.nextPaymentDate 
+                            {payment.nextPaymentDate
                               ? format(new Date(payment.nextPaymentDate), "dd MMM yyyy", { locale: es })
                               : "-"
                             }
@@ -652,34 +671,62 @@ export default function Configuracion() {
             </div>
           </TabsContent>
 
-          <TabsContent value="empresa" className="space-y-6">
-            <div className="bunker-card p-6">
-              <h3 className="text-lg font-semibold text-foreground mb-4">
-                Información de la Empresa
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="company-name">Nombre de la Empresa</Label>
-                  <Input id="company-name" value={businessData?.name || ""} />
-                </div>
-                <div className="md:col-span-2">
-                  <Label htmlFor="address">Dirección Física</Label>
-                  <Input id="address" value={businessData?.address || ""} />
-                </div>
-                <div>
-                  <Label htmlFor="phone">Teléfono</Label>
-                  <Input id="phone" value={businessData?.contact_phone || ""} />
-                </div>
-                <div>
-                  <Label htmlFor="email">Email de Contacto</Label>
-                  <Input id="email" type="email" value={businessData?.contact_email || ""} />
-                </div>
-              </div>
-            </div>
-          </TabsContent>
-
           {/* Tab Negocio */}
           <TabsContent value="negocio" className="space-y-6">
+            {/* Información General del Negocio */}
+            <div className="bunker-card p-6">
+              <div className="mb-4">
+                <h3 className="text-lg font-semibold text-foreground">Información del Negocio</h3>
+                <p className="text-sm text-muted-foreground">
+                  Datos generales de tu negocio
+                </p>
+              </div>
+
+              {loadingBusiness ? (
+                <div className="space-y-4">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="company-name">Nombre del Negocio</Label>
+                      <Input
+                        id="company-name"
+                        onChange={(e) => setBusinessName(e.target.value)}
+                        value={businessName || ""}
+                        className="bg-secondary/30"
+                      />
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="address">Dirección Física</Label>
+                      <Input
+                        id="address"
+                        onChange={(e) => setBusinessAddress(e.target.value)}
+                        value={businessAddress || ""}
+                        className="bg-secondary/30"
+                      />
+                    </div>
+                  </div>
+                  <Button onClick={handleSaveBusinessData} disabled={updateBusinessDataMutation.isPending}>
+                    {updateBusinessDataMutation.isPending ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Guardar Cambios
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4 mr-2" />
+                        Guardar Cambios
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+            </div>
+
             {/* Datos de Contacto */}
             <div className="bunker-card p-6">
               <div className="flex items-center justify-between mb-4">
@@ -988,21 +1035,21 @@ export default function Configuracion() {
               </div>
 
               <p className="text-sm text-muted-foreground">
-                Al confirmar, tu plan se actualizará inmediatamente y se registrará un pago 
+                Al confirmar, tu plan se actualizará inmediatamente y se registrará un pago
                 por el nuevo monto. Tu próxima fecha de pago será en 30 días.
               </p>
             </div>
           )}
 
           <DialogFooter>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => setShowPlanDialog(false)}
               disabled={changePlanMutation.isPending}
             >
               Cancelar
             </Button>
-            <Button 
+            <Button
               onClick={handleConfirmPlanChange}
               disabled={changePlanMutation.isPending}
               className="bunker-glow"

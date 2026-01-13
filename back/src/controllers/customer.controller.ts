@@ -180,5 +180,21 @@ class CustomerController {
       next(error);
     }
   };
+
+  deleteCustomer = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) throw createHttpError(401, "Usuario no autenticado");
+      const businessId = await this.getBusinessId(userId);
+      await customerService.deleteBusinessCustomer(req.params.id, businessId);
+      res.status(200).json({
+        success: true,
+        message: "Cliente eliminado correctamente",
+      });
+    }
+    catch (error) {
+      next(error);
+    }
+  };
 }
 export const customerController = new CustomerController();

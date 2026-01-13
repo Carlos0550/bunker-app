@@ -68,5 +68,23 @@ class BusinessController {
       next(error);
     }
   };
+
+  updateBusinessData = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { businessId, ...data } = req.body;
+
+      if (!businessId) {
+        throw createHttpError(400, "Se requiere el ID del negocio");
+      }
+      await businessService.updateBusinessData(businessId, data);
+      res.json({
+        success: true,
+        message: "Datos del negocio actualizados correctamente",
+      });
+    }
+    catch (error) {
+      next(error);
+    }
+  };
 }
 export const businessController = new BusinessController();

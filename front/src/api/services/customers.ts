@@ -210,4 +210,11 @@ export const customersApi = {
     );
     return response.data.data;
   },
+
+  deleteCustomer: async(id: string): Promise<string> => {
+    const response = await client.delete<{ success: boolean; message: string }>(
+      `/customers/${id}`
+    );
+    return response.data.message;
+  },
 };

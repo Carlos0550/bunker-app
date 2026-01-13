@@ -41,6 +41,7 @@ import {
   TrendingUp,
   FileText,
   Receipt,
+  Trash,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -68,6 +69,8 @@ export default function Clientes() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [isEditingNotes, setIsEditingNotes] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [customerToDelete, setCustomerToDelete] = useState<BusinessCustomer | null>(null);
   const [selectedCustomer, setSelectedCustomer] = useState<BusinessCustomer | null>(null);
   const [selectedAccount, setSelectedAccount] = useState<CurrentAccount | null>(null);
   const [paymentAmount, setPaymentAmount] = useState(0);
@@ -154,6 +157,21 @@ export default function Clientes() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => customersApi.deleteCustomer(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
+      queryClient.invalidateQueries({ queryKey: ["accountsSummary"] });
+      toast.success("Cliente eliminado exitosamente");
+      setSelectedCustomer(null);
+      setIsDeleteDialogOpen(false);
+      setCustomerToDelete(null);
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error?.message || "Error al eliminar cliente");
+    },
+  });
+
   const handleSaveCustomer = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
@@ -188,6 +206,19 @@ export default function Clientes() {
       id: selectedCustomer.id,
       notes: customerNotes,
     });
+  };
+
+  const handleOpenDeleteDialog = (customer: BusinessCustomer, e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+    }
+    setCustomerToDelete(customer);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (!customerToDelete) return;
+    deleteMutation.mutate(customerToDelete.id);
   };
 
   const toggleAccountExpanded = (accountId: string) => {
@@ -430,11 +461,21 @@ export default function Clientes() {
                             <p className="font-medium text-foreground truncate">
                               {bc.customer.name}
                             </p>
-                            {(bc.totalDebt || 0) > 0 && (
-                              <span className="text-sm font-bold text-destructive whitespace-nowrap">
-                                ${bc.totalDebt?.toLocaleString()}
-                              </span>
-                            )}
+                            <div className="flex items-center gap-1">
+                              {(bc.totalDebt || 0) > 0 && (
+                                <span className="text-sm font-bold text-destructive whitespace-nowrap">
+                                  ${bc.totalDebt?.toLocaleString()}
+                                </span>
+                              )}
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                onClick={(e) => handleOpenDeleteDialog(bc, e)}
+                              >
+                                <Trash className="w-4 h-4" />
+                              </Button>
+                            </div>
                           </div>
                           <p className="text-xs text-muted-foreground font-mono">
                             {bc.customer.identifier}
@@ -469,7 +510,7 @@ export default function Clientes() {
                 <div className="p-4 space-y-4">
                   {/* Customer Header */}
                   <div className="flex items-start justify-between">
-                    <div>
+                    <div className="flex-1">
                       <h2 className="text-xl font-bold text-foreground">
                         {customerMetrics.customer.name}
                       </h2>
@@ -489,6 +530,15 @@ export default function Clientes() {
                         )}
                       </div>
                     </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
+                      onClick={() => handleOpenDeleteDialog(selectedCustomer!)}
+                    >
+                      <Trash className="w-4 h-4 mr-2" />
+                      Eliminar Cliente
+                    </Button>
                   </div>
 
                   {/* Stats Cards */}
@@ -794,6 +844,66 @@ export default function Clientes() {
               >
                 {paymentMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 Registrar Pago
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-destructive">
+                <AlertTriangle className="w-5 h-5" />
+                ¿Eliminar Cliente?
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="p-4 bg-destructive/10 border border-destructive/30 rounded-lg">
+                <p className="font-medium text-foreground mb-2">
+                  {customerToDelete?.customer.name}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {customerToDelete?.customer.identifier}
+                </p>
+              </div>
+              
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-foreground">
+                  Esta acción eliminará permanentemente:
+                </p>
+                <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+                  <li>Todos los datos del cliente</li>
+                  <li>Todas las cuentas corrientes ({customerToDelete?.activeAccounts || 0} activas)</li>
+                  <li>Historial completo de deudas y pagos</li>
+                  <li>Todas las entregas de dinero registradas</li>
+                </ul>
+              </div>
+
+              <div className="p-3 bg-warning/10 border border-warning/30 rounded-lg">
+                <p className="text-sm text-warning-foreground flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                  <span className="text-white">
+                    <strong >Advertencia:</strong> Esta eliminación impactará directamente en los reportes de ventas y no se puede deshacer.
+                  </span>
+                </p>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setIsDeleteDialogOpen(false)}
+                disabled={deleteMutation.isPending}
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleConfirmDelete}
+                disabled={deleteMutation.isPending}
+              >
+                {deleteMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Eliminar Permanentemente
               </Button>
             </DialogFooter>
           </DialogContent>
