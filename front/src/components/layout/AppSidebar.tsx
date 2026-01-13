@@ -42,9 +42,9 @@ const mainMenuItems = [
   { title: "Reportes", url: "/reportes", icon: BarChart3, permission: Permission.REPORTES },
 ];
 
-// const adminOnlyItems = [
-//   { title: "Usuarios", url: "/usuarios", icon: Users },
-// ];
+const adminOnlyItems = [
+  { title: "Usuarios", url: "/usuarios", icon: Users },
+];
 
 const configItems = [
   { title: "Configuración", url: "/configuracion", icon: Settings, permission: Permission.CONFIGURACION },
@@ -151,7 +151,7 @@ export function AppSidebar() {
         )}
 
         {/* Admin Only Menu - Para Admins (role 1) */}
-        {/* {user?.role === 1 && (
+        {user?.role === 1 && (
           <SidebarGroup>
             <SidebarGroupLabel className="text-muted-foreground text-xs uppercase tracking-wider px-4">
               {!collapsed && "Administración"}
@@ -179,7 +179,7 @@ export function AppSidebar() {
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
-        )} */}
+        )}
 
         {/* Super Admin Menu - Solo para Super Admin (role 0) */}
         {isSuperAdmin() && (

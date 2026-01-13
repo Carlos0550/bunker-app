@@ -5,8 +5,8 @@ export const registerSchema = z.object({
   password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres"),
   businessName: z.string().min(2, "El nombre del negocio es requerido"),
   businessAddress: z.string().min(5, "La dirección del negocio es requerida"),
-  businessPhone: z.string().optional(),
-  businessEmail: z.string().email("El email de contacto del negocio no es válido").optional(),
+  businessPhone: z.string().optional().or(z.literal("")),
+  businessEmail: z.string().email("El email de contacto del negocio no es válido").optional().or(z.literal("")),
 });
 export const loginSchema = z.object({
   email: z.string().email("El correo electrónico no es válido"),
