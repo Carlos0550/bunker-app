@@ -484,25 +484,26 @@ export default function Productos() {
 
   return (
     <MainLayout title="Productos">
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Gestión de Productos</h1>
-            <p className="text-muted-foreground">
-              {statsPagination?.total || 0} productos en inventario
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => setIsImportModalOpen(true)}>
-              <Upload className="w-4 h-4 mr-2" />
-              Importar
-            </Button>
-            <Button variant="outline" size="sm">
-              <Download className="w-4 h-4 mr-2" />
-              Exportar
-            </Button>
-            <Dialog open={isDialogOpen} onOpenChange={(open) => {
+        <div className="flex flex-col gap-3 sm:gap-4">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-2xl font-bold text-foreground">Gestión de Productos</h1>
+              <p className="text-sm text-muted-foreground">
+                {statsPagination?.total || 0} productos
+              </p>
+            </div>
+            <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+              <Button variant="outline" size="icon" className="h-8 w-8 sm:h-9 sm:w-auto sm:px-3" onClick={() => setIsImportModalOpen(true)}>
+                <Upload className="w-4 h-4 sm:mr-2" />
+                <span className="hidden sm:inline">Importar</span>
+              </Button>
+              <Button variant="outline" size="icon" className="h-8 w-8 sm:h-9 sm:w-auto sm:px-3">
+                <Download className="w-4 h-4 sm:mr-2" />
+                <span className="hidden sm:inline">Exportar</span>
+              </Button>
+              <Dialog open={isDialogOpen} onOpenChange={(open) => {
               setIsDialogOpen(open);
               if (!open) {
                 setScannedBarcode("");
@@ -514,7 +515,7 @@ export default function Productos() {
               }
             }}>
               <DialogTrigger asChild>
-                <Button onClick={() => {
+                <Button size="sm" className="h-8 sm:h-9" onClick={() => {
                   setEditingProduct(null);
                   setScannedBarcode("");
                   setSelectedImage(null);
@@ -523,8 +524,9 @@ export default function Productos() {
                   setIsCreatingNewCategory(false);
                   setNewCategoryInline("");
                 }}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Nuevo Producto
+                  <Plus className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Nuevo Producto</span>
+                  <span className="sm:hidden">Nuevo</span>
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
@@ -780,56 +782,57 @@ export default function Productos() {
                 </form>
               </DialogContent>
             </Dialog>
+            </div>
           </div>
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <div className="stat-card">
-            <div className="flex items-center gap-3">
-              <div className="p-3 rounded-xl bg-primary/20">
-                <Package className="w-6 h-6 text-primary" />
+            <div className="flex items-center justify-between">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs sm:text-sm text-muted-foreground truncate">Total Productos</p>
+                <p className="text-xl sm:text-2xl font-bold text-foreground">{statsPagination?.total || 0}</p>
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Total Productos</p>
-                <p className="text-2xl font-bold text-foreground">{statsPagination?.total || 0}</p>
+              <div className="p-2 sm:p-3 rounded-xl bg-primary/20 shrink-0">
+                <Package className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
               </div>
             </div>
           </div>
           <div className="stat-card">
-            <div className="flex items-center gap-3">
-              <div className="p-3 rounded-xl bg-success/20">
-                <TrendingUp className="w-6 h-6 text-success" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Activos</p>
-                <p className="text-2xl font-bold text-foreground">
+            <div className="flex items-center justify-between">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs sm:text-sm text-muted-foreground truncate">Activos</p>
+                <p className="text-xl sm:text-2xl font-bold text-foreground">
                   {statsProducts.filter((p) => p.state === "ACTIVE" && p.stock > 0).length}
                 </p>
+              </div>
+              <div className="p-2 sm:p-3 rounded-xl bg-success/20 shrink-0">
+                <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-success" />
               </div>
             </div>
           </div>
           <div className="stat-card border-warning/30">
-            <div className="flex items-center gap-3">
-              <div className="p-3 rounded-xl bg-warning/20">
-                <AlertTriangle className="w-6 h-6 text-warning" />
+            <div className="flex items-center justify-between">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs sm:text-sm text-muted-foreground truncate">Stock Bajo</p>
+                <p className="text-xl sm:text-2xl font-bold text-warning">{lowStockProducts.length}</p>
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Stock Bajo</p>
-                <p className="text-2xl font-bold text-warning">{lowStockProducts.length}</p>
+              <div className="p-2 sm:p-3 rounded-xl bg-warning/20 shrink-0">
+                <AlertTriangle className="w-5 h-5 sm:w-6 sm:h-6 text-warning" />
               </div>
             </div>
           </div>
           <div className="stat-card">
-            <div className="flex items-center gap-3">
-              <div className="p-3 rounded-xl bg-destructive/20">
-                <TrendingDown className="w-6 h-6 text-destructive" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Sin Stock</p>
-                <p className="text-2xl font-bold text-destructive">
+            <div className="flex items-center justify-between">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs sm:text-sm text-muted-foreground truncate">Sin Stock</p>
+                <p className="text-xl sm:text-2xl font-bold text-destructive">
                   {statsProducts.filter((p) => p.stock <= 0).length}
                 </p>
+              </div>
+              <div className="p-2 sm:p-3 rounded-xl bg-destructive/20 shrink-0">
+                <TrendingDown className="w-5 h-5 sm:w-6 sm:h-6 text-destructive" />
               </div>
             </div>
           </div>
@@ -837,34 +840,47 @@ export default function Productos() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="bg-secondary/50">
-            <TabsTrigger value="inventario">Inventario</TabsTrigger>
-            <TabsTrigger value="alertas">
-              Alertas
-              {lowStockProducts.length > 0 && (
-                <Badge variant="destructive" className="ml-2">
-                  {lowStockProducts.length}
-                </Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="papelera">Papelera ({deletedProducts.length})</TabsTrigger>
-            <TabsTrigger value="manuales">
-              Manuales
-              {pendingManualProducts.length > 0 && (
-                <Badge variant="secondary" className="ml-2 bg-blue-500/20 text-blue-400">
-                  {pendingManualProducts.length}
-                </Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="categorias">
-              Categorías ({categories.length})
-            </TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide">
+            <TabsList className="bg-secondary/50 inline-flex w-max sm:w-auto min-w-full sm:min-w-0">
+              <TabsTrigger value="inventario" className="text-sm sm:text-base px-3 sm:px-4 shrink-0">
+                <span className="hidden sm:inline">Inventario</span>
+                <span className="sm:hidden">Inv.</span>
+              </TabsTrigger>
+              <TabsTrigger value="alertas" className="text-sm sm:text-base px-3 sm:px-4 shrink-0">
+                <span className="hidden sm:inline">Alertas</span>
+                <span className="sm:hidden">Alert.</span>
+                {lowStockProducts.length > 0 && (
+                  <Badge variant="destructive" className="ml-1.5 sm:ml-2 text-xs sm:text-sm px-1.5 sm:px-2">
+                    {lowStockProducts.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="papelera" className="text-sm sm:text-base px-3 sm:px-4 shrink-0">
+                <span className="hidden sm:inline">Papelera</span>
+                <span className="sm:hidden">Pap.</span>
+                <span className="ml-1.5 text-xs sm:text-sm">({deletedProducts.length})</span>
+              </TabsTrigger>
+              <TabsTrigger value="manuales" className="text-sm sm:text-base px-3 sm:px-4 shrink-0">
+                <span className="hidden sm:inline">Manuales</span>
+                <span className="sm:hidden">Man.</span>
+                {pendingManualProducts.length > 0 && (
+                  <Badge variant="secondary" className="ml-1.5 sm:ml-2 bg-blue-500/20 text-blue-400 text-xs sm:text-sm px-1.5 sm:px-2">
+                    {pendingManualProducts.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="categorias" className="text-sm sm:text-base px-3 sm:px-4 shrink-0">
+                <span className="hidden sm:inline">Categorías</span>
+                <span className="sm:hidden">Cat.</span>
+                <span className="ml-1.5 text-xs sm:text-sm hidden sm:inline">({categories.length})</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* Inventario Tab */}
-          <TabsContent value="inventario" className="space-y-4">
+          <TabsContent value="inventario" className="space-y-3 sm:space-y-4">
             {/* Buscador y Filtros de Inventario */}
-            <div className="space-y-4">
+            <div className="space-y-3">
               {/* Búsqueda principal */}
               <div className="flex gap-2">
                 <div className="relative flex-1">
@@ -876,324 +892,430 @@ export default function Productos() {
                       setInventorySearch(e.target.value);
                       setInventoryPage(1);
                     }}
-                    className="pl-9 bg-card"
+                    className="pl-9 bg-card text-sm"
                   />
                 </div>
                 <Button
                   variant="outline"
+                  size="icon"
+                  className="shrink-0 h-9 w-9 sm:h-10 sm:w-auto sm:px-4"
                   onClick={() => {
                     setScannerMode("search");
                     setScannerOpen(true);
                   }}
                   title="Escanear código de barras"
                 >
-                  <ScanLine className="w-4 h-4 mr-2" />
-                  Escanear
+                  <ScanLine className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Escanear</span>
                 </Button>
               </div>
 
-              {/* Filtros */}
-              <div className="flex flex-wrap gap-3 items-center">
-                <div className="flex items-center gap-2">
-                  <Filter className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm font-medium text-muted-foreground">Filtros:</span>
+              {/* Filtros - scroll horizontal en móvil */}
+              <div className="flex items-center gap-2">
+                <Filter className="w-4 h-4 text-muted-foreground shrink-0 hidden sm:block" />
+                <div className="flex-1 overflow-x-auto scrollbar-hide -mx-1 px-1">
+                  <div className="flex gap-1.5 sm:gap-2 items-center w-max min-w-full sm:min-w-0">
+                    {/* Filtro Stock Bajo */}
+                    <Button
+                      variant={inventoryLowStock === true ? "default" : "outline"}
+                      size="sm"
+                      className="h-8 sm:h-7 text-xs shrink-0 whitespace-nowrap"
+                      onClick={() => {
+                        setInventoryLowStock(inventoryLowStock === true ? undefined : true);
+                        setInventoryPage(1);
+                      }}
+                    >
+                      <AlertTriangle className={`w-3 h-3 sm:mr-1 ${inventoryLowStock === true ? "" : "text-warning"}`} />
+                      <span className="hidden sm:inline">Bajo</span>
+                    </Button>
+
+                    {/* Filtro Estado */}
+                    <Select
+                      value={inventoryState}
+                      onValueChange={(value: any) => {
+                        setInventoryState(value);
+                        setInventoryPage(1);
+                      }}
+                    >
+                      <SelectTrigger className="h-8 sm:h-7 text-xs w-[100px] sm:w-[110px] shrink-0">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos</SelectItem>
+                        <SelectItem value="ACTIVE">Activos</SelectItem>
+                        <SelectItem value="OUT_OF_STOCK">Sin Stock</SelectItem>
+                        <SelectItem value="DISABLED">Deshabilitados</SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    {/* Filtro Categoría */}
+                    <Select
+                      value={inventoryCategory}
+                      onValueChange={(value) => {
+                        setInventoryCategory(value);
+                        setInventoryPage(1);
+                      }}
+                    >
+                      <SelectTrigger className="h-8 sm:h-7 text-xs w-[110px] sm:w-[120px] shrink-0">
+                        <SelectValue placeholder="Categoría" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Categorías</SelectItem>
+                        {categories.map((cat) => (
+                          <SelectItem key={cat.id} value={cat.id}>
+                            {cat.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    {/* Ordenar por */}
+                    <Select
+                      value={inventorySortBy || "none"}
+                      onValueChange={(value: any) => {
+                        setInventorySortBy(value === "none" ? undefined : value);
+                        setInventoryPage(1);
+                      }}
+                    >
+                      <SelectTrigger className="h-8 sm:h-7 text-xs w-[90px] sm:w-[100px] shrink-0">
+                        <SelectValue placeholder="Ordenar" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Sin orden</SelectItem>
+                        <SelectItem value="price_desc">Precio ↓</SelectItem>
+                        <SelectItem value="price_asc">Precio ↑</SelectItem>
+                        <SelectItem value="stock_desc">Stock ↓</SelectItem>
+                        <SelectItem value="stock_asc">Stock ↑</SelectItem>
+                        <SelectItem value="name_asc">A-Z</SelectItem>
+                        <SelectItem value="name_desc">Z-A</SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    {/* Botón limpiar filtros */}
+                    {(inventoryLowStock !== undefined || inventoryState !== "all" || inventoryCategory !== "all" || inventorySortBy) && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 sm:h-7 text-xs px-2 sm:px-2 shrink-0"
+                        onClick={() => {
+                          setInventoryLowStock(undefined);
+                          setInventoryState("all");
+                          setInventoryCategory("all");
+                          setInventorySortBy(undefined);
+                          setInventoryPage(1);
+                        }}
+                        title="Limpiar filtros"
+                      >
+                        <X className="w-3.5 h-3.5 sm:w-3 sm:h-3" />
+                        <span className="hidden sm:inline ml-1">Limpiar</span>
+                      </Button>
+                    )}
+                  </div>
                 </div>
-
-                {/* Filtro Stock Bajo */}
-                <Button
-                  variant={inventoryLowStock === true ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => {
-                    setInventoryLowStock(inventoryLowStock === true ? undefined : true);
-                    setInventoryPage(1);
-                  }}
-                >
-                  <AlertTriangle className={`w-4 h-4 mr-1 ${inventoryLowStock === true ? "" : "text-warning"}`} />
-                  Stock Bajo
-                </Button>
-
-                {/* Filtro Estado */}
-                <Select
-                  value={inventoryState}
-                  onValueChange={(value: any) => {
-                    setInventoryState(value);
-                    setInventoryPage(1);
-                  }}
-                >
-                  <SelectTrigger className="w-40">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos los estados</SelectItem>
-                    <SelectItem value="ACTIVE">Activos</SelectItem>
-                    <SelectItem value="OUT_OF_STOCK">Sin Stock</SelectItem>
-                    <SelectItem value="DISABLED">Deshabilitados</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                {/* Filtro Categoría */}
-                <Select
-                  value={inventoryCategory}
-                  onValueChange={(value) => {
-                    setInventoryCategory(value);
-                    setInventoryPage(1);
-                  }}
-                >
-                  <SelectTrigger className="w-48">
-                    <SelectValue placeholder="Categoría" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todas las categorías</SelectItem>
-                    {categories.map((cat) => (
-                      <SelectItem key={cat.id} value={cat.id}>
-                        {cat.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                {/* Ordenar por */}
-                <Select
-                  value={inventorySortBy || "none"}
-                  onValueChange={(value: any) => {
-                    setInventorySortBy(value === "none" ? undefined : value);
-                    setInventoryPage(1);
-                  }}
-                >
-                  <SelectTrigger className="w-48">
-                    <SelectValue placeholder="Ordenar por..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Sin ordenar</SelectItem>
-                    <SelectItem value="price_desc">
-                      <div className="flex items-center gap-2">
-                        <ArrowDown className="w-4 h-4" />
-                        Precio: Mayor a Menor
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="price_asc">
-                      <div className="flex items-center gap-2">
-                        <ArrowUp className="w-4 h-4" />
-                        Precio: Menor a Mayor
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="stock_desc">
-                      <div className="flex items-center gap-2">
-                        <ArrowDown className="w-4 h-4" />
-                        Stock: Mayor a Menor
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="stock_asc">
-                      <div className="flex items-center gap-2">
-                        <ArrowUp className="w-4 h-4" />
-                        Stock: Menor a Mayor
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="name_asc">
-                      <div className="flex items-center gap-2">
-                        <ArrowUp className="w-4 h-4" />
-                        Nombre: A-Z
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="name_desc">
-                      <div className="flex items-center gap-2">
-                        <ArrowDown className="w-4 h-4" />
-                        Nombre: Z-A
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-
-                {/* Botón limpiar filtros */}
-                {(inventorySearch || inventoryLowStock !== undefined || inventoryState !== "all" || inventoryCategory !== "all" || inventorySortBy) && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setInventorySearch("");
-                      setInventoryLowStock(undefined);
-                      setInventoryState("all");
-                      setInventoryCategory("all");
-                      setInventorySortBy(undefined);
-                      setInventoryPage(1);
-                    }}
-                  >
-                    <X className="w-4 h-4 mr-1" />
-                    Limpiar Filtros
-                  </Button>
-                )}
               </div>
             </div>
 
-            <div className="bunker-card overflow-hidden">
+            <div className="bunker-card overflow-hidden p-0">
               {loadingInventory ? (
-                <div className="flex items-center justify-center p-12">
-                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                <div className="flex items-center justify-center p-8 sm:p-12">
+                  <Loader2 className="w-6 h-6 sm:w-8 sm:h-8 animate-spin text-primary" />
                 </div>
               ) : inventoryProducts.length === 0 ? (
-                <div className="text-center py-12">
-                  <Package className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-                  <p className="text-lg font-medium text-foreground">No hay productos</p>
-                  <p className="text-muted-foreground">
+                <div className="text-center py-8 sm:py-12 px-4">
+                  <Package className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-3 sm:mb-4 text-muted-foreground opacity-50" />
+                  <p className="text-base sm:text-lg font-medium text-foreground">No hay productos</p>
+                  <p className="text-sm text-muted-foreground">
                     {inventorySearch 
                       ? "No se encontraron productos con ese criterio" 
                       : "Agrega productos para verlos aquí"}
                   </p>
                 </div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-border hover:bg-transparent">
-                      <TableHead className="text-muted-foreground">Producto</TableHead>
-                      <TableHead className="text-muted-foreground">SKU</TableHead>
-                      <TableHead className="text-muted-foreground text-right">Precio</TableHead>
-                      <TableHead className="text-muted-foreground text-center">Stock Actual</TableHead>
-                      <TableHead className="text-muted-foreground text-center">Stock Mínimo</TableHead>
-                      <TableHead className="text-muted-foreground text-center">Reservado</TableHead>
-                      <TableHead className="text-muted-foreground">Estado</TableHead>
-                      <TableHead className="text-muted-foreground text-center">Acciones</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+                <>
+                  {/* Vista móvil: Cards */}
+                  <div className="block md:hidden p-3 sm:p-4 space-y-3">
                     {inventoryProducts.map((product) => (
-                      <TableRow key={product.id} className="border-border">
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center overflow-hidden">
-                              {product.imageUrl ? (
-                                <img
-                                  src={product.imageUrl}
-                                  alt={product.name}
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <Package className="w-5 h-5 text-muted-foreground" />
-                              )}
+                      <div
+                        key={product.id}
+                        className="bunker-card p-3 border border-border/50 hover:border-border transition-colors"
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="w-12 h-12 rounded-lg bg-secondary flex items-center justify-center overflow-hidden shrink-0">
+                            {product.imageUrl ? (
+                              <img
+                                src={product.imageUrl}
+                                alt={product.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <Package className="w-5 h-5 text-muted-foreground" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-2 mb-2">
+                              <h3 className="font-medium text-sm text-foreground line-clamp-2 flex-1">
+                                {product.name}
+                              </h3>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0">
+                                    <MoreVertical className="w-4 h-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      setStockProduct(product);
+                                      setIsStockDialogOpen(true);
+                                    }}
+                                  >
+                                    <RefreshCw className="w-4 h-4 mr-2" />
+                                    Ajustar Stock
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      setEditingProduct(product);
+                                      setScannedBarcode(product.bar_code || "");
+                                      setSelectedCategoryId(product.categoryId || "");
+                                      setIsCreatingNewCategory(false);
+                                      setNewCategoryInline("");
+                                      setIsDialogOpen(true);
+                                    }}
+                                  >
+                                    <Edit2 className="w-4 h-4 mr-2" />
+                                    Editar
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  {product.state === "DISABLED" ? (
+                                    <DropdownMenuItem
+                                      onClick={() => {
+                                        updateMutation.mutate({
+                                          id: product.id,
+                                          data: { state: "ACTIVE" },
+                                        });
+                                      }}
+                                    >
+                                      <CheckCircle className="w-4 h-4 mr-2 text-success" />
+                                      Activar
+                                    </DropdownMenuItem>
+                                  ) : (
+                                    <DropdownMenuItem
+                                      onClick={() => {
+                                        updateMutation.mutate({
+                                          id: product.id,
+                                          data: { state: "DISABLED" },
+                                        });
+                                      }}
+                                    >
+                                      <Ban className="w-4 h-4 mr-2 text-warning" />
+                                      Deshabilitar
+                                    </DropdownMenuItem>
+                                  )}
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    className="text-destructive focus:text-destructive"
+                                    onClick={() => {
+                                      if (confirm(`¿Estás seguro de eliminar "${product.name}"?`)) {
+                                        deleteMutation.mutate(product.id);
+                                      }
+                                    }}
+                                  >
+                                    <Trash2 className="w-4 h-4 mr-2" />
+                                    Eliminar
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </div>
-                            <div>
-                              <span className="font-medium text-foreground">{product.name}</span>
-                              {product.bar_code && (
-                                <p className="text-xs text-muted-foreground font-mono">{product.bar_code}</p>
+                            <div className="flex items-center gap-3 flex-wrap">
+                              <div className="flex-1 min-w-[120px]">
+                                <div className="text-xs text-muted-foreground mb-0.5">Precio</div>
+                                <div className="font-semibold text-sm text-foreground">
+                                  {product.sale_price ? `$${product.sale_price.toLocaleString()}` : "-"}
+                                </div>
+                              </div>
+                              <div className="flex-1 min-w-[80px]">
+                                <div className="text-xs text-muted-foreground mb-0.5">Stock</div>
+                                <div className={`font-bold text-sm ${product.stock <= 0 ? "text-destructive" : product.stock <= (product.min_stock || 5) ? "text-warning" : "text-foreground"}`}>
+                                  {product.stock}
+                                </div>
+                              </div>
+                              <div className="flex-1 min-w-[80px]">
+                                <div className="text-xs text-muted-foreground mb-0.5">Mín</div>
+                                <div className="text-sm text-muted-foreground">
+                                  {product.min_stock ?? 5}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="mt-2 pt-2 border-t border-border/50">
+                              {getStateBadge(product.state, product.stock, product.min_stock || 5)}
+                              {product.sku && (
+                                <span className="ml-2 text-xs text-muted-foreground font-mono">
+                                  SKU: {product.sku}
+                                </span>
                               )}
                             </div>
                           </div>
-                        </TableCell>
-                        <TableCell className="font-mono text-sm text-muted-foreground">
-                          {product.sku || "-"}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <span className="font-semibold text-foreground">
-                            {product.sale_price ? `$${product.sale_price.toLocaleString()}` : "-"}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <span className={`font-bold ${product.stock <= 0 ? "text-destructive" : product.stock <= (product.min_stock || 5) ? "text-warning" : "text-foreground"}`}>
-                            {product.stock}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-center text-muted-foreground">
-                          {product.min_stock ?? 5}
-                        </TableCell>
-                        <TableCell className="text-center text-muted-foreground">
-                          {product.reserved_stock || 0}
-                        </TableCell>
-                        <TableCell>
-                          {getStateBadge(product.state, product.stock, product.min_stock || 5)}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <div className="flex items-center justify-center gap-1">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setStockProduct(product);
-                                setIsStockDialogOpen(true);
-                              }}
-                              title="Ajustar stock"
-                            >
-                              <RefreshCw className="w-4 h-4" />
-                            </Button>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="sm">
-                                  <MoreVertical className="w-4 h-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem
-                                  onClick={() => {
-                                    setEditingProduct(product);
-                                    setScannedBarcode(product.bar_code || "");
-                                    setSelectedCategoryId(product.categoryId || "");
-                                    setIsCreatingNewCategory(false);
-                                    setNewCategoryInline("");
-                                    setIsDialogOpen(true);
-                                  }}
-                                >
-                                  <Edit2 className="w-4 h-4 mr-2" />
-                                  Editar
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                {product.state === "DISABLED" ? (
-                                  <DropdownMenuItem
-                                    onClick={() => {
-                                      updateMutation.mutate({
-                                        id: product.id,
-                                        data: { state: "ACTIVE" },
-                                      });
-                                    }}
-                                  >
-                                    <CheckCircle className="w-4 h-4 mr-2 text-success" />
-                                    Activar
-                                  </DropdownMenuItem>
-                                ) : (
-                                  <DropdownMenuItem
-                                    onClick={() => {
-                                      updateMutation.mutate({
-                                        id: product.id,
-                                        data: { state: "DISABLED" },
-                                      });
-                                    }}
-                                  >
-                                    <Ban className="w-4 h-4 mr-2 text-warning" />
-                                    Deshabilitar
-                                  </DropdownMenuItem>
-                                )}
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  className="text-destructive focus:text-destructive"
-                                  onClick={() => {
-                                    if (confirm(`¿Estás seguro de eliminar "${product.name}"?`)) {
-                                      deleteMutation.mutate(product.id);
-                                    }
-                                  }}
-                                >
-                                  <Trash2 className="w-4 h-4 mr-2" />
-                                  Eliminar
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        </TableCell>
-                      </TableRow>
+                        </div>
+                      </div>
                     ))}
-                  </TableBody>
-                </Table>
+                  </div>
+
+                  {/* Vista desktop: Tabla */}
+                  <div className="hidden md:block overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="border-border hover:bg-transparent">
+                          <TableHead className="text-muted-foreground text-xs sm:text-sm pl-3 sm:pl-4">Producto</TableHead>
+                          <TableHead className="text-muted-foreground text-xs sm:text-sm hidden lg:table-cell">SKU</TableHead>
+                          <TableHead className="text-muted-foreground text-xs sm:text-sm text-right">Precio</TableHead>
+                          <TableHead className="text-muted-foreground text-xs sm:text-sm text-center">Stock</TableHead>
+                          <TableHead className="text-muted-foreground text-xs sm:text-sm text-center hidden md:table-cell">Mín</TableHead>
+                          <TableHead className="text-muted-foreground text-xs sm:text-sm text-center hidden lg:table-cell">Res.</TableHead>
+                          <TableHead className="text-muted-foreground text-xs sm:text-sm hidden sm:table-cell">Estado</TableHead>
+                          <TableHead className="text-muted-foreground text-xs sm:text-sm text-center pr-3 sm:pr-4"></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {inventoryProducts.map((product) => (
+                          <TableRow key={product.id} className="border-border">
+                            <TableCell className="pl-3 sm:pl-4 py-2 sm:py-4">
+                              <div className="flex items-center gap-2 sm:gap-3">
+                                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-secondary flex items-center justify-center overflow-hidden shrink-0">
+                                  {product.imageUrl ? (
+                                    <img
+                                      src={product.imageUrl}
+                                      alt={product.name}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    <Package className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
+                                  )}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <span className="font-medium text-foreground text-xs sm:text-sm line-clamp-1 sm:line-clamp-2">{product.name}</span>
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell className="font-mono text-xs sm:text-sm text-muted-foreground hidden lg:table-cell">
+                              {product.sku || "-"}
+                            </TableCell>
+                            <TableCell className="text-right py-2 sm:py-4">
+                              <span className="font-semibold text-foreground text-xs sm:text-sm whitespace-nowrap">
+                                {product.sale_price ? `$${product.sale_price.toLocaleString()}` : "-"}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-center py-2 sm:py-4">
+                              <span className={`font-bold text-sm ${product.stock <= 0 ? "text-destructive" : product.stock <= (product.min_stock || 5) ? "text-warning" : "text-foreground"}`}>
+                                {product.stock}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-center text-muted-foreground text-xs sm:text-sm hidden md:table-cell">
+                              {product.min_stock ?? 5}
+                            </TableCell>
+                            <TableCell className="text-center text-muted-foreground text-xs sm:text-sm hidden lg:table-cell">
+                              {product.reserved_stock || 0}
+                            </TableCell>
+                            <TableCell className="hidden sm:table-cell py-2 sm:py-4">
+                              {getStateBadge(product.state, product.stock, product.min_stock || 5)}
+                            </TableCell>
+                            <TableCell className="text-center pr-3 sm:pr-4 py-2 sm:py-4">
+                              <div className="flex items-center justify-center gap-1">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setStockProduct(product);
+                                    setIsStockDialogOpen(true);
+                                  }}
+                                  title="Ajustar stock"
+                                  className="h-8"
+                                >
+                                  <RefreshCw className="w-4 h-4" />
+                                </Button>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                      <MoreVertical className="w-4 h-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem
+                                      onClick={() => {
+                                        setEditingProduct(product);
+                                        setScannedBarcode(product.bar_code || "");
+                                        setSelectedCategoryId(product.categoryId || "");
+                                        setIsCreatingNewCategory(false);
+                                        setNewCategoryInline("");
+                                        setIsDialogOpen(true);
+                                      }}
+                                    >
+                                      <Edit2 className="w-4 h-4 mr-2" />
+                                      Editar
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    {product.state === "DISABLED" ? (
+                                      <DropdownMenuItem
+                                        onClick={() => {
+                                          updateMutation.mutate({
+                                            id: product.id,
+                                            data: { state: "ACTIVE" },
+                                          });
+                                        }}
+                                      >
+                                        <CheckCircle className="w-4 h-4 mr-2 text-success" />
+                                        Activar
+                                      </DropdownMenuItem>
+                                    ) : (
+                                      <DropdownMenuItem
+                                        onClick={() => {
+                                          updateMutation.mutate({
+                                            id: product.id,
+                                            data: { state: "DISABLED" },
+                                          });
+                                        }}
+                                      >
+                                        <Ban className="w-4 h-4 mr-2 text-warning" />
+                                        Deshabilitar
+                                      </DropdownMenuItem>
+                                    )}
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                      className="text-destructive focus:text-destructive"
+                                      onClick={() => {
+                                        if (confirm(`¿Estás seguro de eliminar "${product.name}"?`)) {
+                                          deleteMutation.mutate(product.id);
+                                        }
+                                      }}
+                                    >
+                                      <Trash2 className="w-4 h-4 mr-2" />
+                                      Eliminar
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </>
               )}
             </div>
 
             {/* Paginación del Inventario */}
             {inventoryPagination && inventoryPagination.totalPages > 1 && (
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground text-center sm:text-left">
                   Mostrando {((inventoryPage - 1) * 15) + 1} - {Math.min(inventoryPage * 15, inventoryPagination.total)} de {inventoryPagination.total} productos
                 </p>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 flex-wrap justify-center">
                   <Button
                     variant="outline"
                     size="sm"
                     disabled={inventoryPage === 1}
                     onClick={() => setInventoryPage(1)}
+                    className="hidden sm:flex"
                   >
                     Primera
                   </Button>
@@ -1203,10 +1325,11 @@ export default function Productos() {
                     disabled={inventoryPage === 1}
                     onClick={() => setInventoryPage((p) => p - 1)}
                   >
-                    Anterior
+                    <span className="sm:hidden">←</span>
+                    <span className="hidden sm:inline">Anterior</span>
                   </Button>
-                  <span className="flex items-center px-4 text-sm text-muted-foreground">
-                    Página {inventoryPage} de {inventoryPagination.totalPages}
+                  <span className="flex items-center px-2 sm:px-4 text-sm text-muted-foreground whitespace-nowrap">
+                    {inventoryPage} / {inventoryPagination.totalPages}
                   </span>
                   <Button
                     variant="outline"
@@ -1214,13 +1337,15 @@ export default function Productos() {
                     disabled={inventoryPage === inventoryPagination.totalPages}
                     onClick={() => setInventoryPage((p) => p + 1)}
                   >
-                    Siguiente
+                    <span className="sm:hidden">→</span>
+                    <span className="hidden sm:inline">Siguiente</span>
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     disabled={inventoryPage === inventoryPagination.totalPages}
                     onClick={() => setInventoryPage(inventoryPagination.totalPages)}
+                    className="hidden sm:flex"
                   >
                     Última
                   </Button>
@@ -1242,26 +1367,31 @@ export default function Productos() {
                 <p className="text-muted-foreground">No hay productos con stock bajo</p>
               </div>
             ) : (
-              <div className="grid gap-4">
+              <div className="grid gap-3 sm:gap-4">
                 {lowStockProducts.map((product) => (
                   <div
                     key={product.id}
-                    className="bunker-card p-4 border-warning/30 flex items-center gap-4"
+                    className="bunker-card p-3 sm:p-4 border-warning/30 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 w-full max-w-full"
                   >
-                    <div className="p-3 rounded-xl bg-warning/20">
-                      <AlertTriangle className="w-6 h-6 text-warning" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-medium text-foreground">{product.name}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Stock actual: <span className="text-warning font-bold">{product.stock}</span> | 
-                        Mínimo requerido: {product.threshold} |
-                        Déficit: <span className="text-destructive font-bold">{product.deficit}</span>
-                      </p>
+                    <div className="flex items-center gap-3 min-w-0 flex-1 sm:flex-1">
+                      <div className="p-2 sm:p-3 rounded-xl bg-warning/20 shrink-0">
+                        <AlertTriangle className="w-5 h-5 sm:w-6 sm:h-6 text-warning" />
+                      </div>
+                      <div className="min-w-0 flex-1 overflow-hidden">
+                        <h3 className="font-medium text-foreground truncate text-sm sm:text-base">{product.name}</h3>
+                        <div className="text-xs sm:text-sm text-muted-foreground flex flex-wrap gap-x-2 gap-y-1 mt-1">
+                          <span>Stock: <span className="text-warning font-bold">{product.stock}</span></span>
+                          <span className="hidden sm:inline">|</span>
+                          <span>Mínimo: {product.threshold}</span>
+                          <span className="hidden sm:inline">|</span>
+                          <span>Déficit: <span className="text-destructive font-bold">{product.deficit}</span></span>
+                        </div>
+                      </div>
                     </div>
                     <Button
                       variant="outline"
                       size="sm"
+                      className="w-full sm:w-auto shrink-0 whitespace-nowrap"
                       onClick={() => {
                         setStockProduct(product);
                         setStockOperation("add");
@@ -1288,43 +1418,52 @@ export default function Productos() {
               </div>
             ) : (
               <div className="bunker-card overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-border hover:bg-transparent">
-                      <TableHead className="text-muted-foreground">Producto</TableHead>
-                      <TableHead className="text-muted-foreground">SKU</TableHead>
-                      <TableHead className="text-muted-foreground">Eliminado</TableHead>
-                      <TableHead className="text-muted-foreground text-right">Acciones</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {deletedProducts.map((product) => (
-                      <TableRow key={product.id} className="border-border">
-                        <TableCell className="font-medium text-foreground">
-                          {product.name}
-                        </TableCell>
-                        <TableCell className="font-mono text-sm text-muted-foreground">
-                          {product.sku || "-"}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {product.deletedAt
-                            ? new Date(product.deletedAt).toLocaleDateString("es-ES")
-                            : "-"}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => restoreMutation.mutate(product.id)}
-                          >
-                            <RotateCcw className="w-4 h-4 mr-1" />
-                            Restaurar
-                          </Button>
-                        </TableCell>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-border hover:bg-transparent">
+                        <TableHead className="text-muted-foreground">Producto</TableHead>
+                        <TableHead className="text-muted-foreground hidden sm:table-cell">SKU</TableHead>
+                        <TableHead className="text-muted-foreground hidden sm:table-cell">Eliminado</TableHead>
+                        <TableHead className="text-muted-foreground text-right">Acciones</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {deletedProducts.map((product) => (
+                        <TableRow key={product.id} className="border-border">
+                          <TableCell>
+                            <div>
+                              <p className="font-medium text-foreground">{product.name}</p>
+                              {/* Info adicional en móvil */}
+                              <div className="sm:hidden text-xs text-muted-foreground mt-1">
+                                {product.sku && <span className="font-mono">{product.sku} • </span>}
+                                {product.deletedAt && new Date(product.deletedAt).toLocaleDateString("es-ES")}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="font-mono text-sm text-muted-foreground hidden sm:table-cell">
+                            {product.sku || "-"}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground hidden sm:table-cell">
+                            {product.deletedAt
+                              ? new Date(product.deletedAt).toLocaleDateString("es-ES")
+                              : "-"}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => restoreMutation.mutate(product.id)}
+                            >
+                              <RotateCcw className="w-4 h-4 sm:mr-1" />
+                              <span className="hidden sm:inline">Restaurar</span>
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               </div>
             )}
           </TabsContent>
@@ -1358,58 +1497,190 @@ export default function Productos() {
               </div>
             ) : (
               <div className="bunker-card overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-border hover:bg-transparent">
-                      <TableHead className="text-muted-foreground">Producto</TableHead>
-                      <TableHead className="text-muted-foreground text-right">Precio</TableHead>
-                      <TableHead className="text-muted-foreground text-center">Cantidad</TableHead>
-                      <TableHead className="text-muted-foreground">Fecha</TableHead>
-                      <TableHead className="text-muted-foreground">Estado</TableHead>
-                      <TableHead className="text-muted-foreground text-right">Acciones</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {manualProducts.map((mp) => (
-                      <TableRow key={mp.id} className="border-border">
-                        <TableCell>
-                          <div>
-                            <p className="font-medium text-foreground">{mp.name}</p>
-                            <p className="text-xs text-muted-foreground font-mono">{mp.originalText}</p>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right font-semibold text-foreground">
-                          ${mp.price.toLocaleString()}
-                        </TableCell>
-                        <TableCell className="text-center text-muted-foreground">
-                          {mp.quantity}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {format(new Date(mp.createdAt), "dd MMM, HH:mm", { locale: es })}
-                        </TableCell>
-                        <TableCell>
-                          {mp.status === "PENDING" && (
-                            <Badge variant="outline" className="border-blue-500 text-blue-400">
-                              Pendiente
-                            </Badge>
-                          )}
-                          {mp.status === "LINKED" && (
-                            <Badge variant="outline" className="border-success text-success">
-                              Vinculado
-                            </Badge>
-                          )}
-                          {mp.status === "CONVERTED" && (
-                            <Badge variant="outline" className="border-primary text-primary">
-                              Convertido
-                            </Badge>
-                          )}
-                          {mp.status === "IGNORED" && (
-                            <Badge variant="secondary">Ignorado</Badge>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {mp.status === "PENDING" && (
-                            <div className="flex items-center justify-end gap-1">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-border hover:bg-transparent">
+                        <TableHead className="text-muted-foreground min-w-[150px]">Producto</TableHead>
+                        <TableHead className="text-muted-foreground text-right">Precio</TableHead>
+                        <TableHead className="text-muted-foreground text-center hidden sm:table-cell">Cantidad</TableHead>
+                        <TableHead className="text-muted-foreground hidden md:table-cell">Fecha</TableHead>
+                        <TableHead className="text-muted-foreground hidden sm:table-cell">Estado</TableHead>
+                        <TableHead className="text-muted-foreground text-right">Acciones</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {manualProducts.map((mp) => (
+                        <TableRow key={mp.id} className="border-border">
+                          <TableCell>
+                            <div>
+                              <p className="font-medium text-foreground">{mp.name}</p>
+                              <p className="text-xs text-muted-foreground font-mono truncate max-w-[150px]">{mp.originalText}</p>
+                              {/* Mostrar info adicional en móvil */}
+                              <div className="sm:hidden mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+                                <span>x{mp.quantity}</span>
+                                <span>•</span>
+                                {mp.status === "PENDING" && (
+                                  <Badge variant="outline" className="border-blue-500 text-blue-400 text-xs py-0">
+                                    Pendiente
+                                  </Badge>
+                                )}
+                                {mp.status === "LINKED" && (
+                                  <Badge variant="outline" className="border-success text-success text-xs py-0">
+                                    Vinculado
+                                  </Badge>
+                                )}
+                                {mp.status === "CONVERTED" && (
+                                  <Badge variant="outline" className="border-primary text-primary text-xs py-0">
+                                    Convertido
+                                  </Badge>
+                                )}
+                                {mp.status === "IGNORED" && (
+                                  <Badge variant="secondary" className="text-xs py-0">Ignorado</Badge>
+                                )}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right font-semibold text-foreground whitespace-nowrap">
+                            ${mp.price.toLocaleString()}
+                          </TableCell>
+                          <TableCell className="text-center text-muted-foreground hidden sm:table-cell">
+                            {mp.quantity}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground hidden md:table-cell whitespace-nowrap">
+                            {format(new Date(mp.createdAt), "dd MMM, HH:mm", { locale: es })}
+                          </TableCell>
+                          <TableCell className="hidden sm:table-cell">
+                            {mp.status === "PENDING" && (
+                              <Badge variant="outline" className="border-blue-500 text-blue-400">
+                                Pendiente
+                              </Badge>
+                            )}
+                            {mp.status === "LINKED" && (
+                              <Badge variant="outline" className="border-success text-success">
+                                Vinculado
+                              </Badge>
+                            )}
+                            {mp.status === "CONVERTED" && (
+                              <Badge variant="outline" className="border-primary text-primary">
+                                Convertido
+                              </Badge>
+                            )}
+                            {mp.status === "IGNORED" && (
+                              <Badge variant="secondary">Ignorado</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {mp.status === "PENDING" && (
+                              <>
+                                {/* Vista desktop */}
+                                <div className="hidden lg:flex items-center justify-end gap-1">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedManualProduct(mp);
+                                      setEditManualForm({
+                                        name: mp.name,
+                                        quantity: mp.quantity,
+                                        price: mp.price,
+                                        status: mp.status,
+                                      });
+                                      setEditManualDialogOpen(true);
+                                    }}
+                                    title="Editar producto"
+                                  >
+                                    <Edit2 className="w-4 h-4 mr-1" />
+                                    Editar
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedManualProduct(mp);
+                                      setLinkDialogOpen(true);
+                                    }}
+                                    title="Vincular a producto existente"
+                                  >
+                                    <Link2 className="w-4 h-4 mr-1" />
+                                    Vincular
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => convertManualMutation.mutate(mp.id)}
+                                    disabled={convertManualMutation.isPending}
+                                    title="Crear nuevo producto"
+                                  >
+                                    <PackagePlus className="w-4 h-4 mr-1" />
+                                    Convertir
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => ignoreManualMutation.mutate(mp.id)}
+                                    disabled={ignoreManualMutation.isPending}
+                                    className="text-muted-foreground hover:text-destructive"
+                                    title="Ignorar"
+                                  >
+                                    <Ban className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                                {/* Vista móvil/tablet - dropdown */}
+                                <div className="lg:hidden">
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="sm">
+                                        <MoreVertical className="w-4 h-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                      <DropdownMenuItem
+                                        onClick={() => {
+                                          setSelectedManualProduct(mp);
+                                          setEditManualForm({
+                                            name: mp.name,
+                                            quantity: mp.quantity,
+                                            price: mp.price,
+                                            status: mp.status,
+                                          });
+                                          setEditManualDialogOpen(true);
+                                        }}
+                                      >
+                                        <Edit2 className="w-4 h-4 mr-2" />
+                                        Editar
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem
+                                        onClick={() => {
+                                          setSelectedManualProduct(mp);
+                                          setLinkDialogOpen(true);
+                                        }}
+                                      >
+                                        <Link2 className="w-4 h-4 mr-2" />
+                                        Vincular
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem
+                                        onClick={() => convertManualMutation.mutate(mp.id)}
+                                        disabled={convertManualMutation.isPending}
+                                      >
+                                        <PackagePlus className="w-4 h-4 mr-2" />
+                                        Convertir
+                                      </DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem
+                                        onClick={() => ignoreManualMutation.mutate(mp.id)}
+                                        disabled={ignoreManualMutation.isPending}
+                                        className="text-muted-foreground"
+                                      >
+                                        <Ban className="w-4 h-4 mr-2" />
+                                        Ignorar
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </div>
+                              </>
+                            )}
+                            {mp.status !== "PENDING" && (
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -1423,77 +1694,25 @@ export default function Productos() {
                                   });
                                   setEditManualDialogOpen(true);
                                 }}
-                                title="Editar producto"
+                                title="Editar producto manual"
                               >
-                                <Edit2 className="w-4 h-4 mr-1" />
-                                Editar
+                                <Edit2 className="w-4 h-4 sm:mr-1" />
+                                <span className="hidden sm:inline">Editar</span>
                               </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedManualProduct(mp);
-                                  setLinkDialogOpen(true);
-                                }}
-                                title="Vincular a producto existente"
-                              >
-                                <Link2 className="w-4 h-4 mr-1" />
-                                Vincular
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => convertManualMutation.mutate(mp.id)}
-                                disabled={convertManualMutation.isPending}
-                                title="Crear nuevo producto"
-                              >
-                                <PackagePlus className="w-4 h-4 mr-1" />
-                                Convertir
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => ignoreManualMutation.mutate(mp.id)}
-                                disabled={ignoreManualMutation.isPending}
-                                className="text-muted-foreground hover:text-destructive"
-                                title="Ignorar"
-                              >
-                                <Ban className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          )}
-                          {mp.status !== "PENDING" && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedManualProduct(mp);
-                                setEditManualForm({
-                                  name: mp.name,
-                                  quantity: mp.quantity,
-                                  price: mp.price,
-                                  status: mp.status,
-                                });
-                                setEditManualDialogOpen(true);
-                              }}
-                              title="Editar producto manual"
-                            >
-                              <Edit2 className="w-4 h-4 mr-1" />
-                              Editar
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               </div>
             )}
           </TabsContent>
 
           {/* Tab Categorías */}
           <TabsContent value="categorias" className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h3 className="text-lg font-medium">Gestión de Categorías</h3>
                 <p className="text-sm text-muted-foreground">
@@ -1501,6 +1720,7 @@ export default function Productos() {
                 </p>
               </div>
               <Button
+                className="w-full sm:w-auto"
                 onClick={() => {
                   setEditingCategory(null);
                   setNewCategoryName("");
@@ -1532,73 +1752,75 @@ export default function Productos() {
               </div>
             ) : (
               <div className="bunker-card overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-border hover:bg-transparent">
-                      <TableHead className="text-muted-foreground">Nombre</TableHead>
-                      <TableHead className="text-muted-foreground text-center">Productos</TableHead>
-                      <TableHead className="text-muted-foreground text-right">Acciones</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {categories.map((category) => {
-                      // Contar productos de esta categoría
-                      const productCount = statsData?.data.filter(
-                        (p) => p.categoryId === category.id
-                      ).length || 0;
-                      
-                      return (
-                        <TableRow key={category.id} className="border-border">
-                          <TableCell>
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                                <Tag className="w-5 h-5 text-primary" />
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-border hover:bg-transparent">
+                        <TableHead className="text-muted-foreground">Nombre</TableHead>
+                        <TableHead className="text-muted-foreground text-center">Productos</TableHead>
+                        <TableHead className="text-muted-foreground text-right">Acciones</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {categories.map((category) => {
+                        // Contar productos de esta categoría
+                        const productCount = statsData?.data.filter(
+                          (p) => p.categoryId === category.id
+                        ).length || 0;
+                        
+                        return (
+                          <TableRow key={category.id} className="border-border">
+                            <TableCell>
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                                  <Tag className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+                                </div>
+                                <span className="font-medium text-foreground">{category.name}</span>
                               </div>
-                              <span className="font-medium text-foreground">{category.name}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <Badge variant="secondary">{productCount}</Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  setEditingCategory(category);
-                                  setNewCategoryName(category.name);
-                                  setIsCategoryDialogOpen(true);
-                                }}
-                              >
-                                <Edit2 className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-destructive hover:text-destructive"
-                                onClick={() => {
-                                  if (productCount > 0) {
-                                    toast.error(
-                                      `No se puede eliminar "${category.name}" porque tiene ${productCount} producto(s) asociado(s)`
-                                    );
-                                    return;
-                                  }
-                                  if (confirm(`¿Estás seguro de eliminar la categoría "${category.name}"?`)) {
-                                    deleteCategoryMutation.mutate(category.id);
-                                  }
-                                }}
-                                disabled={productCount > 0}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <Badge variant="secondary">{productCount}</Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-1 sm:gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setEditingCategory(category);
+                                    setNewCategoryName(category.name);
+                                    setIsCategoryDialogOpen(true);
+                                  }}
+                                >
+                                  <Edit2 className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-destructive hover:text-destructive"
+                                  onClick={() => {
+                                    if (productCount > 0) {
+                                      toast.error(
+                                        `No se puede eliminar "${category.name}" porque tiene ${productCount} producto(s) asociado(s)`
+                                      );
+                                      return;
+                                    }
+                                    if (confirm(`¿Estás seguro de eliminar la categoría "${category.name}"?`)) {
+                                      deleteCategoryMutation.mutate(category.id);
+                                    }
+                                  }}
+                                  disabled={productCount > 0}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
               </div>
             )}
           </TabsContent>

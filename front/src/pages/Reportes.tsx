@@ -177,7 +177,7 @@ export default function Reportes() {
 
   return (
     <MainLayout title="Reportes">
-      <div className="space-y-6">
+      <div className="space-y-6 w-full max-w-full overflow-x-hidden">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
@@ -207,110 +207,110 @@ export default function Reportes() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {loadingStats ? (
             <>
               {[...Array(4)].map((_, i) => (
-                <Skeleton key={i} className="h-32" />
+                <Skeleton key={i} className="h-28 sm:h-32" />
               ))}
             </>
           ) : (
             <>
-              <div className="stat-card">
+              <div className="stat-card min-w-0">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Ventas del Mes</p>
-                    <p className="text-2xl font-bold text-foreground">{stats?.totalSales || 0}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs sm:text-sm text-muted-foreground truncate">Ventas del Mes</p>
+                    <p className="text-xl sm:text-2xl font-bold text-foreground truncate">{stats?.totalSales || 0}</p>
                     <div className="flex items-center gap-1 mt-1">
                       {(stats?.monthlyGrowth || 0) >= 0 ? (
                         <>
-                          <ArrowUpRight className="w-4 h-4 text-success" />
-                          <span className="text-xs text-success">+{stats?.monthlyGrowth}% vs mes anterior</span>
+                          <ArrowUpRight className="w-3 h-3 sm:w-4 sm:h-4 text-success shrink-0" />
+                          <span className="text-[10px] sm:text-xs text-success truncate">+{stats?.monthlyGrowth}%</span>
                         </>
                       ) : (
                         <>
-                          <ArrowDownRight className="w-4 h-4 text-destructive" />
-                          <span className="text-xs text-destructive">{stats?.monthlyGrowth}% vs mes anterior</span>
+                          <ArrowDownRight className="w-3 h-3 sm:w-4 sm:h-4 text-destructive shrink-0" />
+                          <span className="text-[10px] sm:text-xs text-destructive truncate">{stats?.monthlyGrowth}%</span>
                         </>
                       )}
                     </div>
                   </div>
-                  <div className="p-3 rounded-xl bg-primary/20">
-                    <ShoppingBag className="w-6 h-6 text-primary" />
+                  <div className="p-2 sm:p-3 rounded-xl bg-primary/20 shrink-0">
+                    <ShoppingBag className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
                   </div>
                 </div>
               </div>
 
-              <div className="stat-card">
+              <div className="stat-card min-w-0">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Ingresos del Mes</p>
-                    <p className="text-2xl font-bold text-foreground">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs sm:text-sm text-muted-foreground truncate">Ingresos del Mes</p>
+                    <p className="text-lg sm:text-2xl font-bold text-foreground truncate">
                       {formatCurrency(stats?.totalRevenue || 0)}
                     </p>
                     <div className="flex items-center gap-1 mt-1">
                       {(stats?.monthlyGrowth || 0) >= 0 ? (
                         <>
-                          <TrendingUp className="w-4 h-4 text-success" />
-                          <span className="text-xs text-success">Creciendo</span>
+                          <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4 text-success shrink-0" />
+                          <span className="text-[10px] sm:text-xs text-success truncate">Creciendo</span>
                         </>
                       ) : (
                         <>
-                          <TrendingDown className="w-4 h-4 text-destructive" />
-                          <span className="text-xs text-destructive">Decreciendo</span>
+                          <TrendingDown className="w-3 h-3 sm:w-4 sm:h-4 text-destructive shrink-0" />
+                          <span className="text-[10px] sm:text-xs text-destructive truncate">Decreciendo</span>
                         </>
                       )}
                     </div>
                   </div>
-                  <div className="p-3 rounded-xl bg-success/20">
-                    <DollarSign className="w-6 h-6 text-success" />
+                  <div className="p-2 sm:p-3 rounded-xl bg-success/20 shrink-0">
+                    <DollarSign className="w-5 h-5 sm:w-6 sm:h-6 text-success" />
                   </div>
                 </div>
               </div>
 
-              <div className="stat-card">
+              <div className="stat-card min-w-0">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Ventas de Hoy</p>
-                    <p className="text-2xl font-bold text-foreground">{stats?.todaySales || 0}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs sm:text-sm text-muted-foreground truncate">Ventas de Hoy</p>
+                    <p className="text-xl sm:text-2xl font-bold text-foreground truncate">{stats?.todaySales || 0}</p>
                     <div className="flex items-center gap-1 mt-1">
                       {(stats?.dailyChange || 0) >= 0 ? (
                         <>
-                          <ArrowUpRight className="w-4 h-4 text-success" />
-                          <span className="text-xs text-success">+{stats?.dailyChange}% vs ayer</span>
+                          <ArrowUpRight className="w-3 h-3 sm:w-4 sm:h-4 text-success shrink-0" />
+                          <span className="text-[10px] sm:text-xs text-success truncate">+{stats?.dailyChange}%</span>
                         </>
                       ) : (
                         <>
-                          <ArrowDownRight className="w-4 h-4 text-destructive" />
-                          <span className="text-xs text-destructive">{stats?.dailyChange}% vs ayer</span>
+                          <ArrowDownRight className="w-3 h-3 sm:w-4 sm:h-4 text-destructive shrink-0" />
+                          <span className="text-[10px] sm:text-xs text-destructive truncate">{stats?.dailyChange}%</span>
                         </>
                       )}
                     </div>
                   </div>
-                  <div className="p-3 rounded-xl bg-blue-500/20">
-                    <Receipt className="w-6 h-6 text-blue-500" />
+                  <div className="p-2 sm:p-3 rounded-xl bg-blue-500/20 shrink-0">
+                    <Receipt className="w-5 h-5 sm:w-6 sm:h-6 text-blue-500" />
                   </div>
                 </div>
               </div>
 
-              <div className="stat-card">
+              <div className="stat-card min-w-0">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Stock Bajo</p>
-                    <p className="text-2xl font-bold text-foreground">{stats?.lowStockProducts || 0}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs sm:text-sm text-muted-foreground truncate">Stock Bajo</p>
+                    <p className="text-xl sm:text-2xl font-bold text-foreground truncate">{stats?.lowStockProducts || 0}</p>
                     <div className="flex items-center gap-1 mt-1">
                       {(stats?.lowStockProducts || 0) > 0 ? (
                         <>
-                          <AlertTriangle className="w-4 h-4 text-warning" />
-                          <span className="text-xs text-warning">Requieren atención</span>
+                          <AlertTriangle className="w-3 h-3 sm:w-4 sm:h-4 text-warning shrink-0" />
+                          <span className="text-[10px] sm:text-xs text-warning truncate">Atención</span>
                         </>
                       ) : (
-                        <span className="text-xs text-success">Todo en orden</span>
+                        <span className="text-[10px] sm:text-xs text-success truncate">Todo en orden</span>
                       )}
                     </div>
                   </div>
-                  <div className="p-3 rounded-xl bg-warning/20">
-                    <Package className="w-6 h-6 text-warning" />
+                  <div className="p-2 sm:p-3 rounded-xl bg-warning/20 shrink-0">
+                    <Package className="w-5 h-5 sm:w-6 sm:h-6 text-warning" />
                   </div>
                 </div>
               </div>
@@ -320,12 +320,26 @@ export default function Reportes() {
 
         {/* Tabs */}
         <Tabs defaultValue="ventas" className="space-y-4">
-          <TabsList className="bg-secondary/50">
-            <TabsTrigger value="ventas">Tendencia de Ventas</TabsTrigger>
-            <TabsTrigger value="productos">Top Productos</TabsTrigger>
-            <TabsTrigger value="metodos">Métodos de Pago</TabsTrigger>
-            <TabsTrigger value="historial">Historial de Ventas</TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide">
+            <TabsList className="bg-secondary/50 inline-flex w-max sm:w-auto min-w-full sm:min-w-0">
+              <TabsTrigger value="ventas" className="text-sm sm:text-base px-3 sm:px-4 shrink-0">
+                <span className="hidden sm:inline">Tendencia de Ventas</span>
+                <span className="sm:hidden">Tendencia</span>
+              </TabsTrigger>
+              <TabsTrigger value="productos" className="text-sm sm:text-base px-3 sm:px-4 shrink-0">
+                <span className="hidden sm:inline">Top Productos</span>
+                <span className="sm:hidden">Productos</span>
+              </TabsTrigger>
+              <TabsTrigger value="metodos" className="text-sm sm:text-base px-3 sm:px-4 shrink-0">
+                <span className="hidden sm:inline">Métodos de Pago</span>
+                <span className="sm:hidden">Pagos</span>
+              </TabsTrigger>
+              <TabsTrigger value="historial" className="text-sm sm:text-base px-3 sm:px-4 shrink-0">
+                <span className="hidden sm:inline">Historial de Ventas</span>
+                <span className="sm:hidden">Historial</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* Tendencia de Ventas */}
           <TabsContent value="ventas">
@@ -344,9 +358,9 @@ export default function Reportes() {
               </div>
               
               {loadingChart ? (
-                <Skeleton className="h-[400px]" />
+                <Skeleton className="h-[250px] sm:h-[400px]" />
               ) : weeklyChart && weeklyChart.length > 0 ? (
-                <div className="h-[400px]">
+                <div className="h-[250px] sm:h-[400px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={weeklyChart} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                       <defs>
@@ -389,7 +403,7 @@ export default function Reportes() {
                   </ResponsiveContainer>
                 </div>
               ) : (
-                <div className="h-[400px] flex items-center justify-center text-muted-foreground">
+                <div className="h-[250px] sm:h-[400px] flex items-center justify-center text-muted-foreground">
                   No hay datos de ventas para mostrar
                 </div>
               )}
@@ -407,9 +421,9 @@ export default function Reportes() {
               </div>
               
               {loadingTopProducts ? (
-                <Skeleton className="h-[400px]" />
+                <Skeleton className="h-[250px] sm:h-[400px]" />
               ) : topProducts && topProducts.length > 0 ? (
-                <div className="h-[400px]">
+                <div className="h-[250px] sm:h-[400px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart 
                       data={topProducts.map(p => ({ name: p.productName, revenue: p.revenue, quantity: p.quantitySold }))} 
@@ -453,7 +467,7 @@ export default function Reportes() {
                   </ResponsiveContainer>
                 </div>
               ) : (
-                <div className="h-[400px] flex items-center justify-center text-muted-foreground">
+                <div className="h-[250px] sm:h-[400px] flex items-center justify-center text-muted-foreground">
                   No hay datos de productos para mostrar
                 </div>
               )}
@@ -470,9 +484,9 @@ export default function Reportes() {
                 </div>
                 
                 {loadingSummary ? (
-                  <Skeleton className="h-[300px]" />
+                  <Skeleton className="h-[250px] sm:h-[300px]" />
                 ) : paymentMethodData.length > 0 ? (
-                  <div className="h-[300px]">
+                  <div className="h-[250px] sm:h-[300px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
@@ -500,7 +514,7 @@ export default function Reportes() {
                     </ResponsiveContainer>
                   </div>
                 ) : (
-                  <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                  <div className="h-[250px] sm:h-[300px] flex items-center justify-center text-muted-foreground">
                     No hay datos de pagos para mostrar
                   </div>
                 )}
@@ -525,17 +539,17 @@ export default function Reportes() {
                       const percentage = total > 0 ? (method.value / total) * 100 : 0;
                       
                       return (
-                        <div key={method.name} className="flex items-center gap-4">
+                        <div key={method.name} className="flex items-center gap-2 sm:gap-4">
                           <div 
                             className="w-3 h-3 rounded-full flex-shrink-0"
                             style={{ backgroundColor: method.fill }}
                           />
-                          <div className="flex-1">
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="font-medium text-foreground">{method.name}</span>
-                              <div className="text-right">
-                                <span className="text-sm text-muted-foreground">{method.count} ventas</span>
-                                <span className="text-sm font-medium text-foreground ml-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-0 mb-1">
+                              <span className="font-medium text-foreground text-sm sm:text-base truncate">{method.name}</span>
+                              <div className="flex items-center gap-2 sm:text-right">
+                                <span className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{method.count} ventas</span>
+                                <span className="text-xs sm:text-sm font-medium text-foreground whitespace-nowrap">
                                   {formatCurrency(method.value)}
                                 </span>
                               </div>
@@ -569,7 +583,7 @@ export default function Reportes() {
                     </div>
                   </div>
                 ) : (
-                  <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                  <div className="h-[250px] sm:h-[300px] flex items-center justify-center text-muted-foreground">
                     No hay datos de pagos para mostrar
                   </div>
                 )}
@@ -579,7 +593,7 @@ export default function Reportes() {
 
           {/* Historial de Ventas */}
           <TabsContent value="historial">
-            <div className="bunker-card p-6">
+            <div className="bunker-card p-4 sm:p-6 w-full max-w-full overflow-hidden">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                 <div>
                   <h3 className="text-lg font-semibold text-foreground">Historial de Ventas</h3>
@@ -606,7 +620,59 @@ export default function Reportes() {
                 </div>
               ) : filteredSales.length > 0 ? (
                 <>
-                  <div className="overflow-x-auto">
+                  {/* Vista móvil: Cards */}
+                  <div className="block md:hidden space-y-3 w-full max-w-full overflow-hidden">
+                    {filteredSales.map((sale) => (
+                      <div
+                        key={sale.id}
+                        className="bunker-card p-3 border border-border/50 w-full max-w-full overflow-hidden"
+                      >
+                        <div className="flex items-start justify-between gap-2 mb-2 w-full">
+                          <div className="flex-1 min-w-0 overflow-hidden">
+                            <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                              <span className="font-medium text-xs sm:text-sm font-mono truncate">#{sale.saleNumber}</span>
+                              <div className="flex items-center gap-1 shrink-0">
+                                {getStatusBadge(sale.status)}
+                                {sale.isCredit && (
+                                  <Badge variant="outline" className="text-xs shrink-0">Fiado</Badge>
+                                )}
+                              </div>
+                            </div>
+                            <div className="text-xs text-muted-foreground space-y-0.5">
+                              <div className="flex items-center gap-1 min-w-0">
+                                <Clock className="h-3 w-3 shrink-0" />
+                                <span className="truncate">{format(new Date(sale.createdAt), "dd MMM yyyy HH:mm", { locale: es })}</span>
+                              </div>
+                              {sale.customer?.name && (
+                                <div className="flex items-center gap-1 min-w-0">
+                                  <User className="h-3 w-3 shrink-0" />
+                                  <span className="truncate">{sale.customer.name}</span>
+                                </div>
+                              )}
+                              <div className="flex items-center gap-1 min-w-0">
+                                <CreditCard className="h-3 w-3 shrink-0" />
+                                <span className="truncate">{getPaymentMethodLabel(sale.paymentMethod)}</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0 flex flex-col items-end gap-1">
+                            <p className="font-semibold text-sm whitespace-nowrap">{formatCurrency(sale.total)}</p>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0"
+                              onClick={() => handleViewSale(sale)}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Vista desktop: Tabla */}
+                  <div className="hidden md:block overflow-x-auto">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -671,8 +737,8 @@ export default function Reportes() {
 
                   {/* Paginación */}
                   {salesData?.pagination && (
-                    <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
-                      <p className="text-sm text-muted-foreground">
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4 pt-4 border-t border-border">
+                      <p className="text-xs sm:text-sm text-muted-foreground text-center sm:text-left">
                         Mostrando {((salesPage - 1) * 20) + 1} - {Math.min(salesPage * 20, salesData.pagination.total)} de {salesData.pagination.total} ventas
                       </p>
                       <div className="flex gap-2">
@@ -681,23 +747,27 @@ export default function Reportes() {
                           size="sm"
                           onClick={() => setSalesPage(p => Math.max(1, p - 1))}
                           disabled={salesPage === 1}
+                          className="text-xs sm:text-sm"
                         >
-                          Anterior
+                          <span className="sm:hidden">←</span>
+                          <span className="hidden sm:inline">Anterior</span>
                         </Button>
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => setSalesPage(p => p + 1)}
                           disabled={salesPage >= salesData.pagination.totalPages}
+                          className="text-xs sm:text-sm"
                         >
-                          Siguiente
+                          <span className="sm:hidden">→</span>
+                          <span className="hidden sm:inline">Siguiente</span>
                         </Button>
                       </div>
                     </div>
                   )}
                 </>
               ) : (
-                <div className="h-[400px] flex flex-col items-center justify-center text-muted-foreground">
+                <div className="h-[250px] sm:h-[400px] flex flex-col items-center justify-center text-muted-foreground">
                   <Receipt className="h-12 w-12 mb-4 opacity-50" />
                   <p>No hay ventas registradas</p>
                 </div>
@@ -717,7 +787,7 @@ export default function Reportes() {
           {selectedSale && (
             <div className="space-y-6">
               {/* Info general */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Fecha</p>
                   <p className="font-medium">
@@ -749,7 +819,36 @@ export default function Reportes() {
               {/* Items */}
               <div>
                 <h4 className="font-semibold mb-3">Productos</h4>
-                <div className="border rounded-lg overflow-hidden">
+                {/* Vista móvil: Cards */}
+                <div className="block md:hidden space-y-2">
+                  {selectedSale.items.map((item) => (
+                    <div
+                      key={item.id}
+                      className="p-3 rounded-lg bg-secondary/30 border border-border/50"
+                    >
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm">{item.productName}</p>
+                          {item.productSku && (
+                            <p className="text-xs text-muted-foreground">SKU: {item.productSku}</p>
+                          )}
+                          {item.isManual && (
+                            <Badge variant="outline" className="text-xs mt-1">Manual</Badge>
+                          )}
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="font-medium text-sm">{formatCurrency(item.totalPrice)}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span>Cantidad: {item.quantity}</span>
+                        <span>Precio Unit.: {formatCurrency(item.unitPrice)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {/* Vista desktop: Tabla */}
+                <div className="hidden md:block border rounded-lg overflow-hidden">
                   <Table>
                     <TableHeader>
                       <TableRow>

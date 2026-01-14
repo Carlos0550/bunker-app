@@ -697,23 +697,23 @@ export default function Clientes() {
               <ScrollArea className="flex-1">
                 <div className="p-4 space-y-4">
                   {/* Customer Header */}
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h2 className="text-xl font-bold text-foreground">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <h2 className="text-lg sm:text-xl font-bold text-foreground truncate">
                         {customerMetrics.customer.name}
                       </h2>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
-                        <span className="font-mono">{customerMetrics.customer.identifier}</span>
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground mt-1">
+                        <span className="font-mono truncate">{customerMetrics.customer.identifier}</span>
                         {customerMetrics.customer.phone && (
-                          <span className="flex items-center gap-1">
-                            <Phone className="w-3 h-3" />
-                            {customerMetrics.customer.phone}
+                          <span className="flex items-center gap-1 truncate">
+                            <Phone className="w-3 h-3 shrink-0" />
+                            <span className="truncate">{customerMetrics.customer.phone}</span>
                           </span>
                         )}
                         {customerMetrics.customer.email && (
-                          <span className="flex items-center gap-1">
-                            <Mail className="w-3 h-3" />
-                            {customerMetrics.customer.email}
+                          <span className="flex items-center gap-1 truncate">
+                            <Mail className="w-3 h-3 shrink-0" />
+                            <span className="truncate">{customerMetrics.customer.email}</span>
                           </span>
                         )}
                       </div>
@@ -721,51 +721,52 @@ export default function Clientes() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30 shrink-0 w-full sm:w-auto"
                       onClick={() => handleOpenDeleteDialog(selectedCustomer!)}
                     >
-                      <Trash className="w-4 h-4 mr-2" />
-                      Eliminar Cliente
+                      <Trash className="w-4 h-4 sm:mr-2" />
+                      <span className="hidden sm:inline">Eliminar Cliente</span>
+                      <span className="sm:hidden">Eliminar</span>
                     </Button>
                   </div>
 
                   {/* Stats Cards */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div className="p-3 rounded-lg bg-destructive/10">
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div className="p-3 rounded-lg bg-destructive/10 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <AlertTriangle className="w-4 h-4 text-destructive" />
-                        <span className="text-xs text-muted-foreground">Deuda Actual</span>
+                        <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
+                        <span className="text-xs text-muted-foreground truncate">Deuda Actual</span>
                       </div>
-                      <p className="text-xl font-bold text-destructive">
+                      <p className="text-lg sm:text-xl font-bold text-destructive truncate">
                         ${customerMetrics.totalDebt.toLocaleString()}
                       </p>
                     </div>
-                    <div className="p-3 rounded-lg bg-success/10">
+                    <div className="p-3 rounded-lg bg-success/10 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <CheckCircle className="w-4 h-4 text-success" />
-                        <span className="text-xs text-muted-foreground">Total Pagado</span>
+                        <CheckCircle className="w-4 h-4 text-success shrink-0" />
+                        <span className="text-xs text-muted-foreground truncate">Total Pagado</span>
                       </div>
-                      <p className="text-xl font-bold text-success">
+                      <p className="text-lg sm:text-xl font-bold text-success truncate">
                         ${customerMetrics.totalPaid.toLocaleString()}
                       </p>
                     </div>
-                    <div className="p-3 rounded-lg bg-primary/10">
+                    <div className="p-3 rounded-lg bg-primary/10 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <Clock className="w-4 h-4 text-primary" />
-                        <span className="text-xs text-muted-foreground">Prom. Pago</span>
+                        <Clock className="w-4 h-4 text-primary shrink-0" />
+                        <span className="text-xs text-muted-foreground truncate">Prom. Pago</span>
                       </div>
-                      <p className="text-xl font-bold text-primary">
+                      <p className="text-lg sm:text-xl font-bold text-primary truncate">
                         {customerMetrics.averagePaymentDays !== null
                           ? `${customerMetrics.averagePaymentDays} días`
                           : "N/A"}
                       </p>
                     </div>
-                    <div className="p-3 rounded-lg bg-secondary">
+                    <div className="p-3 rounded-lg bg-secondary min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <Receipt className="w-4 h-4 text-muted-foreground" />
-                        <span className="text-xs text-muted-foreground">Cuentas</span>
+                        <Receipt className="w-4 h-4 text-muted-foreground shrink-0" />
+                        <span className="text-xs text-muted-foreground truncate">Cuentas</span>
                       </div>
-                      <p className="text-xl font-bold">
+                      <p className="text-lg sm:text-xl font-bold truncate">
                         {customerMetrics.totalAccountsCount}
                       </p>
                     </div>
@@ -857,14 +858,16 @@ export default function Clientes() {
                               >
                                 <div className="rounded-lg bg-secondary/30 overflow-hidden">
                                   <div className="p-3 space-y-2">
-                                    <div className="flex items-center justify-between">
-                                      <div className="flex items-center gap-3">
-                                        <span className="font-mono text-sm font-medium">
+                                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                      <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                                        <span className="font-mono text-xs sm:text-sm font-medium truncate">
                                           {account.sale?.saleNumber || "Sin número"}
                                         </span>
-                                        {getStatusBadge(account.status)}
+                                        <div className="shrink-0">
+                                          {getStatusBadge(account.status)}
+                                        </div>
                                       </div>
-                                      <div className="flex items-center gap-2">
+                                      <div className="flex items-center gap-2 flex-wrap">
                                         {account.sale && (
                                           <Button
                                             size="sm"
@@ -874,9 +877,12 @@ export default function Clientes() {
                                               handleViewSaleItems(account.saleId);
                                             }}
                                             disabled={isLoadingSaleItems}
+                                            className="text-xs sm:text-sm"
                                           >
-                                            <FileText className="w-4 h-4 mr-1" />
-                                            Ver Items {isLoadingSaleItems && <Loader2 className="w-4 h-4 ml-1 animate-spin" />}
+                                            <FileText className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-1" />
+                                            <span className="hidden sm:inline">Ver Items</span>
+                                            <span className="sm:hidden">Items</span>
+                                            {isLoadingSaleItems && <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 sm:ml-1 animate-spin" />}
                                           </Button>
                                         )}
                                         {account.status !== "PAID" && (
@@ -888,16 +894,17 @@ export default function Clientes() {
                                               setPaymentAmount(account.currentBalance);
                                               setIsPaymentOpen(true);
                                             }}
+                                            className="text-xs sm:text-sm"
                                           >
-                                            <DollarSign className="w-4 h-4 mr-1" />
+                                            <DollarSign className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-1" />
                                             Abonar
                                           </Button>
                                         )}
                                       </div>
                                     </div>
 
-                                    <div className="flex items-center justify-between text-sm">
-                                      <div className="flex items-center gap-4">
+                                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-sm">
+                                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                                         <span className="text-muted-foreground">
                                           Original: <span className="font-medium text-foreground">${account.originalAmount.toLocaleString()}</span>
                                         </span>
@@ -905,7 +912,7 @@ export default function Clientes() {
                                           Pendiente: <span className="font-bold">${account.currentBalance.toLocaleString()}</span>
                                         </span>
                                       </div>
-                                      <span className={`text-xs ${daysInfo.color}`}>
+                                      <span className={`text-xs ${daysInfo.color} whitespace-nowrap`}>
                                         {daysInfo.text}
                                       </span>
                                     </div>
@@ -1071,10 +1078,10 @@ export default function Clientes() {
                           key={value}
                           type="button"
                           variant={paymentMethod === value ? "default" : "outline"}
-                          className="flex-col h-auto py-3 gap-1"
+                          className="flex-col h-auto py-2 sm:py-3 gap-1"
                           onClick={() => setPaymentMethod(value)}
                         >
-                          <Icon className="w-5 h-5" />
+                          <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
                           <span className="text-xs">{label}</span>
                         </Button>
                       ))}
@@ -1204,35 +1211,38 @@ export default function Clientes() {
                   {selectedSale.items.map((item) => (
                     <div
                       key={item.id}
-                      className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors"
+                      className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors"
                     >
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium">{item.productName}</p>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-medium text-sm sm:text-base truncate">{item.productName}</p>
                           {item.isManual && (
-                            <Badge variant="outline" className="text-xs">Manual</Badge>
+                            <Badge variant="outline" className="text-xs shrink-0">Manual</Badge>
                           )}
                         </div>
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 text-xs sm:text-sm text-muted-foreground mt-1">
                           <span>Cantidad: {item.quantity}</span>
+                          <span className="hidden sm:inline">•</span>
                           <span>Precio Unit.: ${item.unitPrice.toLocaleString()}</span>
+                          <span className="hidden sm:inline">•</span>
                           <span className="font-medium text-foreground">
                             Total: ${item.totalPrice.toLocaleString()}
                           </span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1 shrink-0">
                         <Button
                           size="sm"
                           variant="ghost"
                           onClick={() => handleOpenEditItem(item)}
+                          className="h-8 w-8 p-0"
                         >
                           <Edit3 className="w-4 h-4" />
                         </Button>
                         <Button
                           size="sm"
                           variant="ghost"
-                          className="text-destructive hover:text-destructive"
+                          className="text-destructive hover:text-destructive h-8 w-8 p-0"
                           onClick={() => handleDeleteItem(item.id)}
                           disabled={selectedSale.items.length <= 1}
                         >

@@ -210,9 +210,9 @@ export default function Usuarios() {
   };
 
   const getRoleBadge = (role: number) => {
-    if (role === 0) return <Badge variant="default" className="bg-purple-500">Super Admin</Badge>;
-    if (role === 1) return <Badge variant="default">Administrador</Badge>;
-    return <Badge variant="secondary">Usuario</Badge>;
+    if (role === 0) return <Badge variant="default" className="bg-purple-500 whitespace-nowrap">Super Admin</Badge>;
+    if (role === 1) return <Badge variant="default" className="whitespace-nowrap">Administrador</Badge>;
+    return <Badge variant="secondary" className="whitespace-nowrap">Usuario</Badge>;
   };
 
   const getStatusBadge = (status: string, emailVerified: boolean) => {
@@ -224,15 +224,15 @@ export default function Usuarios() {
 
   return (
     <MainLayout>
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6 w-full max-w-full overflow-x-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
-              <UsersIcon className="w-8 h-8" />
-              Gestión de Usuarios
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground flex items-center gap-2 sm:gap-3">
+              <UsersIcon className="w-6 h-6 sm:w-8 sm:h-8 shrink-0" />
+              <span className="truncate">Gestión de Usuarios</span>
             </h1>
-            <p className="text-muted-foreground mt-1">
+            <p className="text-sm sm:text-base text-muted-foreground mt-1">
               Administra los usuarios y permisos de tu negocio
             </p>
           </div>
@@ -241,23 +241,25 @@ export default function Usuarios() {
               resetForm();
               setIsDialogOpen(true);
             }}
+            className="w-full sm:w-auto shrink-0"
           >
-            <Plus className="w-4 h-4 mr-2" />
-            Nuevo Usuario
+            <Plus className="w-4 h-4 sm:mr-2" />
+            <span className="hidden sm:inline">Nuevo Usuario</span>
+            <span className="sm:hidden">Nuevo</span>
           </Button>
         </div>
 
         {/* Tabla de usuarios */}
-        <div className="bunker-card overflow-hidden">
+        <div className="bunker-card overflow-hidden p-0 w-full max-w-full">
           {isLoading ? (
-            <div className="flex items-center justify-center p-12">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            <div className="flex items-center justify-center p-8 sm:p-12">
+              <Loader2 className="w-6 h-6 sm:w-8 sm:h-8 animate-spin text-primary" />
             </div>
           ) : users.length === 0 ? (
-            <div className="text-center py-12">
-              <UsersIcon className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-              <p className="text-lg font-medium text-foreground">No hay usuarios</p>
-              <p className="text-muted-foreground mb-4">
+            <div className="text-center py-8 sm:py-12 px-4">
+              <UsersIcon className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-3 sm:mb-4 text-muted-foreground opacity-50" />
+              <p className="text-base sm:text-lg font-medium text-foreground">No hay usuarios</p>
+              <p className="text-sm text-muted-foreground mb-4">
                 Crea usuarios para tu equipo
               </p>
               <Button onClick={() => {
@@ -269,56 +271,29 @@ export default function Usuarios() {
               </Button>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="border-border hover:bg-transparent">
-                  <TableHead className="text-muted-foreground">Usuario</TableHead>
-                  <TableHead className="text-muted-foreground">Email</TableHead>
-                  <TableHead className="text-muted-foreground">Rol</TableHead>
-                  <TableHead className="text-muted-foreground">Permisos</TableHead>
-                  <TableHead className="text-muted-foreground">Estado</TableHead>
-                  <TableHead className="text-muted-foreground text-right">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            <>
+              {/* Vista móvil: Cards */}
+              <div className="block md:hidden p-3 sm:p-4 space-y-3">
                 {users.map((user) => (
-                  <TableRow key={user.id} className="border-border">
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <div
+                    key={user.id}
+                    className="bunker-card p-3 border border-border/50 w-full max-w-full overflow-hidden"
+                  >
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                      <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                           <UserIcon className="w-5 h-5 text-primary" />
                         </div>
-                        <span className="font-medium text-foreground">{user.name}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">{user.email}</TableCell>
-                    <TableCell>{getRoleBadge(user.role)}</TableCell>
-                    <TableCell>
-                      {user.role === 1 ? (
-                        <Badge variant="outline" className="text-xs">Acceso completo</Badge>
-                      ) : user.permissions.length === 0 ? (
-                        <Badge variant="secondary" className="text-xs">Sin permisos</Badge>
-                      ) : (
-                        <div className="flex flex-wrap gap-1">
-                          {user.permissions.slice(0, 2).map((perm) => (
-                            <Badge key={perm} variant="outline" className="text-xs">
-                              {PERMISSION_LABELS[perm] || perm}
-                            </Badge>
-                          ))}
-                          {user.permissions.length > 2 && (
-                            <Badge variant="outline" className="text-xs">
-                              +{user.permissions.length - 2}
-                            </Badge>
-                          )}
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-sm sm:text-base text-foreground truncate">{user.name}</p>
+                          <p className="text-xs sm:text-sm text-muted-foreground truncate mt-0.5">{user.email}</p>
                         </div>
-                      )}
-                    </TableCell>
-                    <TableCell>{getStatusBadge(user.status, user.emailVerified)}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
                         <Button
                           variant="ghost"
                           size="sm"
+                          className="h-7 w-7 p-0"
                           onClick={() => handleEdit(user)}
                           disabled={user.id === currentUser?.id}
                         >
@@ -327,18 +302,130 @@ export default function Usuarios() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="text-destructive hover:text-destructive"
+                          className="h-7 w-7 p-0 text-destructive hover:text-destructive"
                           onClick={() => handleDelete(user)}
                           disabled={user.id === currentUser?.id}
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
-                    </TableCell>
-                  </TableRow>
+                    </div>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 pt-2 border-t border-border/50">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-xs text-muted-foreground">Rol:</span>
+                        <div className="shrink-0">{getRoleBadge(user.role)}</div>
+                      </div>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-xs text-muted-foreground">Estado:</span>
+                        <div className="shrink-0">{getStatusBadge(user.status, user.emailVerified)}</div>
+                      </div>
+                    </div>
+                    {user.role === 2 && (
+                      <div className="mt-2 pt-2 border-t border-border/50">
+                        <span className="text-xs text-muted-foreground block mb-1">Permisos:</span>
+                        {user.permissions.length === 0 ? (
+                          <Badge variant="secondary" className="text-xs">Sin permisos</Badge>
+                        ) : (
+                          <div className="flex flex-wrap gap-1">
+                            {user.permissions.slice(0, 3).map((perm) => (
+                              <Badge key={perm} variant="outline" className="text-xs">
+                                {PERMISSION_LABELS[perm] || perm}
+                              </Badge>
+                            ))}
+                            {user.permissions.length > 3 && (
+                              <Badge variant="outline" className="text-xs">
+                                +{user.permissions.length - 3}
+                              </Badge>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {user.role === 1 && (
+                      <div className="mt-2 pt-2 border-t border-border/50">
+                        <Badge variant="outline" className="text-xs">Acceso completo</Badge>
+                      </div>
+                    )}
+                  </div>
                 ))}
-              </TableBody>
-            </Table>
+              </div>
+
+              {/* Vista desktop: Tabla */}
+              <div className="hidden md:block overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-border hover:bg-transparent">
+                      <TableHead className="text-muted-foreground">Usuario</TableHead>
+                      <TableHead className="text-muted-foreground">Email</TableHead>
+                      <TableHead className="text-muted-foreground">Rol</TableHead>
+                      <TableHead className="text-muted-foreground">Permisos</TableHead>
+                      <TableHead className="text-muted-foreground">Estado</TableHead>
+                      <TableHead className="text-muted-foreground text-right">Acciones</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {users.map((user) => (
+                      <TableRow key={user.id} className="border-border">
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                              <UserIcon className="w-5 h-5 text-primary" />
+                            </div>
+                            <span className="font-medium text-foreground">{user.name}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{user.email}</TableCell>
+                        <TableCell>
+                          <div className="whitespace-nowrap">{getRoleBadge(user.role)}</div>
+                        </TableCell>
+                        <TableCell>
+                          {user.role === 1 ? (
+                            <Badge variant="outline" className="text-xs">Acceso completo</Badge>
+                          ) : user.permissions.length === 0 ? (
+                            <Badge variant="secondary" className="text-xs">Sin permisos</Badge>
+                          ) : (
+                            <div className="flex flex-wrap gap-1">
+                              {user.permissions.slice(0, 2).map((perm) => (
+                                <Badge key={perm} variant="outline" className="text-xs">
+                                  {PERMISSION_LABELS[perm] || perm}
+                                </Badge>
+                              ))}
+                              {user.permissions.length > 2 && (
+                                <Badge variant="outline" className="text-xs">
+                                  +{user.permissions.length - 2}
+                                </Badge>
+                              )}
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell>{getStatusBadge(user.status, user.emailVerified)}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEdit(user)}
+                              disabled={user.id === currentUser?.id}
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => handleDelete(user)}
+                              disabled={user.id === currentUser?.id}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
           )}
         </div>
 
@@ -360,9 +447,9 @@ export default function Usuarios() {
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-6 py-4">
+            <div className="space-y-4 sm:space-y-6 py-4">
               {/* Datos básicos */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Nombre *</Label>
                   <Input
@@ -454,7 +541,7 @@ export default function Usuarios() {
                   {/* Roles predefinidos */}
                   <div className="space-y-2">
                     <Label className="text-sm">Roles Predefinidos (opcional)</Label>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {PRESET_ROLES.map((preset) => (
                         <Button
                           key={preset.id}
@@ -472,7 +559,7 @@ export default function Usuarios() {
                   {/* Permisos individuales */}
                   <div className="space-y-3">
                     <Label className="text-sm">O personaliza los permisos:</Label>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {ALL_PERMISSIONS.map((permission) => (
                         <div key={permission} className="flex items-center space-x-2">
                           <Checkbox
