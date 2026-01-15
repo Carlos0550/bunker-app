@@ -67,7 +67,7 @@ export default function Dashboard() {
 
         {/* Stats Grid */}
         {loadingStats ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" data-tour="dashboard-stats">
             {[1, 2, 3, 4].map((i) => (
               <div key={i} className="stat-card flex items-center justify-center h-24">
                 <Loader2 className="w-6 h-6 animate-spin text-primary" />
@@ -75,7 +75,7 @@ export default function Dashboard() {
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" data-tour="dashboard-stats">
             <StatCard
               title="Ventas Hoy"
               value={stats?.todaySales || 0}
@@ -109,18 +109,22 @@ export default function Dashboard() {
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2" data-tour="dashboard-chart">
             <SalesChart data={chartData || []} isLoading={loadingChart} />
           </div>
-          <div>
+          <div data-tour="dashboard-lowstock">
             <LowStockAlert products={lowStockProducts || []} isLoading={loadingLowStock} />
           </div>
         </div>
 
         {/* Bottom Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <RecentSales sales={recentSales || []} isLoading={loadingRecentSales} />
-          <TopProducts products={topProducts || []} isLoading={loadingTopProducts} />
+          <div data-tour="dashboard-recent">
+            <RecentSales sales={recentSales || []} isLoading={loadingRecentSales} />
+          </div>
+          <div data-tour="dashboard-top">
+            <TopProducts products={topProducts || []} isLoading={loadingTopProducts} />
+          </div>
         </div>
       </div>
     </MainLayout>

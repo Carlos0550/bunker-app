@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AdminRoute } from "./components/layout/AdminRoute";
 import { ProtectedRoute } from "./components/layout/ProtectedRoute";
+import { TutorialProvider } from "./components/tutorial";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
@@ -28,6 +29,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <TutorialProvider>
         <Routes>
           {/* Rutas Públicas */}
           <Route path="/" element={<Landing />} />
@@ -53,6 +55,7 @@ const App = () => (
           {/* Ruta 404 (Accesible siempre) */}
           <Route path="*" element={<NotFound />} />
         </Routes>
+        </TutorialProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

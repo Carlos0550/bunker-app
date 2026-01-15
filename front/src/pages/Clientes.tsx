@@ -486,7 +486,7 @@ export default function Clientes() {
           </div>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button data-tour="clientes-add">
                 <Plus className="w-4 h-4 mr-2" />
                 Nuevo Cliente
               </Button>
@@ -542,7 +542,7 @@ export default function Clientes() {
 
         {/* Stats */}
         {!loadingSummary && summary && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4" data-tour="clientes-summary">
             <div className="stat-card p-3">
               <div className="flex items-center gap-2">
                 <div className="p-2 rounded-lg bg-primary/20">
@@ -597,8 +597,8 @@ export default function Clientes() {
         {/* Master-Detail Layout */}
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-4 min-h-0">
           {/* Left Panel - Customer List */}
-          <div className="lg:col-span-1 bunker-card flex flex-col min-h-0">
-            <div className="p-3 border-b border-border">
+          <div className="lg:col-span-1 bunker-card flex flex-col min-h-0" data-tour="clientes-list">
+            <div className="p-3 border-b border-border" data-tour="clientes-search">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
@@ -683,7 +683,7 @@ export default function Clientes() {
           </div>
 
           {/* Right Panel - Customer Detail */}
-          <div className="lg:col-span-2 bunker-card flex flex-col min-h-0 overflow-hidden">
+          <div className="lg:col-span-2 bunker-card flex flex-col min-h-0 overflow-hidden" data-tour="clientes-detail">
             {!selectedCustomer ? (
               <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground">
                 <Users className="w-16 h-16 mb-4 opacity-30" />
@@ -731,7 +731,7 @@ export default function Clientes() {
                   </div>
 
                   {/* Stats Cards */}
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3" data-tour="clientes-metrics">
                     <div className="p-3 rounded-lg bg-destructive/10 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
@@ -773,7 +773,7 @@ export default function Clientes() {
                   </div>
 
                   {/* Notes Section */}
-                  <div className="p-4 rounded-lg bg-secondary/30 space-y-2">
+                  <div className="p-4 rounded-lg bg-secondary/30 space-y-2" data-tour="clientes-notes">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <FileText className="w-4 h-4 text-muted-foreground" />
@@ -830,7 +830,7 @@ export default function Clientes() {
 
                   {/* Accounts History by Month */}
                   {customerMetrics.accountsByMonth.length > 0 && (
-                    <div className="space-y-3">
+                    <div className="space-y-3" data-tour="clientes-history">
                       <div className="flex items-center gap-2">
                         <Calendar className="w-4 h-4 text-muted-foreground" />
                         <h3 className="font-medium">Historial de Cuentas</h3>

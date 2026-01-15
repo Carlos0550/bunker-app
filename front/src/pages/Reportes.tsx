@@ -186,7 +186,7 @@ export default function Reportes() {
               Visualiza el rendimiento de tu negocio
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2" data-tour="reportes-period">
             <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
               <SelectTrigger className="w-[160px]">
                 <Calendar className="w-4 h-4 mr-2" />
@@ -207,7 +207,7 @@ export default function Reportes() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4" data-tour="reportes-stats">
           {loadingStats ? (
             <>
               {[...Array(4)].map((_, i) => (
@@ -320,7 +320,7 @@ export default function Reportes() {
 
         {/* Tabs */}
         <Tabs defaultValue="ventas" className="space-y-4">
-          <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide">
+          <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide" data-tour="reportes-tabs">
             <TabsList className="bg-secondary/50 inline-flex w-max sm:w-auto min-w-full sm:min-w-0">
               <TabsTrigger value="ventas" className="text-sm sm:text-base px-3 sm:px-4 shrink-0">
                 <span className="hidden sm:inline">Tendencia de Ventas</span>

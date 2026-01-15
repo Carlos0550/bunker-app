@@ -35,11 +35,11 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { Permission } from "@/types";
 
 const mainMenuItems = [
-  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, permission: null }, // Todos pueden ver dashboard
-  { title: "Punto de Venta", url: "/pos", icon: ShoppingCart, permission: Permission.POS },
-  { title: "Productos", url: "/productos", icon: Package, permission: Permission.PRODUCTOS },
-  { title: "Clientes", url: "/clientes", icon: Users, permission: Permission.CLIENTES },
-  { title: "Reportes", url: "/reportes", icon: BarChart3, permission: Permission.REPORTES },
+  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, permission: null, tourId: "sidebar-dashboard" }, // Todos pueden ver dashboard
+  { title: "Punto de Venta", url: "/pos", icon: ShoppingCart, permission: Permission.POS, tourId: "sidebar-pos" },
+  { title: "Productos", url: "/productos", icon: Package, permission: Permission.PRODUCTOS, tourId: "sidebar-productos" },
+  { title: "Clientes", url: "/clientes", icon: Users, permission: Permission.CLIENTES, tourId: "sidebar-clientes" },
+  { title: "Reportes", url: "/reportes", icon: BarChart3, permission: Permission.REPORTES, tourId: "sidebar-reportes" },
 ];
 
 const adminOnlyItems = [
@@ -47,7 +47,7 @@ const adminOnlyItems = [
 ];
 
 const configItems = [
-  { title: "Configuración", url: "/configuracion", icon: Settings, permission: Permission.CONFIGURACION },
+  { title: "Configuración", url: "/configuracion", icon: Settings, permission: Permission.CONFIGURACION, tourId: "sidebar-config" },
 ];
 
 // Items exclusivos para Super Admin (role 0)
@@ -121,14 +121,14 @@ export function AppSidebar() {
 
       <SidebarContent className="scrollbar-thin">
         {!isSuperAdmin() && filteredMainMenuItems.length > 0 && (
-        <SidebarGroup>
+        <SidebarGroup data-tour="sidebar-nav">
           <SidebarGroupLabel className="text-muted-foreground text-xs uppercase tracking-wider px-4">
             {!collapsed && "Principal"}
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {filteredMainMenuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
+                <SidebarMenuItem key={item.title} data-tour={item.tourId}>
                   <SidebarMenuButton
                     asChild
                     isActive={isActive(item.url)}
@@ -220,7 +220,7 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {filteredConfigItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
+                <SidebarMenuItem key={item.title} data-tour={item.tourId}>
                   <SidebarMenuButton
                     asChild
                     isActive={isActive(item.url)}

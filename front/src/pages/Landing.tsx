@@ -152,9 +152,9 @@ const Landing = () => {
         
         <div className="container mx-auto relative">
           <div className="max-w-4xl mx-auto text-center">
-            <Badge variant="secondary" className="mb-6 bg-primary/10 text-primary border-primary/20">
+            {/* <Badge variant="secondary" className="mb-6 bg-primary/10 text-primary border-primary/20">
               🚀 Nuevo: Integración con facturación electrónica
-            </Badge>
+            </Badge> */}
             
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-6">
               El Sistema POS que tu
@@ -474,12 +474,12 @@ const Landing = () => {
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li><a href="#features" className="hover:text-foreground transition-colors">Características</a></li>
                 <li><a href="#pricing" className="hover:text-foreground transition-colors">Precios</a></li>
-                <li><a href="#" className="hover:text-foreground transition-colors">Integraciones</a></li>
-                <li><a href="#" className="hover:text-foreground transition-colors">API</a></li>
+                {/* <li><a href="#" className="hover:text-foreground transition-colors">Integraciones</a></li>
+                <li><a href="#" className="hover:text-foreground transition-colors">API</a></li> */}
               </ul>
             </div>
             
-            <div>
+            {/* <div>
               <h4 className="font-semibold mb-4">Recursos</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li><a href="#" className="hover:text-foreground transition-colors">Centro de Ayuda</a></li>
@@ -487,7 +487,7 @@ const Landing = () => {
                 <li><a href="#" className="hover:text-foreground transition-colors">Guías</a></li>
                 <li><a href="#" className="hover:text-foreground transition-colors">Webinars</a></li>
               </ul>
-            </div>
+            </div> */}
             
             <div>
               <h4 className="font-semibold mb-4">Empresa</h4>
@@ -502,13 +502,13 @@ const Landing = () => {
           
           <div className="border-t border-border pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-sm text-muted-foreground">
-              © 2024 Bunker. Todos los derechos reservados.
+              © {new Date().getFullYear()} Bunker. Todos los derechos reservados.
             </p>
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            {/* <div className="flex items-center gap-4 text-sm text-muted-foreground">
               <a href="#" className="hover:text-foreground transition-colors">Twitter</a>
               <a href="#" className="hover:text-foreground transition-colors">LinkedIn</a>
               <a href="#" className="hover:text-foreground transition-colors">YouTube</a>
-            </div>
+            </div> */}
           </div>
         </div>
       </footer>

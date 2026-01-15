@@ -1,9 +1,6 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
-import { Bell, Search } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { TutorialButton } from "@/components/tutorial";
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -25,22 +22,9 @@ export function MainLayout({ children, title }: MainLayoutProps) {
               )}
             </div>
             
-            {/* <div className="flex items-center gap-3">
-              <div className="relative hidden md:block">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input 
-                  placeholder="Buscar productos, clientes..." 
-                  className="pl-9 w-64 bg-secondary/50 border-border focus:bg-secondary"
-                />
-              </div>
-              
-              <Button variant="ghost" size="icon" className="relative">
-                <Bell className="w-5 h-5 text-muted-foreground" />
-                <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-[10px] bg-destructive">
-                  3
-                </Badge>
-              </Button>
-            </div> */}
+            <div className="flex items-center gap-2">
+              <TutorialButton />
+            </div>
           </header>
           
           <main className="flex-1 p-4 lg:p-6 overflow-auto scrollbar-thin">

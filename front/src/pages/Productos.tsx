@@ -495,7 +495,7 @@ export default function Productos() {
               </p>
             </div>
             <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-              <Button variant="outline" size="icon" className="h-8 w-8 sm:h-9 sm:w-auto sm:px-3" onClick={() => setIsImportModalOpen(true)}>
+              <Button variant="outline" size="icon" className="h-8 w-8 sm:h-9 sm:w-auto sm:px-3" onClick={() => setIsImportModalOpen(true)} data-tour="productos-import">
                 <Upload className="w-4 h-4 sm:mr-2" />
                 <span className="hidden sm:inline">Importar</span>
               </Button>
@@ -523,7 +523,7 @@ export default function Productos() {
                   setSelectedCategoryId("");
                   setIsCreatingNewCategory(false);
                   setNewCategoryInline("");
-                }}>
+                }} data-tour="productos-add">
                   <Plus className="w-4 h-4 sm:mr-2" />
                   <span className="hidden sm:inline">Nuevo Producto</span>
                   <span className="sm:hidden">Nuevo</span>
@@ -840,7 +840,7 @@ export default function Productos() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide">
+          <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide" data-tour="productos-tabs">
             <TabsList className="bg-secondary/50 inline-flex w-max sm:w-auto min-w-full sm:min-w-0">
               <TabsTrigger value="inventario" className="text-sm sm:text-base px-3 sm:px-4 shrink-0">
                 <span className="hidden sm:inline">Inventario</span>
@@ -882,7 +882,7 @@ export default function Productos() {
             {/* Buscador y Filtros de Inventario */}
             <div className="space-y-3">
               {/* Búsqueda principal */}
-              <div className="flex gap-2">
+              <div className="flex gap-2" data-tour="productos-search">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
@@ -1015,7 +1015,7 @@ export default function Productos() {
               </div>
             </div>
 
-            <div className="bunker-card overflow-hidden p-0">
+            <div className="bunker-card overflow-hidden p-0" data-tour="productos-table">
               {loadingInventory ? (
                 <div className="flex items-center justify-center p-8 sm:p-12">
                   <Loader2 className="w-6 h-6 sm:w-8 sm:h-8 animate-spin text-primary" />
@@ -1219,7 +1219,7 @@ export default function Productos() {
                               {getStateBadge(product.state, product.stock, product.min_stock || 5)}
                             </TableCell>
                             <TableCell className="text-center pr-3 sm:pr-4 py-2 sm:py-4">
-                              <div className="flex items-center justify-center gap-1">
+                              <div className="flex items-center justify-center gap-1" data-tour="productos-actions">
                                 <Button
                                   variant="outline"
                                   size="sm"

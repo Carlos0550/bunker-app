@@ -326,7 +326,7 @@ export default function POS() {
         <div className="lg:col-span-2 flex flex-col gap-4 min-h-[calc(100vh-8rem)]">
           {/* Search */}
           <div className="flex gap-2">
-            <div className="relative flex-1">
+            <div className="relative flex-1" data-tour="pos-search">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <Input
                 placeholder="Buscar por nombre, SKU o código de barras..."
@@ -340,6 +340,7 @@ export default function POS() {
               className="h-12 px-4"
               onClick={() => setScannerOpen(true)}
               title="Escanear código de barras"
+              data-tour="pos-scan"
             >
               <ScanLine className="w-5 h-5 mr-2" />
               Escanear
@@ -347,7 +348,7 @@ export default function POS() {
           </div>
 
           {/* Manual Input */}
-          <div className="bunker-card p-3">
+          <div className="bunker-card p-3" data-tour="pos-manual">
             <div className="flex items-center gap-2 mb-2">
               <FileText className="w-4 h-4 text-primary" />
               <span className="text-sm font-medium text-foreground">Carga Manual</span>
@@ -377,7 +378,7 @@ export default function POS() {
           </div>
 
           {/* Products Grid */}
-          <div className="flex-1 overflow-auto scrollbar-thin">
+          <div className="flex-1 overflow-auto scrollbar-thin" data-tour="pos-products">
             {loadingProducts ? (
               <div className="flex items-center justify-center h-full">
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -436,7 +437,7 @@ export default function POS() {
         </div>
 
         {/* Cart Section */}
-        <div className="bunker-card flex flex-col max-h-[calc(100vh-8rem)] overflow-hidden">
+        <div className="bunker-card flex flex-col max-h-[calc(100vh-8rem)] overflow-hidden" data-tour="pos-cart">
           {/* Cart Header */}
           <div className="p-4 border-b border-border flex-shrink-0">
             <div className="flex items-center justify-between mb-3">
@@ -448,7 +449,7 @@ export default function POS() {
             </div>
 
             {/* Venta a crédito */}
-            <div className="flex items-center justify-between p-2 bg-secondary/30 rounded-lg">
+            <div className="flex items-center justify-between p-2 bg-secondary/30 rounded-lg" data-tour="pos-credit">
               <div className="flex items-center gap-2">
                 <CreditCard className="w-4 h-4 text-muted-foreground" />
                 <span className="text-sm">Venta a Crédito (Fiado)</span>
@@ -575,7 +576,7 @@ export default function POS() {
           {/* Cart Footer */}
           <div className="p-4 border-t border-border space-y-4 flex-shrink-0">
             {/* Discount */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2" data-tour="pos-discount">
               <Percent className="w-4 h-4 text-muted-foreground" />
               <Select
                 value={discountType}
@@ -634,7 +635,7 @@ export default function POS() {
 
             {/* Payment Method - Solo visible cuando NO es crédito */}
             {!isCredit && (
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-3 gap-2" data-tour="pos-payment">
                 {[
                   { value: "CASH", icon: Banknote, label: "Efectivo" },
                   { value: "CARD", icon: CreditCard, label: "Tarjeta" },
@@ -658,6 +659,7 @@ export default function POS() {
               className="w-full h-12 text-lg font-semibold bunker-glow"
               onClick={processSale}
               disabled={cart.length === 0 || isProcessing || (isCredit && !selectedCustomer)}
+              data-tour="pos-process"
             >
               {isProcessing ? (
                 <Loader2 className="w-5 h-5 mr-2 animate-spin" />
