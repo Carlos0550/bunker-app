@@ -31,6 +31,7 @@ const viewNames: Record<TutorialView, string> = {
   productos: "Productos",
   clientes: "Clientes",
   reportes: "Reportes",
+  configuracion: "Configuración",
   sidebar: "Navegación",
 };
 

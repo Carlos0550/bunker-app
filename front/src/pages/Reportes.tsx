@@ -99,9 +99,9 @@ export default function Reportes() {
     queryFn: () => analyticsApi.getTopProducts(10, period),
   });
 
-  const { data: weeklyChart, isLoading: loadingChart } = useQuery({
-    queryKey: ["weeklyChart"],
-    queryFn: analyticsApi.getWeeklySalesChart,
+  const { data: chartData, isLoading: loadingChart } = useQuery({
+    queryKey: ["salesChart", period],
+    queryFn: () => analyticsApi.getSalesChart(period),
   });
 
   const { data: lowStockProducts } = useQuery({
@@ -144,6 +144,15 @@ export default function Reportes() {
       case "yesterday": return "Ayer";
       case "week": return "Esta Semana";
       case "month": return "Este Mes";
+    }
+  };
+
+  const getChartSubtitle = (p: Period) => {
+    switch (p) {
+      case "today": return "Ventas por hora - Hoy";
+      case "yesterday": return "Ventas por hora - Ayer";
+      case "week": return "Últimos 7 días";
+      case "month": return "Últimos 30 días";
     }
   };
 
@@ -347,22 +356,22 @@ export default function Reportes() {
               <div className="flex items-center justify-between mb-6">
                 <div>
                   <h3 className="text-lg font-semibold text-foreground">Tendencia de Ventas</h3>
-                  <p className="text-sm text-muted-foreground">Últimos 7 días</p>
+                  <p className="text-sm text-muted-foreground">{getChartSubtitle(period)}</p>
                 </div>
-                {weeklyChart && weeklyChart.length > 0 && (
+                {chartData && chartData.length > 0 && (
                   <Badge variant="outline" className="border-success text-success">
                     <TrendingUp className="w-3 h-3 mr-1" />
-                    {formatCurrency(weeklyChart.reduce((acc, d) => acc + d.ventas, 0))} total
+                    {formatCurrency(chartData.reduce((acc, d) => acc + d.ventas, 0))} total
                   </Badge>
                 )}
               </div>
               
               {loadingChart ? (
                 <Skeleton className="h-[250px] sm:h-[400px]" />
-              ) : weeklyChart && weeklyChart.length > 0 ? (
+              ) : chartData && chartData.length > 0 ? (
                 <div className="h-[250px] sm:h-[400px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={weeklyChart} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                       <defs>
                         <linearGradient id="colorVentasReport" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="hsl(45, 100%, 51%)" stopOpacity={0.3}/>

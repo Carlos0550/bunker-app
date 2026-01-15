@@ -109,7 +109,15 @@ export const analyticsApi = {
     return response.data.data;
   },
 
-  // Weekly sales chart
+  // Sales chart (supports period filter)
+  getSalesChart: async (period: 'today' | 'yesterday' | 'week' | 'month' = 'week'): Promise<ChartDataPoint[]> => {
+    const response = await client.get<{ success: boolean; data: ChartDataPoint[] }>(
+      `/analytics/weekly-chart?period=${period}`
+    );
+    return response.data.data;
+  },
+
+  // Weekly sales chart (legacy, for dashboard)
   getWeeklySalesChart: async (): Promise<ChartDataPoint[]> => {
     const response = await client.get<{ success: boolean; data: ChartDataPoint[] }>(
       '/analytics/weekly-chart'

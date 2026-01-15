@@ -309,7 +309,7 @@ export default function Configuracion() {
 
         {/* Tabs */}
         <Tabs defaultValue="suscripcion" className="space-y-4 sm:space-y-6">
-          <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide">
+          <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide" data-tour="config-tabs">
             <TabsList className="bg-secondary/50 inline-flex w-max sm:w-auto min-w-full sm:min-w-0 flex-wrap h-auto gap-1 p-1">
               <TabsTrigger value="suscripcion" className="gap-1 sm:gap-2 text-sm sm:text-base px-2 sm:px-3 shrink-0">
                 <CreditCard className="w-4 h-4" />
@@ -339,7 +339,7 @@ export default function Configuracion() {
           {/* Tab Suscripción */}
           <TabsContent value="suscripcion" className="space-y-4 sm:space-y-6">
             {/* Estado actual del plan */}
-            <div className="bunker-card p-4 sm:p-6 w-full max-w-full overflow-hidden">
+            <div className="bunker-card p-4 sm:p-6 w-full max-w-full overflow-hidden" data-tour="config-plan">
               <h3 className="text-base sm:text-lg font-semibold text-foreground mb-3 sm:mb-4 flex items-center gap-2">
                 <Crown className="w-4 h-4 sm:w-5 sm:h-5 text-primary shrink-0" />
                 Tu Plan Actual
@@ -376,7 +376,7 @@ export default function Configuracion() {
                   </div>
 
                   {/* Estado de suscripción */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4" data-tour="config-status">
                     <div className="p-3 sm:p-4 bg-secondary/20 rounded-lg min-w-0">
                       <p className="text-xs sm:text-sm text-muted-foreground mb-1">Estado</p>
                       <div className="shrink-0">{getSubscriptionBadge(currentPlan.subscription.status)}</div>
@@ -611,7 +611,7 @@ export default function Configuracion() {
             </div> */}
 
             {/* Historial de Pagos */}
-            <div className="bunker-card p-4 sm:p-6 w-full max-w-full overflow-hidden">
+            <div className="bunker-card p-4 sm:p-6 w-full max-w-full overflow-hidden" data-tour="config-history">
               <h3 className="text-base sm:text-lg font-semibold text-foreground mb-3 sm:mb-4 flex items-center gap-2">
                 <Receipt className="w-4 h-4 sm:w-5 sm:h-5 text-primary shrink-0" />
                 Historial de Pagos
@@ -722,7 +722,7 @@ export default function Configuracion() {
           {/* Tab Negocio */}
           <TabsContent value="negocio" className="space-y-4 sm:space-y-6">
             {/* Información General del Negocio */}
-            <div className="bunker-card p-4 sm:p-6 w-full max-w-full overflow-hidden">
+            <div className="bunker-card p-4 sm:p-6 w-full max-w-full overflow-hidden" data-tour="config-business">
               <div className="mb-3 sm:mb-4">
                 <h3 className="text-base sm:text-lg font-semibold text-foreground">Información del Negocio</h3>
                 <p className="text-xs sm:text-sm text-muted-foreground">
@@ -776,7 +776,7 @@ export default function Configuracion() {
             </div>
 
             {/* Datos de Contacto */}
-            <div className="bunker-card p-4 sm:p-6 w-full max-w-full overflow-hidden">
+            <div className="bunker-card p-4 sm:p-6 w-full max-w-full overflow-hidden" data-tour="config-contact">
               <div className="mb-3 sm:mb-4">
                 <h3 className="text-base sm:text-lg font-semibold text-foreground">Datos de Contacto</h3>
                 <p className="text-xs sm:text-sm text-muted-foreground">
@@ -841,7 +841,7 @@ export default function Configuracion() {
             </div>
 
             {/* Responsable de Pagos */}
-            <div className="bunker-card p-4 sm:p-6 w-full max-w-full overflow-hidden">
+            <div className="bunker-card p-4 sm:p-6 w-full max-w-full overflow-hidden" data-tour="config-responsible">
               <div className="mb-3 sm:mb-4">
                 <h3 className="text-base sm:text-lg font-semibold text-foreground">Responsable de Pagos</h3>
                 <p className="text-xs sm:text-sm text-muted-foreground">

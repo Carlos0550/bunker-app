@@ -218,6 +218,53 @@ export const reportesSteps: Step[] = [
   },
 ];
 
+// Pasos del tutorial para Configuración
+export const configuracionSteps: Step[] = [
+  {
+    target: "[data-tour='config-tabs']",
+    content: "Navega entre las secciones de configuración: Suscripción para gestionar tu plan y pagos, y Negocio para actualizar los datos de tu empresa.",
+    placement: "bottom",
+    disableBeacon: true,
+    title: "Secciones de Configuración",
+  },
+  {
+    target: "[data-tour='config-plan']",
+    content: "Aquí puedes ver tu plan actual, el precio mensual y todas las características incluidas. El estado puede ser: Activo, Período de Prueba (7 días gratis), Período de Gracia (3 días para pagar después de vencer) o Expirado.",
+    placement: "bottom",
+    title: "Tu Plan Actual",
+  },
+  {
+    target: "[data-tour='config-status']",
+    content: "Información importante: Estado de tu suscripción, días restantes antes del próximo pago, y la fecha exacta del próximo cobro. Cuando queden 7 días o menos, aparecerá un botón para pagar con Mercado Pago.",
+    placement: "bottom",
+    title: "Estado de Suscripción",
+  },
+  {
+    target: "[data-tour='config-history']",
+    content: "Historial completo de todos tus pagos. Aquí puedes verificar fechas, montos y estados de cada transacción. Si tienes un pago pendiente o fallido, podrás ver el detalle aquí.",
+    placement: "top",
+    title: "Historial de Pagos",
+  },
+  {
+    target: "[data-tour='config-business']",
+    content: "En la pestaña Negocio puedes actualizar el nombre y dirección de tu empresa. Esta información aparecerá en tus tickets y documentos.",
+    placement: "bottom",
+    title: "Información del Negocio",
+  },
+  {
+    target: "[data-tour='config-contact']",
+    content: "Datos de contacto opcionales. Si no los configuras, se usarán los datos del responsable de pagos para las comunicaciones.",
+    placement: "top",
+    title: "Datos de Contacto",
+  },
+  {
+    target: "[data-tour='config-responsible']",
+    content: "El responsable de pagos recibe todas las notificaciones importantes: recordatorios de vencimiento (7, 3 y 1 día antes), confirmaciones de pago de Mercado Pago, y alertas si la suscripción está por expirar. Puedes cambiar el responsable en cualquier momento.",
+    placement: "top",
+    title: "Responsable de Pagos",
+  },
+];
+
 // Pasos del tutorial para el Sidebar (navegación general)
 export const sidebarSteps: Step[] = [
   {
@@ -266,6 +313,7 @@ export const tutorialStepsMap: Record<TutorialView, Step[]> = {
   productos: productosSteps,
   clientes: clientesSteps,
   reportes: reportesSteps,
+  configuracion: configuracionSteps,
   sidebar: sidebarSteps,
 };
 

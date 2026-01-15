@@ -362,31 +362,119 @@ class AnalyticsService {
       totalRevenue: currentMonthRevenue,
     };
   }
-  async getWeeklySalesChart(businessId: string) {
-    const days = [];
+  async getSalesChart(businessId: string, period: Period = "week") {
+    const data = [];
     const today = new Date();
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date(today);
-      date.setDate(date.getDate() - i);
-      const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-      const endOfDay = new Date(startOfDay);
-      endOfDay.setDate(endOfDay.getDate() + 1);
-      const sales = await prisma.sale.aggregate({
-        where: {
-          businessId,
-          createdAt: { gte: startOfDay, lt: endOfDay },
-          status: SaleStatus.COMPLETED,
-        },
-        _sum: { total: true },
-      });
-      const dayNames = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
-      days.push({
-        name: dayNames[date.getDay()],
-        date: startOfDay.toISOString().split("T")[0],
-        ventas: sales._sum.total || 0,
-      });
+    const dayNames = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+    const monthNames = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+
+    if (period === "today") {
+      // Mostrar ventas por hora del día actual
+      const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const currentHour = today.getHours();
+      
+      for (let hour = 0; hour <= currentHour; hour++) {
+        const startHour = new Date(startOfToday);
+        startHour.setHours(hour, 0, 0, 0);
+        const endHour = new Date(startOfToday);
+        endHour.setHours(hour + 1, 0, 0, 0);
+
+        const sales = await prisma.sale.aggregate({
+          where: {
+            businessId,
+            createdAt: { gte: startHour, lt: endHour },
+            status: SaleStatus.COMPLETED,
+          },
+          _sum: { total: true },
+        });
+
+        data.push({
+          name: `${hour.toString().padStart(2, '0')}:00`,
+          date: startHour.toISOString(),
+          ventas: sales._sum.total || 0,
+        });
+      }
+    } else if (period === "yesterday") {
+      // Mostrar ventas por hora del día anterior
+      const startOfYesterday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1);
+      
+      for (let hour = 0; hour < 24; hour++) {
+        const startHour = new Date(startOfYesterday);
+        startHour.setHours(hour, 0, 0, 0);
+        const endHour = new Date(startOfYesterday);
+        endHour.setHours(hour + 1, 0, 0, 0);
+
+        const sales = await prisma.sale.aggregate({
+          where: {
+            businessId,
+            createdAt: { gte: startHour, lt: endHour },
+            status: SaleStatus.COMPLETED,
+          },
+          _sum: { total: true },
+        });
+
+        data.push({
+          name: `${hour.toString().padStart(2, '0')}:00`,
+          date: startHour.toISOString(),
+          ventas: sales._sum.total || 0,
+        });
+      }
+    } else if (period === "week") {
+      // Mostrar últimos 7 días
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+        const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        const endOfDay = new Date(startOfDay);
+        endOfDay.setDate(endOfDay.getDate() + 1);
+
+        const sales = await prisma.sale.aggregate({
+          where: {
+            businessId,
+            createdAt: { gte: startOfDay, lt: endOfDay },
+            status: SaleStatus.COMPLETED,
+          },
+          _sum: { total: true },
+        });
+
+        data.push({
+          name: dayNames[date.getDay()],
+          date: startOfDay.toISOString().split("T")[0],
+          ventas: sales._sum.total || 0,
+        });
+      }
+    } else if (period === "month") {
+      // Mostrar últimos 30 días agrupados por semana (o cada 5 días para más detalle)
+      for (let i = 29; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+        const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        const endOfDay = new Date(startOfDay);
+        endOfDay.setDate(endOfDay.getDate() + 1);
+
+        const sales = await prisma.sale.aggregate({
+          where: {
+            businessId,
+            createdAt: { gte: startOfDay, lt: endOfDay },
+            status: SaleStatus.COMPLETED,
+          },
+          _sum: { total: true },
+        });
+
+        data.push({
+          name: `${date.getDate()} ${monthNames[date.getMonth()]}`,
+          date: startOfDay.toISOString().split("T")[0],
+          ventas: sales._sum.total || 0,
+        });
+      }
     }
-    return days;
+
+    return data;
+  }
+
+  // Mantener el método original para compatibilidad con el Dashboard
+  async getWeeklySalesChart(businessId: string) {
+    return this.getSalesChart(businessId, "week");
   }
   async getRecentSales(businessId: string, limit: number = 5) {
     const sales = await prisma.sale.findMany({

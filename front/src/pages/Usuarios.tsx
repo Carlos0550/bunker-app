@@ -45,6 +45,7 @@ import {
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Avatar, AvatarFallback, AvatarImage } from "@radix-ui/react-avatar";
 
 const ALL_PERMISSIONS = ["POS", "PRODUCTOS", "VENTAS", "CLIENTES", "REPORTES", "CONFIGURACION"];
 
@@ -80,7 +81,7 @@ export default function Usuarios() {
     password: "",
   });
 
-  const { data: users = [], isLoading } = useQuery({
+  const { data: users = [], isLoading } = useQuery<User[]>({
     queryKey: ["users", currentUser?.businessId],
     queryFn: () => usersApi.getUsersByBusiness(currentUser?.businessId || ""),
     enabled: !!currentUser?.businessId,
@@ -282,7 +283,7 @@ export default function Usuarios() {
                     <div className="flex items-start justify-between gap-3 mb-3">
                       <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                         <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                          <UserIcon className="w-5 h-5 text-primary" />
+                        <UserIcon className="w-5 h-5 text-primary" />
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="font-medium text-sm sm:text-base text-foreground truncate">{user.name}</p>

@@ -15,6 +15,7 @@ const routeToView: Record<string, TutorialView> = {
   "/productos": "productos",
   "/clientes": "clientes",
   "/reportes": "reportes",
+  "/configuracion": "configuracion",
 };
 
 // Función para verificar si un elemento existe en el DOM

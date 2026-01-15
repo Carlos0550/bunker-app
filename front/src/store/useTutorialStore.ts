@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-export type TutorialView = "dashboard" | "pos" | "productos" | "clientes" | "reportes" | "sidebar";
+export type TutorialView = "dashboard" | "pos" | "productos" | "clientes" | "reportes" | "configuracion" | "sidebar";
 
 interface TutorialState {
   // Record de vistas que el usuario ya ha visto
@@ -29,6 +29,7 @@ const initialSeenTutorials: Record<TutorialView, boolean> = {
   productos: false,
   clientes: false,
   reportes: false,
+  configuracion: false,
   sidebar: false,
 };
 

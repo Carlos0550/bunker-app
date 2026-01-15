@@ -144,7 +144,8 @@ class AnalyticsController {
       if (!businessId) {
         return res.status(200).json({ success: true, data: [] });
       }
-      const chartData = await analyticsService.getWeeklySalesChart(businessId);
+      const period = (req.query.period as any) || "week";
+      const chartData = await analyticsService.getSalesChart(businessId, period);
       res.status(200).json({
         success: true,
         data: chartData,
