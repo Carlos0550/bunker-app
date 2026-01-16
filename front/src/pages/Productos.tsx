@@ -2220,6 +2220,9 @@ export default function Productos() {
                 if (product) {
                   setInventorySearch(code);
                   setInventoryPage(1);
+                  setInventoryCategory("all");
+                  setInventoryState("all");
+                  setInventoryLowStock(undefined);
                   toast.success(`Producto encontrado: ${product.name}`);
                 } else {
                   toast.error("No se encontró ningún producto con ese código de barras");
