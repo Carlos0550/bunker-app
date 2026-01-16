@@ -67,6 +67,7 @@ export default function POS() {
   const [discount, setDiscount] = useState(0);
   const [discountType, setDiscountType] = useState<"PERCENTAGE" | "FIXED">("PERCENTAGE");
   const [paymentMethod, setPaymentMethod] = useState<"CASH" | "CARD" | "TRANSFER">("CASH");
+  const [installments, setInstallments] = useState(1);
   const [isCredit, setIsCredit] = useState(false);
   const [notes, setNotes] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -336,9 +337,25 @@ export default function POS() {
     discountType === "PERCENTAGE" ? (subtotal * discount) / 100 : discount;
   
   // Calcular multiplicadores activos según método de pago
-  const activeMultipliers = multipliers.filter(
-    (m: Multiplier) => m.isActive && m.paymentMethods.includes(paymentMethod)
-  );
+  const activeMultipliers = multipliers.filter((m: Multiplier) => {
+    if (!m.isActive) return false;
+    if (!m.paymentMethods.includes(paymentMethod)) return false;
+
+    // Check installments condition for card payments
+    if (
+      paymentMethod === "CARD" &&
+      m.installmentsCondition &&
+      m.installmentsCondition !== "any"
+    ) {
+      if (m.installmentsCondition === "+1") {
+        if (installments <= 1) return false;
+      } else {
+        if (parseInt(m.installmentsCondition) !== installments) return false;
+      }
+    }
+
+    return true;
+  });
   
   const multipliersTotal = activeMultipliers.reduce(
     (acc: number, m: Multiplier) => acc + (subtotal - discountAmount) * m.value,
@@ -717,22 +734,50 @@ export default function POS() {
 
             {/* Payment Method - Solo visible cuando NO es crédito */}
             {!isCredit && (
-              <div className="grid grid-cols-3 gap-2" data-tour="pos-payment">
-                {[
-                  { value: "CASH", icon: Banknote, label: "Efectivo" },
-                  { value: "CARD", icon: CreditCard, label: "Tarjeta" },
-                  { value: "TRANSFER", icon: Building2, label: "Transfer" },
-                ].map(({ value, icon: Icon, label }) => (
-                  <Button
-                    key={value}
-                    variant={paymentMethod === value ? "default" : "secondary"}
-                    className="flex-col h-auto py-3 gap-1"
-                    onClick={() => setPaymentMethod(value as typeof paymentMethod)}
-                  >
-                    <Icon className="w-5 h-5" />
-                    <span className="text-xs">{label}</span>
-                  </Button>
-                ))}
+              <div className="space-y-3" data-tour="pos-payment">
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { value: "CASH", icon: Banknote, label: "Efectivo" },
+                    { value: "CARD", icon: CreditCard, label: "Tarjeta" },
+                    { value: "TRANSFER", icon: Building2, label: "Transfer" },
+                  ].map(({ value, icon: Icon, label }) => (
+                    <Button
+                      key={value}
+                      variant={paymentMethod === value ? "default" : "secondary"}
+                      className="flex-col h-auto py-3 gap-1"
+                      onClick={() => {
+                        setPaymentMethod(value as typeof paymentMethod);
+                        if (value !== "CARD") setInstallments(1);
+                      }}
+                    >
+                      <Icon className="w-5 h-5" />
+                      <span className="text-xs">{label}</span>
+                    </Button>
+                  ))}
+                </div>
+
+                {/* Selector de cuotas */}
+                {paymentMethod === "CARD" && (
+                  <div className="flex items-center gap-2 bg-secondary/30 p-2 rounded-lg border border-border/50">
+                    <CreditCard className="w-4 h-4 text-primary" />
+                    <span className="text-sm font-medium whitespace-nowrap">
+                      Cuotas:
+                    </span>
+                    <div className="flex gap-1 flex-1 overflow-x-auto scrollbar-hide">
+                      {[1, 2, 3, 6, 12].map((n) => (
+                        <Button
+                          key={n}
+                          size="sm"
+                          variant={installments === n ? "default" : "outline"}
+                          className="h-7 px-3 text-xs"
+                          onClick={() => setInstallments(n)}
+                        >
+                          {n === 1 ? "1 (Contado)" : n}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

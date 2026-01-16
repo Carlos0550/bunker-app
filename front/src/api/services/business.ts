@@ -1,4 +1,4 @@
-import client from '../client';
+import client from "../client";
 
 export interface Multiplier {
   id: string;
@@ -6,6 +6,7 @@ export interface Multiplier {
   value: number; // Decimal (0.16 = 16%)
   isActive: boolean;
   paymentMethods: string[]; // ["CASH", "CARD", "TRANSFER"]
+  installmentsCondition?: string; // "1", "3", "6", etc. or undefined for specific installments logic
 }
 
 export interface Business {
@@ -41,7 +42,7 @@ export const businessApi = {
     contact_email?: string;
   }): Promise<Business> => {
     const response = await client.patch<{ success: boolean; data: Business }>(
-      '/business/contact',
+      "/business/contact",
       data
     );
     return response.data.data;
@@ -53,7 +54,7 @@ export const businessApi = {
     address?: string;
   }): Promise<string> => {
     const response = await client.patch<{ success: boolean; message: string }>(
-      '/business/data',
+      "/business/data",
       data
     );
     return response.data.message;
@@ -66,16 +67,20 @@ export const businessApi = {
     const response = await client.patch<{
       success: boolean;
       data: { success: boolean; newResponsible: any };
-    }>('/business/payment-responsible', data);
+    }>("/business/payment-responsible", data);
     return response.data.data;
   },
 
   getMultipliers: async (): Promise<Multiplier[]> => {
-    const res = await client.get<{ success: boolean; data: Multiplier[] }>("/business/multipliers");
+    const res = await client.get<{ success: boolean; data: Multiplier[] }>(
+      "/business/multipliers"
+    );
     return res.data.data;
   },
 
-  updateMultipliers: async (multipliers: Multiplier[]): Promise<Multiplier[]> => {
+  updateMultipliers: async (
+    multipliers: Multiplier[]
+  ): Promise<Multiplier[]> => {
     const res = await client.patch<{ success: boolean; data: Multiplier[] }>(
       "/business/multipliers",
       { multipliers }

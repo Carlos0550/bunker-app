@@ -1,7 +1,11 @@
 import { prisma } from "@/config/db";
 import { Prisma, ProductState } from "@prisma/client";
 import createHttpError from "http-errors";
-import { uploadFileWithUniqueId, getFileUrl, deleteFile } from "@/utils/minio.util";
+import {
+  uploadFileWithUniqueId,
+  getFileUrl,
+  deleteFile,
+} from "@/utils/minio.util";
 import { normalizeProductName } from "@/utils/text.util";
 interface ProductFilters {
   search?: string;
@@ -54,14 +58,7 @@ class ProductService {
     filters: ProductFilters = {},
     pagination: PaginationOptions = {}
   ) {
-    const {
-      search,
-      categoryId,
-      state,
-      lowStock,
-      minPrice,
-      maxPrice,
-    } = filters;
+    const { search, categoryId, state, lowStock, minPrice, maxPrice } = filters;
     const {
       page = 1,
       limit = 20,
@@ -85,17 +82,17 @@ class ProductService {
       where.categoryId = categoryId;
     }
     if (minPrice !== undefined) {
-      where.sale_price = { ...where.sale_price as any, gte: minPrice };
+      where.sale_price = { ...(where.sale_price as any), gte: minPrice };
     }
     if (maxPrice !== undefined) {
-      where.sale_price = { ...where.sale_price as any, lte: maxPrice };
+      where.sale_price = { ...(where.sale_price as any), lte: maxPrice };
     }
     if (lowStock) {
       where.AND = [
-        ...(where.AND as Prisma.ProductsWhereInput[] || []),
+        ...((where.AND as Prisma.ProductsWhereInput[]) || []),
         {
           stock: {
-            lte: prisma.products.fields.min_stock as any, 
+            lte: prisma.products.fields.min_stock as any,
           },
         },
       ];
@@ -123,8 +120,7 @@ class ProductService {
         if (product.image) {
           try {
             imageUrl = await getFileUrl(product.image, 7 * 24 * 3600);
-          } catch {
-          }
+          } catch {}
         }
         return { ...product, imageUrl };
       })
@@ -135,7 +131,9 @@ class ProductService {
         page,
         limit,
         total: lowStock ? filteredProducts.length : total,
-        totalPages: Math.ceil((lowStock ? filteredProducts.length : total) / limit),
+        totalPages: Math.ceil(
+          (lowStock ? filteredProducts.length : total) / limit
+        ),
       },
     };
   }
@@ -158,16 +156,21 @@ class ProductService {
     if (product.image) {
       try {
         imageUrl = await getFileUrl(product.image, 7 * 24 * 3600);
-      } catch {
-      }
+      } catch {}
     }
     return { ...product, imageUrl };
   }
   async createProduct(businessId: string, data: CreateProductData) {
     const normalizedName = normalizeProductName(data.name);
-    const existingByName = await this.findByNormalizedName(businessId, normalizedName);
+    const existingByName = await this.findByNormalizedName(
+      businessId,
+      normalizedName
+    );
     if (existingByName) {
-      throw createHttpError(409, `Ya existe un producto con el nombre '${existingByName.name}'`);
+      throw createHttpError(
+        409,
+        `Ya existe un producto con el nombre '${existingByName.name}'`
+      );
     }
     if (data.sku) {
       const existingSku = await prisma.products.findFirst({
@@ -178,7 +181,10 @@ class ProductService {
         },
       });
       if (existingSku) {
-        throw createHttpError(409, `Ya existe un producto con el SKU '${data.sku}'`);
+        throw createHttpError(
+          409,
+          `Ya existe un producto con el SKU '${data.sku}'`
+        );
       }
     }
     if (data.bar_code) {
@@ -190,7 +196,10 @@ class ProductService {
         },
       });
       if (existingBarcode) {
-        throw createHttpError(409, `Ya existe un producto con el código de barras '${data.bar_code}'`);
+        throw createHttpError(
+          409,
+          `Ya existe un producto con el código de barras '${data.bar_code}'`
+        );
       }
     }
     const product = await prisma.products.create({
@@ -206,7 +215,6 @@ class ProductService {
         categoryId: data.categoryId,
         supplierId: data.supplierId,
         notes: data.notes,
-        multipliers: data.multipliers,
         businessId,
       },
       include: {
@@ -234,7 +242,11 @@ class ProductService {
     }
     return results;
   }
-  async updateProduct(productId: string, businessId: string, data: UpdateProductData) {
+  async updateProduct(
+    productId: string,
+    businessId: string,
+    data: UpdateProductData
+  ) {
     const product = await prisma.products.findFirst({
       where: {
         id: productId,
@@ -245,10 +257,20 @@ class ProductService {
     if (!product) {
       throw createHttpError(404, "Producto no encontrado");
     }
-    if (data.name !== undefined && normalizeProductName(data.name) !== normalizeProductName(product.name)) {
-      const existingByName = await this.findByNormalizedName(businessId, normalizeProductName(data.name), productId);
+    if (
+      data.name !== undefined &&
+      normalizeProductName(data.name) !== normalizeProductName(product.name)
+    ) {
+      const existingByName = await this.findByNormalizedName(
+        businessId,
+        normalizeProductName(data.name),
+        productId
+      );
       if (existingByName) {
-        throw createHttpError(409, `Ya existe un producto con el nombre '${existingByName.name}'`);
+        throw createHttpError(
+          409,
+          `Ya existe un producto con el nombre '${existingByName.name}'`
+        );
       }
     }
     if (data.sku && data.sku !== product.sku) {
@@ -261,7 +283,10 @@ class ProductService {
         },
       });
       if (existingSku) {
-        throw createHttpError(409, `Ya existe un producto con el SKU '${data.sku}'`);
+        throw createHttpError(
+          409,
+          `Ya existe un producto con el SKU '${data.sku}'`
+        );
       }
     }
     if (data.bar_code && data.bar_code !== product.bar_code) {
@@ -274,23 +299,28 @@ class ProductService {
         },
       });
       if (existingBarcode) {
-        throw createHttpError(409, `Ya existe un producto con el código de barras '${data.bar_code}'`);
+        throw createHttpError(
+          409,
+          `Ya existe un producto con el código de barras '${data.bar_code}'`
+        );
       }
     }
     const updateData: Prisma.ProductsUpdateInput = {};
     if (data.name !== undefined) updateData.name = data.name.trim();
     if (data.stock !== undefined) updateData.stock = data.stock;
     if (data.bar_code !== undefined) updateData.bar_code = data.bar_code;
-    if (data.description !== undefined) updateData.description = data.description;
+    if (data.description !== undefined)
+      updateData.description = data.description;
     if (data.state !== undefined) updateData.state = data.state;
     if (data.sku !== undefined) updateData.sku = data.sku;
     if (data.cost_price !== undefined) updateData.cost_price = data.cost_price;
     if (data.sale_price !== undefined) updateData.sale_price = data.sale_price;
     if (data.min_stock !== undefined) updateData.min_stock = data.min_stock;
-    if (data.reserved_stock !== undefined) updateData.reserved_stock = data.reserved_stock;
+    if (data.reserved_stock !== undefined)
+      updateData.reserved_stock = data.reserved_stock;
     if (data.notes !== undefined) updateData.notes = data.notes;
-    if (data.system_message !== undefined) updateData.system_message = data.system_message;
-    if (data.multipliers !== undefined) updateData.multipliers = data.multipliers;
+    if (data.system_message !== undefined)
+      updateData.system_message = data.system_message;
     if (data.categoryId !== undefined) {
       updateData.category = data.categoryId
         ? { connect: { id: data.categoryId } }
@@ -301,7 +331,11 @@ class ProductService {
         ? { connect: { id: data.supplierId } }
         : { disconnect: true };
     }
-    if (data.stock !== undefined && data.stock <= 0 && data.state === undefined) {
+    if (
+      data.stock !== undefined &&
+      data.stock <= 0 &&
+      data.state === undefined
+    ) {
       updateData.state = ProductState.OUT_OF_STOCK;
     }
     const updatedProduct = await prisma.products.update({
@@ -314,7 +348,11 @@ class ProductService {
     });
     return updatedProduct;
   }
-  async updateProductImage(productId: string, businessId: string, file: Express.Multer.File) {
+  async updateProductImage(
+    productId: string,
+    businessId: string,
+    file: Express.Multer.File
+  ) {
     const product = await prisma.products.findFirst({
       where: {
         id: productId,
@@ -328,8 +366,7 @@ class ProductService {
     if (product.image) {
       try {
         await deleteFile(product.image);
-      } catch {
-      }
+      } catch {}
     }
     const fileName = await uploadFileWithUniqueId(
       file.originalname,
@@ -378,7 +415,7 @@ class ProductService {
       throw createHttpError(
         400,
         "Solo se pueden eliminar permanentemente productos que ya están en estado DELETED. " +
-        "Primero realice un soft delete."
+          "Primero realice un soft delete."
       );
     }
     const salesCount = await prisma.saleItem.count({
@@ -388,14 +425,13 @@ class ProductService {
       throw createHttpError(
         400,
         `No se puede eliminar permanentemente este producto porque tiene ${salesCount} venta(s) asociada(s). ` +
-        "Los productos con historial de ventas deben permanecer en el sistema."
+          "Los productos con historial de ventas deben permanecer en el sistema."
       );
     }
     if (product.image) {
       try {
         await deleteFile(product.image);
-      } catch {
-      }
+      } catch {}
     }
     await prisma.products.delete({
       where: { id: productId },
@@ -413,7 +449,8 @@ class ProductService {
     if (!product) {
       throw createHttpError(404, "Producto eliminado no encontrado");
     }
-    const newState = product.stock <= 0 ? ProductState.OUT_OF_STOCK : ProductState.ACTIVE;
+    const newState =
+      product.stock <= 0 ? ProductState.OUT_OF_STOCK : ProductState.ACTIVE;
     await prisma.products.update({
       where: { id: productId },
       data: {
@@ -423,7 +460,10 @@ class ProductService {
     });
     return { message: "Producto restaurado correctamente" };
   }
-  async getDeletedProducts(businessId: string, pagination: PaginationOptions = {}) {
+  async getDeletedProducts(
+    businessId: string,
+    pagination: PaginationOptions = {}
+  ) {
     const { page = 1, limit = 20 } = pagination;
     const skip = (page - 1) * limit;
     const [products, total] = await Promise.all([
@@ -508,12 +548,14 @@ class ProductService {
         newStock = quantity;
         break;
     }
-    const newState = newStock <= 0 ? ProductState.OUT_OF_STOCK : ProductState.ACTIVE;
+    const newState =
+      newStock <= 0 ? ProductState.OUT_OF_STOCK : ProductState.ACTIVE;
     const updatedProduct = await prisma.products.update({
       where: { id: productId },
       data: {
         stock: newStock,
-        state: product.state === ProductState.DISABLED ? product.state : newState,
+        state:
+          product.state === ProductState.DISABLED ? product.state : newState,
       },
     });
     return updatedProduct;
@@ -531,7 +573,11 @@ class ProductService {
     });
     return product;
   }
-  async findByNormalizedName(businessId: string, normalizedName: string, excludeProductId?: string) {
+  async findByNormalizedName(
+    businessId: string,
+    normalizedName: string,
+    excludeProductId?: string
+  ) {
     const products = await prisma.products.findMany({
       where: {
         businessId,
@@ -540,14 +586,28 @@ class ProductService {
       },
       select: { id: true, name: true },
     });
-    return products.find(p => normalizeProductName(p.name) === normalizedName) || null;
+    return (
+      products.find((p) => normalizeProductName(p.name) === normalizedName) ||
+      null
+    );
   }
-  async checkNameExists(businessId: string, name: string, excludeProductId?: string): Promise<boolean> {
+  async checkNameExists(
+    businessId: string,
+    name: string,
+    excludeProductId?: string
+  ): Promise<boolean> {
     const normalized = normalizeProductName(name);
-    const existing = await this.findByNormalizedName(businessId, normalized, excludeProductId);
+    const existing = await this.findByNormalizedName(
+      businessId,
+      normalized,
+      excludeProductId
+    );
     return !!existing;
   }
-  async validateProductNames(businessId: string, names: string[]): Promise<{
+  async validateProductNames(
+    businessId: string,
+    names: string[]
+  ): Promise<{
     duplicatesInDb: { name: string; existingName: string }[];
     duplicatesInList: { name: string; count: number }[];
   }> {
@@ -559,16 +619,23 @@ class ProductService {
       select: { name: true },
     });
     const existingNormalizedMap = new Map<string, string>();
-    existingProducts.forEach(p => {
+    existingProducts.forEach((p) => {
       existingNormalizedMap.set(normalizeProductName(p.name), p.name);
     });
     const duplicatesInDb: { name: string; existingName: string }[] = [];
-    const normalizedNamesInList = new Map<string, { original: string; count: number }>();
+    const normalizedNamesInList = new Map<
+      string,
+      { original: string; count: number }
+    >();
     for (const name of names) {
       const normalized = normalizeProductName(name);
       const existingName = existingNormalizedMap.get(normalized);
       if (existingName) {
-        if (!duplicatesInDb.some(d => normalizeProductName(d.name) === normalized)) {
+        if (
+          !duplicatesInDb.some(
+            (d) => normalizeProductName(d.name) === normalized
+          )
+        ) {
           duplicatesInDb.push({ name, existingName });
         }
       }
@@ -615,7 +682,10 @@ class ProductService {
       where: { businessId, name, NOT: { id: categoryId } },
     });
     if (existing) {
-      throw createHttpError(409, `Ya existe otra categoría con el nombre '${name}'`);
+      throw createHttpError(
+        409,
+        `Ya existe otra categoría con el nombre '${name}'`
+      );
     }
     return prisma.categories.update({
       where: { id: categoryId },
@@ -631,7 +701,10 @@ class ProductService {
       throw createHttpError(404, "Categoría no encontrada");
     }
     if (category._count.products > 0) {
-      throw createHttpError(400, `No se puede eliminar la categoría porque tiene ${category._count.products} producto(s) asociado(s)`);
+      throw createHttpError(
+        400,
+        `No se puede eliminar la categoría porque tiene ${category._count.products} producto(s) asociado(s)`
+      );
     }
     await prisma.categories.delete({
       where: { id: categoryId },

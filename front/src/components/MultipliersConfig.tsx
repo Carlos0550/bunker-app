@@ -13,6 +13,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -32,6 +39,15 @@ const PAYMENT_METHODS = [
   { value: "TRANSFER", label: "Transferencia" },
 ];
 
+const INSTALLMENT_OPTIONS = [
+  { value: "any", label: "Cualquiera" },
+  { value: "1", label: "1 pago" },
+  { value: "2", label: "2 cuotas" },
+  { value: "3", label: "3 cuotas" },
+  { value: "6", label: "6 cuotas" },
+  { value: "+1", label: "En cuotas (>1)" },
+];
+
 export function MultipliersConfig() {
   const queryClient = useQueryClient();
   const [showDialog, setShowDialog] = useState(false);
@@ -41,6 +57,7 @@ export function MultipliersConfig() {
     value: "",
     paymentMethods: [] as string[],
     isActive: true,
+    installmentsCondition: "any",
   });
 
   // Query para obtener multiplicadores
@@ -65,7 +82,7 @@ export function MultipliersConfig() {
   const closeDialog = () => {
     setShowDialog(false);
     setEditingMultiplier(null);
-    setFormData({ name: "", value: "", paymentMethods: [], isActive: true });
+    setFormData({ name: "", value: "", paymentMethods: [], isActive: true, installmentsCondition: "any" });
   };
 
   const handleEdit = (multiplier: Multiplier) => {
@@ -75,6 +92,7 @@ export function MultipliersConfig() {
       value: String(multiplier.value * 100), // Convert 0.16 to 16
       paymentMethods: multiplier.paymentMethods,
       isActive: multiplier.isActive,
+      installmentsCondition: multiplier.installmentsCondition || "any",
     });
     setShowDialog(true);
   };
@@ -111,7 +129,17 @@ export function MultipliersConfig() {
       // Edit existing
       updated = multipliers.map((m) =>
         m.id === editingMultiplier.id
-          ? { ...m, name: formData.name, value, paymentMethods: formData.paymentMethods, isActive: formData.isActive }
+          ? {
+              ...m,
+              name: formData.name,
+              value,
+              paymentMethods: formData.paymentMethods,
+              isActive: formData.isActive,
+              installmentsCondition:
+                formData.installmentsCondition === "any"
+                  ? undefined
+                  : formData.installmentsCondition,
+            }
           : m
       );
     } else {
@@ -122,6 +150,10 @@ export function MultipliersConfig() {
         value,
         paymentMethods: formData.paymentMethods,
         isActive: formData.isActive,
+        installmentsCondition:
+          formData.installmentsCondition === "any"
+            ? undefined
+            : formData.installmentsCondition,
       };
       updated = [...multipliers, newMultiplier];
     }
@@ -192,6 +224,17 @@ export function MultipliersConfig() {
                         </Badge>
                       ))}
                     </div>
+                    {multiplier.installmentsCondition &&
+                      multiplier.paymentMethods.includes("CARD") && (
+                        <div className="mt-1">
+                          <Badge variant="secondary" className="text-[10px]">
+                            Condición:{" "}
+                            {INSTALLMENT_OPTIONS.find(
+                              (o) => o.value === multiplier.installmentsCondition
+                            )?.label || multiplier.installmentsCondition}
+                          </Badge>
+                        </div>
+                      )}
                   </TableCell>
                   <TableCell>
                     <Badge variant={multiplier.isActive ? "default" : "secondary"}>
@@ -289,6 +332,32 @@ export function MultipliersConfig() {
                 ))}
               </div>
             </div>
+
+            {formData.paymentMethods.includes("CARD") && (
+              <div>
+                <Label>Condición de Cuotas (Tarjeta)</Label>
+                <Select
+                  value={formData.installmentsCondition}
+                  onValueChange={(value) =>
+                    setFormData((prev) => ({ ...prev, installmentsCondition: value }))
+                  }
+                >
+                  <SelectTrigger className="mt-2">
+                    <SelectValue placeholder="Seleccionar condición" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {INSTALLMENT_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Define cuándo se aplica este multiplicador en pagos con tarjeta
+                </p>
+              </div>
+            )}
 
             <div className="flex items-center gap-2">
               <Checkbox
