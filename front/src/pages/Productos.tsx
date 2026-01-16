@@ -506,6 +506,7 @@ export default function Productos() {
               <Dialog open={isDialogOpen} onOpenChange={(open) => {
               setIsDialogOpen(open);
               if (!open) {
+                setEditingProduct(null);
                 setScannedBarcode("");
                 setSelectedImage(null);
                 setImagePreview(null);
@@ -2210,9 +2211,33 @@ export default function Productos() {
           title={scannerMode === "form" ? "Escanear Código de Barras" : "Buscar Producto por Código"}
           onScan={async (code) => {
             if (scannerMode === "form") {
-              // Modo formulario: establecer el código en el input
-              setScannedBarcode(code);
-              toast.success(`Código escaneado: ${code}`);
+              // Modo formulario: buscar si existe un producto con ese código
+              try {
+                const existingProduct = await productsApi.findByBarcode(code);
+                if (existingProduct) {
+                  // Si existe, cargar el producto en el formulario para editar
+                  setEditingProduct(existingProduct);
+                  setScannedBarcode(existingProduct.bar_code || "");
+                  setSelectedCategoryId(existingProduct.categoryId || "");
+                  setSelectedImage(null);
+                  setImagePreview(existingProduct.imageUrl || null);
+                  setIsCreatingNewCategory(false);
+                  setNewCategoryInline("");
+                  setScannerOpen(false);
+                  setIsDialogOpen(true);
+                  toast.success(`Producto encontrado: ${existingProduct.name}. Puedes editarlo.`);
+                } else {
+                  // Si no existe, solo establecer el código en el input
+                  setScannedBarcode(code);
+                  setScannerOpen(false);
+                  toast.success(`Código escaneado: ${code}. Completa los datos del producto.`);
+                }
+              } catch (error) {
+                // Si hay error, solo establecer el código
+                setScannedBarcode(code);
+                setScannerOpen(false);
+                toast.success(`Código escaneado: ${code}`);
+              }
             } else {
               // Modo búsqueda: buscar producto y filtrar
               try {
