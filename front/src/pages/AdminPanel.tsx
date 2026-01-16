@@ -79,6 +79,16 @@ interface Business {
   paymentHistory?: { date: string; status: string; nextPaymentDate?: string }[];
 }
 
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: number;
+  status: string;
+  lastLogin?: string;
+  createdAt: string;
+}
+
 interface SystemStats {
   totals: {
     businesses: number;
@@ -132,12 +142,23 @@ const adminApi = {
     const res = await client.patch(`/admin/businesses/${businessId}/plan`, { planId });
     return res.data;
   },
+
+  // Users & Impersonation
+  getUsersByBusiness: async (businessId: string): Promise<User[]> => {
+    const res = await client.get<{ success: boolean; data: User[] }>(`/admin/businesses/${businessId}/users`);
+    return res.data.data;
+  },
+  impersonateUser: async (userId: string): Promise<{ user: User; token: string }> => {
+    const res = await client.post<{ success: boolean; data: { user: User; token: string } }>(`/admin/users/${userId}/impersonate`);
+    return res.data.data;
+  },
 };
 
 export default function AdminPanel() {
   const queryClient = useQueryClient();
   const [searchBusiness, setSearchBusiness] = useState("");
   const [businessPage, setBusinessPage] = useState(1);
+  const [viewingBusinessUsers, setViewingBusinessUsers] = useState<string | null>(null);
   
   // Plan modal state
   const [showPlanModal, setShowPlanModal] = useState(false);
@@ -218,6 +239,42 @@ export default function AdminPanel() {
     onError: () => {
       toast.error("Error al registrar el pago");
     }
+  });
+
+  // Business Users Logic
+  const { data: businessUsers, isLoading: loadingBusinessUsers } = useQuery({
+    queryKey: ["adminBusinessUsers", viewingBusinessUsers],
+    queryFn: () => adminApi.getUsersByBusiness(viewingBusinessUsers!),
+    enabled: !!viewingBusinessUsers,
+  });
+
+  const impersonateMutation = useMutation({
+    mutationFn: adminApi.impersonateUser,
+    onSuccess: (data) => {
+      toast.success(`Ingresando como ${data.user.name}...`);
+      
+      // Clear non-auth storage
+      localStorage.removeItem("business-storage");
+      localStorage.removeItem("cart-storage");
+      sessionStorage.clear();
+      
+      // Set auth data in Zustand's persisted format
+      const authStorage = {
+        state: {
+          token: data.token,
+          user: data.user,
+          isAuthenticated: true,
+        },
+        version: 0,
+      };
+      localStorage.setItem("auth-storage", JSON.stringify(authStorage));
+      
+      // Force full page reload to reinitialize all stores and contexts
+      window.location.replace("/dashboard");
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error?.message || "Error al ingresar como usuario");
+    },
   });
 
   // Helpers
@@ -463,125 +520,210 @@ export default function AdminPanel() {
 
           {/* Negocios Tab */}
           <TabsContent value="businesses" className="space-y-4">
-            <div className="flex justify-between items-center gap-4">
-              <h2 className="text-lg font-semibold">Negocios Registrados</h2>
-              <div className="relative w-64">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar negocio..."
-                  value={searchBusiness}
-                  onChange={(e) => setSearchBusiness(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
+            {viewingBusinessUsers ? (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 mb-4">
+                  <Button variant="ghost" size="sm" onClick={() => setViewingBusinessUsers(null)}>
+                     ← Volver a Negocios
+                  </Button>
+                  <h2 className="text-lg font-semibold">
+                    Usuarios de {businesses?.data.find(b => b.id === viewingBusinessUsers)?.name}
+                  </h2>
+                </div>
 
-            {loadingBusinesses ? (
-              <div className="space-y-2">
-                {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-16" />)}
+                {loadingBusinessUsers ? (
+                  <Skeleton className="h-40" />
+                ) : (
+                  <div className="bunker-card overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Nombre</TableHead>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Rol</TableHead>
+                          <TableHead>Estado</TableHead>
+                          <TableHead className="text-right">Acciones</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                         {businessUsers?.map((user) => (
+                           <TableRow key={user.id}>
+                             <TableCell className="font-medium">{user.name}</TableCell>
+                             <TableCell>{user.email}</TableCell>
+                             <TableCell>
+                               {user.role === 1 ? (
+                                 <Badge variant="default">Admin</Badge>
+                               ) : (
+                                 <Badge variant="outline">Cajero</Badge>
+                               )}
+                             </TableCell>
+                             <TableCell>
+                               <Badge variant={user.status === "ACTIVE" ? "secondary" : "destructive"}>
+                                 {user.status}
+                               </Badge>
+                             </TableCell>
+                             <TableCell className="text-right">
+                               <Button 
+                                 size="sm" 
+                                 variant="outline"
+                                 className="bunker-glow border-primary/50 text-primary hover:bg-primary/10"
+                                 onClick={() => {
+                                   if(confirm(`¿Estás seguro de ingresar como ${user.name}?`)) {
+                                     impersonateMutation.mutate(user.id);
+                                   }
+                                 }}
+                                 disabled={impersonateMutation.isPending}
+                               >
+                                 {impersonateMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : <Users className="w-4 h-4 mr-2" />}
+                                 Ingresar
+                               </Button>
+                             </TableCell>
+                           </TableRow>
+                         ))}
+                         {businessUsers?.length === 0 && (
+                           <TableRow>
+                             <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                               No hay usuarios registrados
+                             </TableCell>
+                           </TableRow>
+                         )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
               </div>
             ) : (
               <>
-                <div className="bunker-card overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Negocio</TableHead>
-                        <TableHead>Plan</TableHead>
-                        <TableHead className="text-center">Usuarios</TableHead>
-                        <TableHead className="text-center">Productos</TableHead>
-                        <TableHead className="text-center">Ventas</TableHead>
-                        <TableHead>Estado Pago</TableHead>
-                        <TableHead>Registrado</TableHead>
-                        <TableHead className="text-right">Acciones</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {businesses?.data.map((business) => {
-                        const lastPayment = business.paymentHistory?.[0];
-                        const isOverdue = lastPayment?.nextPaymentDate && 
-                          new Date(lastPayment.nextPaymentDate) < new Date();
-                        
-                        return (
-                          <TableRow key={business.id}>
-                            <TableCell>
-                              <div>
-                                <p className="font-medium">{business.name}</p>
-                                <p className="text-xs text-muted-foreground">{business.contact_email}</p>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              {business.businessPlan ? (
-                                <Badge>{business.businessPlan.name}</Badge>
-                              ) : (
-                                <Badge variant="outline" className="text-yellow-400">Sin plan</Badge>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-center">{business._count?.users || 0}</TableCell>
-                            <TableCell className="text-center">{business._count?.products || 0}</TableCell>
-                            <TableCell className="text-center">{business._count?.sales || 0}</TableCell>
-                            <TableCell>
-                              {isOverdue ? (
-                                <Badge className="bg-red-500/20 text-red-400">
-                                  <AlertTriangle className="w-3 h-3 mr-1" />
-                                  Vencido
-                                </Badge>
-                              ) : (
-                                <Badge className="bg-green-500/20 text-green-400">Al día</Badge>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-sm text-muted-foreground">
-                              {format(new Date(business.createdAt), "dd MMM yyyy", { locale: es })}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedBusinessForPayment(business);
-                                  setPaymentForm({
-                                    amount: business.businessPlan?.price || 0,
-                                    months: 1,
-                                    notes: ""
-                                  });
-                                  setShowPaymentModal(true);
-                                }}
-                              >
-                                <CreditCard className="w-4 h-4 mr-2" />
-                                Pago
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
+                <div className="flex justify-between items-center gap-4">
+                  <h2 className="text-lg font-semibold">Negocios Registrados</h2>
+                  <div className="relative w-64">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar negocio..."
+                      value={searchBusiness}
+                      onChange={(e) => setSearchBusiness(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
                 </div>
 
-                {businesses?.pagination && (
-                  <div className="flex justify-between items-center">
-                    <p className="text-sm text-muted-foreground">
-                      Mostrando {businesses.data.length} de {businesses.pagination.total}
-                    </p>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setBusinessPage(p => Math.max(1, p - 1))}
-                        disabled={businessPage === 1}
-                      >
-                        Anterior
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setBusinessPage(p => p + 1)}
-                        disabled={businessPage >= businesses.pagination.totalPages}
-                      >
-                        Siguiente
-                      </Button>
-                    </div>
+                {loadingBusinesses ? (
+                  <div className="space-y-2">
+                    {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-16" />)}
                   </div>
+                ) : (
+                  <>
+                    <div className="bunker-card overflow-hidden">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Negocio</TableHead>
+                            <TableHead>Plan</TableHead>
+                            <TableHead className="text-center">Usuarios</TableHead>
+                            <TableHead className="text-center">Productos</TableHead>
+                            <TableHead className="text-center">Ventas</TableHead>
+                            <TableHead>Estado Pago</TableHead>
+                            <TableHead>Registrado</TableHead>
+                            <TableHead className="text-right">Acciones</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {businesses?.data.map((business) => {
+                            const lastPayment = business.paymentHistory?.[0];
+                            const isOverdue = lastPayment?.nextPaymentDate && 
+                              new Date(lastPayment.nextPaymentDate) < new Date();
+                            
+                            return (
+                              <TableRow key={business.id}>
+                                <TableCell>
+                                  <div>
+                                    <p className="font-medium">{business.name}</p>
+                                    <p className="text-xs text-muted-foreground">{business.contact_email}</p>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  {business.businessPlan ? (
+                                    <Badge>{business.businessPlan.name}</Badge>
+                                  ) : (
+                                    <Badge variant="outline" className="text-yellow-400">Sin plan</Badge>
+                                  )}
+                                </TableCell>
+                                <TableCell className="text-center">{business._count?.users || 0}</TableCell>
+                                <TableCell className="text-center">{business._count?.products || 0}</TableCell>
+                                <TableCell className="text-center">{business._count?.sales || 0}</TableCell>
+                                <TableCell>
+                                  {isOverdue ? (
+                                    <Badge className="bg-red-500/20 text-red-400">
+                                      <AlertTriangle className="w-3 h-3 mr-1" />
+                                      Vencido
+                                    </Badge>
+                                  ) : (
+                                    <Badge className="bg-green-500/20 text-green-400">Al día</Badge>
+                                  )}
+                                </TableCell>
+                                <TableCell className="text-sm text-muted-foreground">
+                                  {format(new Date(business.createdAt), "dd MMM yyyy", { locale: es })}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <div className="flex justify-end gap-2">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => setViewingBusinessUsers(business.id)}
+                                      title="Ver Usuarios"
+                                    >
+                                      <Users className="w-4 h-4 text-blue-400" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => {
+                                        setSelectedBusinessForPayment(business);
+                                        setPaymentForm({
+                                          amount: business.businessPlan?.price || 0,
+                                          months: 1,
+                                          notes: ""
+                                        });
+                                        setShowPaymentModal(true);
+                                      }}
+                                    >
+                                      <CreditCard className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+
+                    {businesses?.pagination && (
+                      <div className="flex justify-between items-center">
+                        <p className="text-sm text-muted-foreground">
+                          Mostrando {businesses.data.length} de {businesses.pagination.total}
+                        </p>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setBusinessPage(p => Math.max(1, p - 1))}
+                            disabled={businessPage === 1}
+                          >
+                            Anterior
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setBusinessPage(p => p + 1)}
+                            disabled={businessPage >= businesses.pagination.totalPages}
+                          >
+                            Siguiente
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </>
             )}

@@ -40,6 +40,7 @@ import { subscriptionApi, Plan } from "@/api/services/subscription";
 import { businessApi } from "@/api/services/business";
 import { usersApi, User as UserType } from "@/api/services/users";
 import { useAuthStore } from "@/store/useAuthStore";
+import { MultipliersConfig } from "@/components/MultipliersConfig";
 import {
   Building2,
   Bell,
@@ -925,6 +926,9 @@ export default function Configuracion() {
                 </div>
               )}
             </div>
+
+            {/* Multiplicadores de Precio */}
+            <MultipliersConfig />
           </TabsContent>
 
           <TabsContent value="notificaciones" className="space-y-6">

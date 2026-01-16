@@ -18,5 +18,9 @@ router.patch("/plans/:id", validateBody(updatePlanSchema), adminController.updat
 router.delete("/plans/:id", adminController.deletePlan);
 router.get("/businesses", adminController.getAllBusinesses);
 router.patch("/businesses/:id/plan", validateBody(changeBusinessPlanSchema), adminController.changeBusinessPlan);
+// User Management & Impersonation
+router.get("/businesses/:id/users", adminController.getUsersByBusiness);
+router.post("/users/:id/impersonate", adminController.impersonateUser);
+
 router.get("/stats", adminController.getSystemStats);
 export default router;

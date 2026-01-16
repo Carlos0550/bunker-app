@@ -99,7 +99,7 @@ model BusinessPlan {
   isActive    Boolean  @default(true)
   description String?
 
-  businesses   Business[]
+  businesses Business[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -146,13 +146,14 @@ model PaymentAttempt {
 // ==================== BUSINESS ====================
 
 model Business {
-  id              String   @id @default(uuid())
-  name            String
-  address         String
-  contact_phone   String?
-  contact_email   String?
-  business_page   String?
-  lowStockThreshold Int    @default(10) // Umbral configurable de stock bajo
+  id                String  @id @default(uuid())
+  name              String
+  address           String
+  contact_phone     String?
+  contact_email     String?
+  business_page     String?
+  lowStockThreshold Int     @default(10) // Umbral configurable de stock bajo
+  multipliers       Json? // Multiplicadores de precio (IVA, comisiones, etc.) por método de pago
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -192,7 +193,7 @@ model User {
   businessId String?
   business   Business? @relation(fields: [businessId], references: [id])
 
-  sales Sale[]
+  sales                          Sale[]
   businessesAsPaymentResponsible Business[] @relation("PaymentResponsible")
 
   createdAt DateTime @default(now())
@@ -260,7 +261,6 @@ model Products {
   reserved_stock Int          @default(0) // Reservas
   notes          String?
   system_message String?
-  multipliers    Json? // Multiplicadores de precio de venta
 
   businessId String
   business   Business @relation(fields: [businessId], references: [id])
@@ -286,14 +286,14 @@ model Products {
 // ==================== SALES ====================
 
 model Sale {
-  id         String      @id @default(uuid())
+  id         String  @id @default(uuid())
   saleNumber String? // Número de venta legible (VTA-001)
   businessId String
   customerId String? // Null = venta directa sin cliente
   userId     String // Quien procesó la venta
 
   subtotal      Float
-  taxRate       Float        @default(0.16)
+  taxRate       Float         @default(0.16)
   taxAmount     Float
   discountType  DiscountType?
   discountValue Float?
@@ -344,7 +344,7 @@ model SaleItem {
 // ==================== MANUAL PRODUCTS ====================
 
 model ManualProduct {
-  id           String              @id @default(uuid())
+  id           String @id @default(uuid())
   businessId   String
   originalText String // "1 coca cola 2500" texto original
   name         String

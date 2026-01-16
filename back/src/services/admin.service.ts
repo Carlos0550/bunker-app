@@ -1,11 +1,12 @@
 import { prisma } from "@/config/db";
 import { Prisma } from "@prisma/client";
 import createHttpError from "http-errors";
+import { generateToken } from "@/config/jwt";
 interface CreatePlanData {
   name: string;
   price: number;
   description?: string;
-  features?: string[]; 
+  features?: string[];
 }
 interface UpdatePlanData {
   name?: string;
@@ -20,13 +21,19 @@ class AdminService {
       where: { isActive: true },
     });
     if (existingActive && data.name !== existingActive.name) {
-      throw createHttpError(409, `Ya existe un plan activo. Solo puede haber un plan activo a la vez.`);
+      throw createHttpError(
+        409,
+        `Ya existe un plan activo. Solo puede haber un plan activo a la vez.`
+      );
     }
     const existing = await prisma.businessPlan.findUnique({
       where: { name: data.name },
     });
     if (existing) {
-      throw createHttpError(409, `Ya existe un plan con el nombre '${data.name}'`);
+      throw createHttpError(
+        409,
+        `Ya existe un plan con el nombre '${data.name}'`
+      );
     }
     const plan = await prisma.businessPlan.create({
       data: {
@@ -34,7 +41,7 @@ class AdminService {
         price: data.price,
         description: data.description,
         features: data.features || [],
-        isActive: true, 
+        isActive: true,
       },
     });
     if (plan.isActive) {
@@ -96,7 +103,10 @@ class AdminService {
         where: { name: data.name },
       });
       if (existing) {
-        throw createHttpError(409, `Ya existe un plan con el nombre '${data.name}'`);
+        throw createHttpError(
+          409,
+          `Ya existe un plan con el nombre '${data.name}'`
+        );
       }
     }
     if (data.isActive === true) {
@@ -129,7 +139,7 @@ class AdminService {
       throw createHttpError(
         400,
         `No se puede eliminar el plan porque tiene ${plan._count.businesses} negocio(s) asociado(s). ` +
-        "Primero migre los negocios a otro plan."
+          "Primero migre los negocios a otro plan."
       );
     }
     return prisma.businessPlan.delete({
@@ -250,11 +260,74 @@ class AdminService {
       },
       businessesByPlan: businessesByPlan.map((b) => ({
         planId: b.businessPlanId,
-        planName: b.businessPlanId ? planMap.get(b.businessPlanId) || "Sin plan" : "Sin plan",
+        planName: b.businessPlanId
+          ? planMap.get(b.businessPlanId) || "Sin plan"
+          : "Sin plan",
         count: b._count,
       })),
       recentPayments,
     };
+  }
+  async impersonateUser(adminId: string, targetUserId: string) {
+    const admin = await prisma.user.findUnique({
+      where: { id: adminId },
+    });
+
+    if (!admin || admin.role !== 0) {
+      throw createHttpError(
+        403,
+        "Solo el Super Admin puede realizar esta acción"
+      );
+    }
+
+    const targetUser = await prisma.user.findUnique({
+      where: { id: targetUserId },
+    });
+
+    if (!targetUser) {
+      throw createHttpError(404, "Usuario objetivo no encontrado");
+    }
+
+    // Generate token for the target user
+    const payload = {
+      userId: targetUser.id,
+      email: targetUser.email,
+      role: targetUser.role,
+      businessId: targetUser.businessId || undefined,
+    };
+
+    const token = generateToken(payload);
+
+    return {
+      user: {
+        id: targetUser.id,
+        name: targetUser.name,
+        email: targetUser.email,
+        role: targetUser.role,
+        businessId: targetUser.businessId,
+      },
+      token,
+    };
+  }
+
+  async getUsersByBusinessId(businessId: string) {
+    const users = await prisma.user.findMany({
+      where: {
+        businessId,
+        status: { not: "DELETED" },
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        status: true,
+        createdAt: true,
+      },
+      orderBy: { role: "asc" },
+    });
+
+    return users;
   }
 }
 export const adminService = new AdminService();

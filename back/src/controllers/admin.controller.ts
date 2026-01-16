@@ -105,5 +105,37 @@ class AdminController {
       next(error);
     }
   }
+  async getUsersByBusiness(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { id } = req.params;
+      const users = await adminService.getUsersByBusinessId(id);
+      res.status(200).json({
+        success: true,
+        data: users,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async impersonateUser(req: Request, res: Response, next: NextFunction) {
+    try {
+      const adminId = req.user?.userId;
+      const { id } = req.params; // target user id
+
+      if (!adminId) {
+        throw new Error("Usuario no autenticado");
+      }
+
+      const result = await adminService.impersonateUser(adminId, id);
+      
+      res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 export const adminController = new AdminController();

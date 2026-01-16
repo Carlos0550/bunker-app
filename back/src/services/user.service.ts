@@ -109,6 +109,7 @@ export class UserService {
       userId: result.id,
       email: result.email,
       role: result.role,
+      businessId: result.businessId || undefined,
     };
     const token = generateToken(payload);
     const { password, verificationToken: _, ...userWithoutSensitiveData } = result;
@@ -263,6 +264,7 @@ export class UserService {
       userId: user.id,
       email: user.email,
       role: user.role,
+      businessId: user.businessId || undefined,
     };
     const token = generateToken(payload);
     const { password: _, verificationToken, ...userWithoutSensitiveData } = user;

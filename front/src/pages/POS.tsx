@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Product, productsApi } from "@/api/services/products";
-import { salesApi, CreateSaleData, SaleItem } from "@/api/services/sales";
+import { salesApi, SaleItem as SaleItemType, CreateSaleData } from "@/api/services/sales";
 import { customersApi } from "@/api/services/customers";
+import { businessApi, Multiplier } from "@/api/services/business";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -93,6 +94,13 @@ export default function POS() {
         { page: 1, limit: 8 }
       ),
     staleTime: 30000,
+  });
+
+  // Query para multiplicadores del negocio
+  const { data: multipliers = [] } = useQuery({
+    queryKey: ["business", "multipliers"],
+    queryFn: businessApi.getMultipliers,
+    staleTime: 60000,
   });
 
   // Cargar clientes solo cuando venta a crédito está activa
@@ -326,8 +334,18 @@ export default function POS() {
   const subtotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
   const discountAmount =
     discountType === "PERCENTAGE" ? (subtotal * discount) / 100 : discount;
-  const tax = (subtotal - discountAmount) * 0.16;
-  const total = subtotal - discountAmount + tax;
+  
+  // Calcular multiplicadores activos según método de pago
+  const activeMultipliers = multipliers.filter(
+    (m: Multiplier) => m.isActive && m.paymentMethods.includes(paymentMethod)
+  );
+  
+  const multipliersTotal = activeMultipliers.reduce(
+    (acc: number, m: Multiplier) => acc + (subtotal - discountAmount) * m.value,
+    0
+  );
+  
+  const total = subtotal - discountAmount + multipliersTotal;
 
   // Procesar venta
   const processSale = async () => {
@@ -344,7 +362,7 @@ export default function POS() {
     setIsProcessing(true);
 
     try {
-      const saleItems: SaleItem[] = cart.map((item) => ({
+      const saleItems: SaleItemType[] = cart.map((item) => ({
         productId: item.productId,
         productName: item.name,
         productSku: item.sku,
@@ -685,10 +703,12 @@ export default function POS() {
                   <span>-${discountAmount.toLocaleString()}</span>
                 </div>
               )}
-              <div className="flex justify-between text-muted-foreground">
-                <span>IVA (16%)</span>
-                <span>${tax.toLocaleString()}</span>
-              </div>
+              {activeMultipliers.map((multiplier: Multiplier) => (
+                <div key={multiplier.id} className="flex justify-between text-muted-foreground">
+                  <span>{multiplier.name} ({(multiplier.value * 100).toFixed(2)}%)</span>
+                  <span>${((subtotal - discountAmount) * multiplier.value).toLocaleString()}</span>
+                </div>
+              ))}
               <div className="flex justify-between text-lg font-bold text-foreground pt-2 border-t border-border">
                 <span>Total</span>
                 <span className="text-primary">${total.toLocaleString()}</span>

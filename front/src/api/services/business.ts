@@ -1,5 +1,13 @@
 import client from '../client';
 
+export interface Multiplier {
+  id: string;
+  name: string;
+  value: number; // Decimal (0.16 = 16%)
+  isActive: boolean;
+  paymentMethods: string[]; // ["CASH", "CARD", "TRANSFER"]
+}
+
 export interface Business {
   id: string;
   name: string;
@@ -62,5 +70,16 @@ export const businessApi = {
     return response.data.data;
   },
 
-  
+  getMultipliers: async (): Promise<Multiplier[]> => {
+    const res = await client.get<{ success: boolean; data: Multiplier[] }>("/business/multipliers");
+    return res.data.data;
+  },
+
+  updateMultipliers: async (multipliers: Multiplier[]): Promise<Multiplier[]> => {
+    const res = await client.patch<{ success: boolean; data: Multiplier[] }>(
+      "/business/multipliers",
+      { multipliers }
+    );
+    return res.data.data;
+  },
 };

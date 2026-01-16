@@ -127,6 +127,50 @@ export class BusinessService {
         address: data.address,
       },
     });
-  } 
+  }
+
+  async getBusinessMultipliers(businessId: string) {
+    const business = await prisma.business.findUnique({
+      where: { id: businessId },
+      select: { multipliers: true },
+    });
+
+    if (!business) {
+      throw createHttpError(404, "Negocio no encontrado");
+    }
+
+    // Return empty array if no multipliers configured
+    return (business.multipliers as any[]) || [];
+  }
+
+  async updateBusinessMultipliers(businessId: string, multipliers: any[]) {
+    // Validate structure
+    for (const m of multipliers) {
+      if (!m.id || !m.name || typeof m.value !== "number") {
+        throw createHttpError(400, "Estructura de multiplicador inválida");
+      }
+      if (!Array.isArray(m.paymentMethods) || m.paymentMethods.length === 0) {
+        throw createHttpError(
+          400,
+          `El multiplicador '${m.name}' debe tener al menos un método de pago asignado`
+        );
+      }
+      // Validate payment methods
+      const validMethods = ["CASH", "CARD", "TRANSFER", "CREDIT"];
+      for (const method of m.paymentMethods) {
+        if (!validMethods.includes(method)) {
+          throw createHttpError(400, `Método de pago inválido: ${method}`);
+        }
+      }
+    }
+
+    const business = await prisma.business.update({
+      where: { id: businessId },
+      data: { multipliers: multipliers as any },
+      select: { multipliers: true },
+    });
+
+    return business.multipliers as any[];
+  }
 }
 export const businessService = new BusinessService();

@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { businessService } from "@/services/business.service";
+import { prisma } from "@/config/db";
 import createHttpError from "http-errors";
 class BusinessController {
   updateContact = async (req: Request, res: Response, next: NextFunction) => {
@@ -83,6 +84,90 @@ class BusinessController {
       });
     }
     catch (error) {
+      next(error);
+    }
+  };
+
+  getMultipliers = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      let businessId = req.user?.businessId;
+      const userId = req.user?.userId;
+
+      if (!userId) {
+        throw createHttpError(401, "No autorizado");
+      }
+
+      // If businessId is not in token, fetch from DB
+      if (!businessId) {
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { businessId: true },
+        });
+        businessId = user?.businessId || undefined;
+      }
+      
+      if (!businessId) {
+        return res.status(403).json({
+          success: false,
+          error: { message: "Usuario sin negocio asignado" },
+        });
+      }
+
+      const multipliers = await businessService.getBusinessMultipliers(businessId);
+      
+      res.status(200).json({
+        success: true,
+        data: multipliers,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  updateMultipliers = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      let businessId = req.user?.businessId;
+      const userId = req.user?.userId;
+      const userRole = req.user?.role;
+
+      if (!userId) {
+        throw createHttpError(401, "No autorizado");
+      }
+
+      // If businessId is not in token, fetch from DB
+      if (!businessId) {
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { businessId: true },
+        });
+        businessId = user?.businessId || undefined;
+      }
+      
+      if (!businessId) {
+        return res.status(403).json({
+          success: false,
+          error: { message: "Usuario sin negocio asignado" },
+        });
+      }
+
+      // Only admin can update multipliers
+      if (userRole !== 1 && userRole !== 0) {
+        return res.status(403).json({
+          success: false,
+          error: { message: "Solo administradores pueden configurar multiplicadores" },
+        });
+      }
+
+      const multipliers = await businessService.updateBusinessMultipliers(
+        businessId,
+        req.body.multipliers
+      );
+      
+      res.status(200).json({
+        success: true,
+        data: multipliers,
+      });
+    } catch (error) {
       next(error);
     }
   };
