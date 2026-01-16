@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Product, productsApi } from "@/api/services/products";
 import { salesApi, CreateSaleData, SaleItem } from "@/api/services/sales";
@@ -78,6 +78,11 @@ export default function POS() {
   });
   const manualInputRef = useRef<HTMLInputElement>(null);
   const [scannerOpen, setScannerOpen] = useState(false);
+  
+  // Barcode Scanner Buffer
+  const barcodeBuffer = useRef<string>("");
+  const lastKeyTime = useRef<number>(0);
+
 
   // Queries
   const { data: productsData, isLoading: loadingProducts } = useQuery({
@@ -128,6 +133,7 @@ export default function POS() {
     },
   });
 
+
   // Handlers
   const handleAddToCart = (product: Product) => {
     if (product.stock === 0) {
@@ -137,7 +143,7 @@ export default function POS() {
 
     const existingItem = cart.find((item) => item.productId === product.id);
     if (existingItem) {
-      if (existingItem.quantity >= product.stock) {
+      if (product.stock !== undefined && existingItem.quantity >= product.stock) {
         toast.error(`Stock máximo alcanzado (${product.stock} disponibles)`);
         return;
       }
@@ -148,6 +154,7 @@ export default function POS() {
             : item
         )
       );
+      toast.success(`+1 ${product.name}`);
     } else {
       setCart([
         ...cart,
@@ -162,9 +169,64 @@ export default function POS() {
           maxStock: product.stock,
         },
       ]);
+      toast.success(`${product.name} agregado`);
     }
-    toast.success(`${product.name} agregado`);
   };
+
+  // Barcode Scanner Logic
+  const processBarcode = async (code: string) => {
+    try {
+      toast.loading("Buscando producto...", { id: "scan-search" });
+      const product = await productsApi.findByBarcode(code);
+      toast.dismiss("scan-search");
+      
+      if (product) {
+        handleAddToCart(product);
+      } else {
+        toast.error(`Producto no encontrado: ${code}`);
+      }
+    } catch (error) {
+      toast.dismiss("scan-search");
+      toast.error("Error al buscar el producto");
+    }
+  };
+
+  // Global Key Listener for Scanner
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if user is typing in an input text field
+      const target = e.target as HTMLElement;
+      if (
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable
+      ) {
+        return;
+      }
+
+      const currentTime = Date.now();
+      
+      // If time between keys is too long, reset buffer (it's probably manual typing)
+      if (currentTime - lastKeyTime.current > 100) {
+        barcodeBuffer.current = "";
+      }
+      
+      lastKeyTime.current = currentTime;
+
+      if (e.key === "Enter") {
+        if (barcodeBuffer.current.length > 2) {
+          processBarcode(barcodeBuffer.current);
+          barcodeBuffer.current = "";
+        }
+      } else if (e.key.length === 1) {
+        // Collect printable characters
+        barcodeBuffer.current += e.key;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [cart]); // Dependencia necesaria para que handleAddToCart tenga el carrito actualizado
 
   const handleManualInput = async () => {
     if (!manualInput.trim()) return;
@@ -787,6 +849,8 @@ export default function POS() {
             if (product) {
               // Producto encontrado, agregarlo al carrito
               handleAddToCart(product);
+              // Feedback visual extra si se quiere, pero handleAddToCart ya tiene toast
+              setScannerOpen(false); // Opcional: cerrar scanner al encontrar? Mejor dejar abierto para escanear varios
             } else {
               toast.error("Producto no encontrado", {
                 description: `No existe producto con código: ${code}`,
