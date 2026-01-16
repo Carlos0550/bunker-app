@@ -2218,6 +2218,7 @@ export default function Productos() {
               try {
                 const product = await productsApi.findByBarcode(code);
                 if (product) {
+                  setActiveTab("inventario");
                   setInventorySearch(code);
                   setInventoryPage(1);
                   setInventoryCategory("all");
