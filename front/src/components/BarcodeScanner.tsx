@@ -67,7 +67,15 @@ export function BarcodeScanner({
   
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const isProcessingRef = useRef(false);
   const scannerContainerId = "barcode-scanner-container";
+
+  // Resetear isProcessingRef cuando se abre
+  useEffect(() => {
+    if (open) {
+      isProcessingRef.current = false;
+    }
+  }, [open]);
 
   const stopScanner = useCallback(async () => {
     const scanner = scannerRef.current;
@@ -88,6 +96,19 @@ export function BarcodeScanner({
       scannerRef.current = null;
     }
   }, []);
+
+  const handleScanSuccess = useCallback((code: string) => {
+    if (isProcessingRef.current) return;
+    isProcessingRef.current = true;
+    
+    // 1. Notificar al padre inmediatamente
+    onScan(code.trim());
+    
+    // 2. Cerrar el dialogo
+    // No esperamos a stopScanner aqui para mejorar la velocidad de respuesta.
+    // El cleanup del useEffect se encargara de detener la camara.
+    onClose();
+  }, [onScan, onClose]);
 
   const startScanner = useCallback(async (camId: string) => {
     try {
@@ -117,7 +138,7 @@ export function BarcodeScanner({
       console.error("Error starting scanner:", err);
       setError("Error al iniciar el escaner. Intenta con el modo manual.");
     }
-  }, [stopScanner]);
+  }, [stopScanner, handleScanSuccess]);
 
   const initScanner = useCallback(async () => {
     setError(null);
@@ -171,11 +192,7 @@ export function BarcodeScanner({
     }
   }, [open]);
 
-  const handleScanSuccess = async (code: string) => {
-    await stopScanner();
-    onScan(code);
-    onClose();
-  };
+
 
   const handleManualSubmit = () => {
     const code = manualCode.trim();
