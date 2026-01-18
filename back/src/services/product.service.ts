@@ -564,7 +564,7 @@ class ProductService {
     const product = await prisma.products.findFirst({
       where: {
         businessId,
-        bar_code: barcode,
+        bar_code: { equals: barcode.trim(), mode: "insensitive" },
         state: { not: ProductState.DELETED },
       },
       include: {

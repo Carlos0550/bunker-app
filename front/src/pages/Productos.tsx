@@ -228,7 +228,7 @@ export default function Productos() {
                             (target as HTMLInputElement).placeholder?.includes("Buscar por nombre, SKU o código");
 
       const currentTime = Date.now();
-      const isNewScan = currentTime - lastKeyTime.current > 150; // Aumentar un poco el margen
+      const isNewScan = currentTime - lastKeyTime.current > 300; // Aumentar margen para móviles
       lastKeyTime.current = currentTime;
 
       // 1. Manejo de Enter
