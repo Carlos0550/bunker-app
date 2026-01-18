@@ -381,17 +381,21 @@ export default function Productos() {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     
-    const data = {
+    const data: any = {
       name: formData.get("name") as string,
       sku: formData.get("sku") as string || undefined,
       bar_code: formData.get("barcode") as string || undefined,
       categoryId: formData.get("category") as string || undefined,
       sale_price: formData.get("price") ? Number(formData.get("price")) : undefined,
       cost_price: formData.get("cost") ? Number(formData.get("cost")) : undefined,
-      stock: formData.get("stock") ? Number(formData.get("stock")) : 0,
       min_stock: formData.get("minStock") ? Number(formData.get("minStock")) : 5,
       description: formData.get("description") as string || undefined,
     };
+
+    // Solo incluir stock si estamos creando un producto nuevo
+    if (!editingProduct) {
+      data.stock = formData.get("stock") ? Number(formData.get("stock")) : 0;
+    }
     
     if (editingProduct) {
       updateMutation.mutate({ id: editingProduct.id, data, image: selectedImage || undefined });
