@@ -507,7 +507,7 @@ export default function Productos() {
           />
           <StatsCard
             title="Valor Inventario"
-            value={`$${statsProducts.reduce((acc, p) => acc + (p.sale_price || 0) * p.stock, 0).toLocaleString()}`}
+            value={`$${statsProducts.reduce((acc, p) => acc + (p.sale_price || 0) * Math.max(0, p.stock), 0).toLocaleString()}`}
             icon={Package}
             iconBgColor="bg-success/20"
             iconColor="text-success"

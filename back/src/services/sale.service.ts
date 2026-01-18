@@ -150,14 +150,16 @@ class SaleService {
             });
 
             if (currentProduct) {
-              // Si el stock es insuficiente, sumar min_stock + 1
+              // Si el stock es insuficiente, sumar lo necesario para cubrir la venta + (min_stock + 1)
               if (currentProduct.stock < item.quantity) {
-                const quantityToAdd = (currentProduct.min_stock || 0) + 1;
+                const neededToSatisfySale =
+                  item.quantity - currentProduct.stock;
+                const quantityToAdd =
+                  neededToSatisfySale + (currentProduct.min_stock || 0) + 1;
                 await tx.products.update({
                   where: { id: item.productId },
                   data: {
                     stock: { increment: quantityToAdd },
-                    // Asegurar que el estado sea activo si estaba "AGOTADO"
                     state: ProductState.ACTIVE,
                   },
                 });
