@@ -74,9 +74,7 @@ class ProductService {
       const searchTerm = search.trim();
       where.OR = [
         { name: { contains: searchTerm, mode: "insensitive" } },
-        { sku: { contains: searchTerm, mode: "insensitive" } },
         { bar_code: { contains: searchTerm, mode: "insensitive" } },
-        { description: { contains: searchTerm, mode: "insensitive" } },
       ];
     }
     if (categoryId) {

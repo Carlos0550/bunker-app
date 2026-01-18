@@ -186,9 +186,9 @@ export function SaleEditor({ sale, onSave, onCancel, isLoading }: SaleEditorProp
           <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
             Descuento
           </Label>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap sm:flex-nowrap gap-2">
             <Select value={discountType || "NONE"} onValueChange={(v) => setDiscountType(v === "NONE" ? null : v as any)}>
-              <SelectTrigger className="bg-background/50 border-border/50 focus:ring-primary h-11 w-full sm:w-[150px]">
+              <SelectTrigger className="bg-background/50 border-border/50 focus:ring-primary h-11 w-full sm:w-[140px]">
                 <SelectValue placeholder="Tipo" />
               </SelectTrigger>
               <SelectContent>
@@ -202,7 +202,7 @@ export function SaleEditor({ sale, onSave, onCancel, isLoading }: SaleEditorProp
               disabled={!discountType}
               value={discountValue}
               onChange={(e) => setDiscountValue(parseFloat(e.target.value) || 0)}
-              className="bg-background/50 border-border/50 focus:ring-primary h-11"
+              className="bg-background/50 border-border/50 focus:ring-primary h-11 flex-1 min-w-[100px]"
               placeholder="0"
             />
           </div>
@@ -284,10 +284,20 @@ export function SaleEditor({ sale, onSave, onCancel, isLoading }: SaleEditorProp
           {items.map((item, index) => (
             <div 
               key={index} 
-              className="group relative p-4 rounded-xl bg-background/40 border border-border/50 hover:border-primary/30 hover:bg-background/60 transition-all"
+              className="group relative p-3 sm:p-4 rounded-xl bg-background/40 border border-border/50 hover:border-primary/30 hover:bg-background/60 transition-all"
             >
-              <div className="flex flex-col sm:flex-row gap-4 sm:items-center">
-                <div className="flex-1 min-w-0">
+              {/* Mobile Remove Button (Top Right) */}
+              <button
+                type="button"
+                className="absolute top-2 right-2 sm:hidden p-2 text-destructive hover:bg-destructive/10 rounded-full transition-colors"
+                onClick={() => handleRemoveItem(index)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+
+              <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+                {/* Product Info */}
+                <div className="flex-1 min-w-0 pr-8 sm:pr-0">
                   <h4 className="font-bold text-sm text-foreground truncate">{item.productName}</h4>
                   <div className="flex gap-2 mt-1 flex-wrap">
                     {item.productSku && (
@@ -303,15 +313,18 @@ export function SaleEditor({ sale, onSave, onCancel, isLoading }: SaleEditorProp
                   </div>
                 </div>
 
-                <div className="flex items-center gap-4">
+                {/* Controls Container */}
+                <div className="flex flex-wrap items-end sm:items-center gap-3 sm:gap-4 justify-between sm:justify-end w-full sm:w-auto">
+                  
+                  {/* Quantity Control */}
                   <div className="space-y-1">
-                    <span className="text-[10px] font-medium text-muted-foreground uppercase flex justify-center">Cant.</span>
-                    <div className="flex items-center gap-2 bg-secondary/30 rounded-lg p-1 border border-border/50">
+                    <span className="text-[10px] font-medium text-muted-foreground uppercase flex justify-center sm:justify-start">Cant.</span>
+                    <div className="flex items-center gap-1 sm:gap-2 bg-secondary/30 rounded-lg p-1 border border-border/50">
                       <Button
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="h-7 w-7 rounded-md"
+                        className="h-8 w-8 rounded-md"
                         onClick={() => handleUpdateItem(index, "quantity", Math.max(1, item.quantity - 1))}
                       >
                         <Minus className="w-3 h-3" />
@@ -320,13 +333,13 @@ export function SaleEditor({ sale, onSave, onCancel, isLoading }: SaleEditorProp
                         type="number"
                         value={item.quantity}
                         onChange={(e) => handleUpdateItem(index, "quantity", parseInt(e.target.value) || 0)}
-                        className="w-8 text-center bg-transparent border-none text-sm font-bold focus:ring-0 outline-none"
+                        className="w-10 text-center bg-transparent border-none text-sm font-bold focus:ring-0 outline-none p-0"
                       />
                       <Button
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="h-7 w-7 rounded-md"
+                        className="h-8 w-8 rounded-md"
                         onClick={() => handleUpdateItem(index, "quantity", item.quantity + 1)}
                       >
                         <Plus className="w-3 h-3" />
@@ -334,8 +347,9 @@ export function SaleEditor({ sale, onSave, onCancel, isLoading }: SaleEditorProp
                     </div>
                   </div>
 
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-medium text-muted-foreground uppercase flex justify-end pr-2">Precio Un.</span>
+                  {/* Price Control */}
+                  <div className="space-y-1 flex-1 sm:flex-none min-w-[100px]">
+                    <span className="text-[10px] font-medium text-muted-foreground uppercase flex justify-end pr-1">Precio Un.</span>
                     <div className="relative">
                       <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">$</span>
                       <Input
@@ -343,23 +357,25 @@ export function SaleEditor({ sale, onSave, onCancel, isLoading }: SaleEditorProp
                         step="0.01"
                         value={item.unitPrice}
                         onChange={(e) => handleUpdateItem(index, "unitPrice", parseFloat(e.target.value) || 0)}
-                        className="h-9 w-28 pl-5 text-right font-bold text-sm bg-secondary/30 border-border/50"
+                        className="h-10 w-full sm:w-28 pl-5 text-right font-bold text-sm bg-secondary/30 border-border/50"
                       />
                     </div>
                   </div>
 
-                  <div className="hidden sm:block text-right min-w-[100px] space-y-1">
-                    <span className="text-[10px] font-medium text-muted-foreground uppercase">Subtotal</span>
+                  {/* Subtotal (Visible on Mobile now too) */}
+                  <div className="text-right min-w-[80px] space-y-1 sm:block">
+                    <span className="text-[10px] font-medium text-muted-foreground uppercase block">Subtotal</span>
                     <p className="text-sm font-bold text-primary">
                       {formatCurrency(item.quantity * item.unitPrice)}
                     </p>
                   </div>
 
+                  {/* Desktop Remove Button */}
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 text-destructive hover:bg-destructive/10 sm:opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="hidden sm:flex h-8 w-8 text-destructive hover:bg-destructive/10 sm:opacity-0 group-hover:opacity-100 transition-opacity"
                     onClick={() => handleRemoveItem(index)}
                   >
                     <Trash2 className="h-4 w-4" />
