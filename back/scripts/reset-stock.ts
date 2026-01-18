@@ -14,34 +14,15 @@ async function resetStockToMinPlusOne() {
   console.log("🚀 Iniciando actualización de stock...");
 
   try {
-    const products = await prisma.products.findMany({
-      select: {
-        id: true,
-        name: true,
-        min_stock: true,
-      },
-    });
+    console.log(`📦 Encontrados productos para actualizar.`);
 
-    console.log(`📦 Encontrados ${products.length} productos.`);
-
-    let updatedCount = 0;
-
-    for (const product of products) {
-      const newStock = (product.min_stock || 0) + 1;
-
-      await prisma.products.update({
-        where: { id: product.id },
-        data: {
-          stock: newStock,
-          state: ProductState.ACTIVE,
-        },
-      });
-
-      updatedCount++;
-      if (updatedCount % 100 === 0) {
-        console.log(`✅ Actualizados ${updatedCount} productos...`);
-      }
-    }
+    // Usar una consulta raw para actualizar solo productos con stock <= 0
+    const updatedCount = await prisma.$executeRaw`
+      UPDATE "Products" 
+      SET "stock" = COALESCE("min_stock", 0) + 1,
+          "state" = 'ACTIVE'::"ProductState"
+      WHERE "stock" <= 0
+    `;
 
     console.log(
       `✨ Proceso completado. Se actualizaron ${updatedCount} productos.`,
