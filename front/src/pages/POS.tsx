@@ -210,17 +210,18 @@ export default function POS() {
                             (target as HTMLInputElement).placeholder?.includes("Buscar por nombre, SKU o código");
 
       const currentTime = Date.now();
-      const isNewScan = currentTime - lastKeyTime.current > 100;
+      const isNewScan = currentTime - lastKeyTime.current > 150;
       lastKeyTime.current = currentTime;
 
       // 1. Manejo de Enter
       if (e.key === "Enter") {
         if (isSearchInput) {
-          const value = (target as HTMLInputElement).value.trim();
+          const input = target as HTMLInputElement;
+          const value = input.value.trim();
           if (value.length >= 3) {
             e.preventDefault();
             processBarcode(value);
-            setSearchTerm(""); // Limpiar búsqueda
+            setSearchTerm(""); // Limpiar búsqueda para el siguiente
           }
           return;
         }
@@ -244,20 +245,12 @@ export default function POS() {
         return;
       }
 
-      // 3. Auto-foco y detección de nuevo escaneo
-      if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        if (!isSearchInput) {
-          const searchInput = document.querySelector('input[placeholder*="Buscar por nombre, SKU o código"]') as HTMLInputElement;
-          if (searchInput) {
-            e.preventDefault();
-            searchInput.focus();
-            searchInput.value = e.key;
-            const event = new Event('input', { bubbles: true });
-            searchInput.dispatchEvent(event);
-            return;
-          }
-        } else if (isNewScan && barcodeBuffer.current === "") {
-          (target as HTMLInputElement).select();
+      // 3. Auto-foco si no estamos enfocados
+      if (!isSearchInput && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        const searchInput = document.querySelector('input[placeholder*="Buscar por nombre, SKU o código"]') as HTMLInputElement;
+        if (searchInput) {
+          searchInput.focus();
+          // No prevenimos el default para que el carácter se inserte normalmente
         }
       }
 

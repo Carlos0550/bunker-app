@@ -228,18 +228,19 @@ export default function Productos() {
                             (target as HTMLInputElement).placeholder?.includes("Buscar por nombre, SKU o código");
 
       const currentTime = Date.now();
-      const isNewScan = currentTime - lastKeyTime.current > 100;
+      const isNewScan = currentTime - lastKeyTime.current > 150; // Aumentar un poco el margen
       lastKeyTime.current = currentTime;
 
       // 1. Manejo de Enter
       if (e.key === "Enter") {
         if (isSearchInput) {
-          const value = (target as HTMLInputElement).value.trim();
+          const input = target as HTMLInputElement;
+          const value = input.value.trim();
           if (value.length >= 3) {
             e.preventDefault();
             processBarcodeSearch(value);
-            // Seleccionar todo para que el próximo escaneo lo pise
-            (target as HTMLInputElement).select();
+            // Seleccionar todo DESPUES de buscar, para que el SIGUIENTE escaneo lo pise
+            setTimeout(() => input.select(), 10);
           }
           return;
         }
@@ -265,27 +266,20 @@ export default function Productos() {
         return;
       }
 
-      // 3. Auto-foco y detección de nuevo escaneo
-      if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        if (!isSearchInput) {
-          const searchInput = document.querySelector('input[placeholder*="Buscar por nombre, SKU o código"]') as HTMLInputElement;
-          if (searchInput) {
-            e.preventDefault();
-            searchInput.focus();
-            // Insertar el primer carácter manualmente para no perderlo
-            searchInput.value = e.key;
-            // Disparar evento para que React se entere
-            const event = new Event('input', { bubbles: true });
-            searchInput.dispatchEvent(event);
-            return;
+      // 3. Auto-foco solo si no estamos enfocados
+      if (!isSearchInput && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        const searchInput = document.querySelector('input[placeholder*="Buscar por nombre, SKU o código"]') as HTMLInputElement;
+        if (searchInput) {
+          // No prevenimos el default aquí para que el carácter se inserte naturalmente después del focus
+          searchInput.focus();
+          // Pero por seguridad en algunos navegadores, lo insertamos nosotros si está vacío
+          if (searchInput.value === "") {
+             // Dejamos que el evento natural fluya
           }
-        } else if (isNewScan && barcodeBuffer.current === "") {
-          // Si ya está enfocado pero es un nuevo escaneo, seleccionar todo
-          (target as HTMLInputElement).select();
         }
       }
 
-      // 4. Buffer global (fallback)
+      // 4. Buffer global (solo fallback)
       if (e.key.length === 1 && !isSearchInput) {
         if (isNewScan) barcodeBuffer.current = "";
         barcodeBuffer.current += e.key;
