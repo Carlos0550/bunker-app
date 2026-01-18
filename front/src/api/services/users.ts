@@ -1,4 +1,4 @@
-import client from '../client';
+import client from "../client";
 
 export interface User {
   id: string;
@@ -14,7 +14,7 @@ export interface User {
 export interface CreateUserData {
   name: string;
   email: string;
-  password: string;
+  password?: string;
   role: number;
   permissions?: string[];
   businessId: string;
@@ -32,15 +32,15 @@ export interface UpdateUserData {
 export const usersApi = {
   getUsersByBusiness: async (businessId: string): Promise<User[]> => {
     const response = await client.get<{ success: boolean; data: User[] }>(
-      `/users/business?businessId=${businessId}`
+      `/users/business?businessId=${businessId}`,
     );
     return response.data.data;
   },
 
   createUser: async (data: CreateUserData): Promise<User> => {
     const response = await client.post<{ success: boolean; data: User }>(
-      '/users/create',
-      data
+      "/users/create",
+      data,
     );
     return response.data.data;
   },
@@ -48,7 +48,7 @@ export const usersApi = {
   updateUser: async (id: string, data: UpdateUserData): Promise<User> => {
     const response = await client.patch<{ success: boolean; data: User }>(
       `/users/${id}`,
-      data
+      data,
     );
     return response.data.data;
   },

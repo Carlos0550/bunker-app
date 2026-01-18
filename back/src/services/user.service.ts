@@ -1,10 +1,25 @@
 import { prisma } from "@/config/db";
-import { hashPassword, verifyPassword, generateSecureToken } from "@/config/crypto";
-import { generateRecoverPswToken, generateToken, TokenPayload, verifyToken } from "@/config/jwt";
+import {
+  hashPassword,
+  verifyPassword,
+  generateSecureToken,
+  generateSecureAndHashedPassword,
+} from "@/config/crypto";
+import {
+  generateRecoverPswToken,
+  generateToken,
+  TokenPayload,
+  verifyToken,
+} from "@/config/jwt";
 import { uploadFileWithUniqueId, getFileUrl } from "@/utils/minio.util";
 import { Prisma, PaymentStatus } from "@prisma/client";
 import createHttpError from "http-errors";
-import { sendPasswordResetEmail, sendWelcomeEmail, sendVerificationEmail } from "@/utils";
+import {
+  sendPasswordResetEmail,
+  sendWelcomeEmail,
+  sendVerificationEmail,
+  sendUserCreatedEmail,
+} from "@/utils";
 import { emailService } from "@/services/email.service";
 interface RegisterData extends Prisma.UserCreateInput {
   businessName: string;
@@ -21,7 +36,6 @@ interface CreateAdminData {
 interface CreateUserByAdminData {
   name: string;
   email: string;
-  password: string;
   role: number;
   permissions?: string[];
 }
@@ -49,8 +63,9 @@ export class UserService {
     }
     const hashedPassword = await hashPassword(data.password);
     const nextPaymentDate = new Date();
-    nextPaymentDate.setDate(nextPaymentDate.getDate() + 7); 
-    const { verificationToken, verificationExpires } = this.generateVerificationData();
+    nextPaymentDate.setDate(nextPaymentDate.getDate() + 7);
+    const { verificationToken, verificationExpires } =
+      this.generateVerificationData();
     const result = await prisma.$transaction(async (tx) => {
       let activePlan = await tx.businessPlan.findFirst({
         where: { isActive: true },
@@ -80,7 +95,7 @@ export class UserService {
           name: data.name,
           email: data.email,
           password: hashedPassword,
-          role: 1, 
+          role: 1,
           status: "ACTIVE",
           businessId: business.id,
           emailVerified: false,
@@ -112,11 +127,16 @@ export class UserService {
       businessId: result.businessId || undefined,
     };
     const token = generateToken(payload);
-    const { password, verificationToken: _, ...userWithoutSensitiveData } = result;
+    const {
+      password,
+      verificationToken: _,
+      ...userWithoutSensitiveData
+    } = result;
     return {
       user: userWithoutSensitiveData,
       token,
-      message: "Se ha enviado un correo de verificación a tu email. Por favor verifica tu cuenta para acceder a todas las funcionalidades.",
+      message:
+        "Se ha enviado un correo de verificación a tu email. Por favor verifica tu cuenta para acceder a todas las funcionalidades.",
     };
   }
   async createAdmin(creatorId: string, data: CreateAdminData) {
@@ -127,10 +147,16 @@ export class UserService {
       throw createHttpError(404, "Usuario no encontrado");
     }
     if (creator.role !== 1 && creator.role !== 0) {
-      throw createHttpError(403, "No tiene permisos para crear administradores");
+      throw createHttpError(
+        403,
+        "No tiene permisos para crear administradores",
+      );
     }
     if (creator.role === 1 && creator.businessId !== data.businessId) {
-      throw createHttpError(403, "No puede crear administradores para otro negocio");
+      throw createHttpError(
+        403,
+        "No puede crear administradores para otro negocio",
+      );
     }
     const existingUser = await prisma.user.findFirst({
       where: { email: data.email },
@@ -139,13 +165,14 @@ export class UserService {
       throw createHttpError(409, "El correo electrónico ya está registrado");
     }
     const hashedPassword = await hashPassword(data.password);
-    const { verificationToken, verificationExpires } = this.generateVerificationData();
+    const { verificationToken, verificationExpires } =
+      this.generateVerificationData();
     const newAdmin = await prisma.user.create({
       data: {
         name: data.name,
         email: data.email,
         password: hashedPassword,
-        role: 1, 
+        role: 1,
         status: "ACTIVE",
         businessId: data.businessId,
         emailVerified: false,
@@ -159,7 +186,11 @@ export class UserService {
       verificationToken,
       appUrl: process.env.APP_URL ?? "",
     });
-    const { password, verificationToken: _, ...adminWithoutSensitiveData } = newAdmin;
+    const {
+      password,
+      verificationToken: _,
+      ...adminWithoutSensitiveData
+    } = newAdmin;
     return {
       user: adminWithoutSensitiveData,
       message: "Administrador creado. Se ha enviado un correo de verificación.",
@@ -178,7 +209,10 @@ export class UserService {
       throw createHttpError(400, "El correo ya ha sido verificado");
     }
     if (user.verificationExpires && user.verificationExpires < new Date()) {
-      throw createHttpError(400, "El token de verificación ha expirado. Solicite uno nuevo.");
+      throw createHttpError(
+        400,
+        "El token de verificación ha expirado. Solicite uno nuevo.",
+      );
     }
     await prisma.user.update({
       where: { id: user.id },
@@ -193,7 +227,10 @@ export class UserService {
       name: user.name ?? "",
       appUrl: process.env.APP_URL ?? "",
     });
-    return { message: "Correo verificado exitosamente. Ya puede acceder a todas las funcionalidades." };
+    return {
+      message:
+        "Correo verificado exitosamente. Ya puede acceder a todas las funcionalidades.",
+    };
   }
   async resendVerificationEmail(email: string) {
     const user = await prisma.user.findFirst({
@@ -205,7 +242,8 @@ export class UserService {
     if (user.emailVerified) {
       throw createHttpError(400, "El correo ya ha sido verificado");
     }
-    const { verificationToken, verificationExpires } = this.generateVerificationData();
+    const { verificationToken, verificationExpires } =
+      this.generateVerificationData();
     await prisma.user.update({
       where: { id: user.id },
       data: {
@@ -242,7 +280,10 @@ export class UserService {
           orderBy: { createdAt: "desc" },
         });
         const now = new Date();
-        if (!lastPayment || (lastPayment.nextPaymentDate && lastPayment.nextPaymentDate < now)) {
+        if (
+          !lastPayment ||
+          (lastPayment.nextPaymentDate && lastPayment.nextPaymentDate < now)
+        ) {
           try {
             await emailService.sendEmailWithTemplate({
               to: user.email,
@@ -267,9 +308,27 @@ export class UserService {
       businessId: user.businessId || undefined,
     };
     const token = generateToken(payload);
-    const { password: _, verificationToken, ...userWithoutSensitiveData } = user;
+    const {
+      password: _,
+      verificationToken,
+      ...userWithoutSensitiveData
+    } = user;
+
+    // Generate signed URL for profile image if exists
+    let profilePhoto: string | null = null;
+    if (user.profileImage) {
+      try {
+        profilePhoto = await getFileUrl(user.profileImage, 7 * 24 * 3600);
+      } catch (error) {
+        console.error("Error getting profile image URL:", error);
+      }
+    }
+
     return {
-      user: userWithoutSensitiveData,
+      user: {
+        ...userWithoutSensitiveData,
+        profilePhoto,
+      },
       token,
       emailVerified: user.emailVerified,
     };
@@ -282,7 +341,21 @@ export class UserService {
       throw createHttpError(404, "Usuario no encontrado");
     }
     const { password, verificationToken, ...userWithoutSensitiveData } = user;
-    return userWithoutSensitiveData;
+
+    // Generate signed URL for profile image if exists
+    let profilePhoto: string | null = null;
+    if (user.profileImage) {
+      try {
+        profilePhoto = await getFileUrl(user.profileImage, 7 * 24 * 3600);
+      } catch (error) {
+        console.error("Error getting profile image URL:", error);
+      }
+    }
+
+    return {
+      ...userWithoutSensitiveData,
+      profilePhoto,
+    };
   }
   async updateProfilePhoto(userId: string, file: Express.Multer.File) {
     const user = await prisma.user.findUnique({
@@ -295,7 +368,7 @@ export class UserService {
       file.originalname,
       file.buffer,
       file.mimetype,
-      "profile-photos"
+      "profile-photos",
     );
     await prisma.user.update({
       where: { id: userId },
@@ -313,7 +386,10 @@ export class UserService {
     if (!user) {
       throw createHttpError(404, "Usuario no encontrado");
     }
-    const resetToken = generateRecoverPswToken({ email, password: user.password }, { expiresIn: "5m" });
+    const resetToken = generateRecoverPswToken(
+      { email, password: user.password },
+      { expiresIn: "5m" },
+    );
     await sendPasswordResetEmail({
       email: user.email,
       name: user.name ?? "",
@@ -333,7 +409,10 @@ export class UserService {
       throw createHttpError(404, "Usuario no encontrado");
     }
     if (user.password !== decoded.password) {
-      throw createHttpError(400, "El enlace de recuperación ya no es válido (la contraseña ha cambiado)");
+      throw createHttpError(
+        400,
+        "El enlace de recuperación ya no es válido (la contraseña ha cambiado)",
+      );
     }
     const hashedPassword = await hashPassword(newPassword);
     await prisma.user.update({
@@ -342,7 +421,11 @@ export class UserService {
     });
     return true;
   }
-  async createUserByAdmin(creatorId: string, businessId: string, data: CreateUserByAdminData) {
+  async createUserByAdmin(
+    creatorId: string,
+    businessId: string,
+    data: CreateUserByAdminData,
+  ) {
     const creator = await prisma.user.findUnique({
       where: { id: creatorId },
       select: { role: true, businessId: true },
@@ -360,16 +443,28 @@ export class UserService {
       where: { email: data.email, businessId },
     });
     if (existingUser) {
-      throw createHttpError(409, "Ya existe un usuario con ese correo en este negocio");
+      throw createHttpError(
+        409,
+        "Ya existe un usuario con ese correo en este negocio",
+      );
     }
     let { role, permissions = [] } = data;
-    const ALL_PERMISSIONS = ["POS", "PRODUCTOS", "VENTAS", "CLIENTES", "REPORTES", "CONFIGURACION"];
+    const ALL_PERMISSIONS = [
+      "POS",
+      "PRODUCTOS",
+      "VENTAS",
+      "CLIENTES",
+      "REPORTES",
+      "CONFIGURACION",
+    ];
     if (role === 2 && permissions.length === ALL_PERMISSIONS.length) {
       role = 1;
       permissions = [];
     }
-    const hashedPassword = await hashPassword(data.password);
-    const { verificationToken, verificationExpires } = this.generateVerificationData();
+    const { plain_password, hashedPassword } =
+      await generateSecureAndHashedPassword();
+    const { verificationToken, verificationExpires } =
+      this.generateVerificationData();
     const user = await prisma.user.create({
       data: {
         name: data.name,
@@ -384,13 +479,18 @@ export class UserService {
         verificationExpires,
       },
     });
-    await sendVerificationEmail({
+    await sendUserCreatedEmail({
       email: user.email,
-      name: user.name,
+      name: user.name ?? "",
+      temporaryPassword: plain_password,
       verificationToken,
       appUrl: process.env.APP_URL ?? "",
     });
-    const { password: _, verificationToken: __, ...userWithoutSensitive } = user;
+    const {
+      password: _,
+      verificationToken: __,
+      ...userWithoutSensitive
+    } = user;
     return userWithoutSensitive;
   }
   async updateOwnProfile(userId: string, data: Prisma.UserUpdateInput) {
@@ -407,7 +507,8 @@ export class UserService {
       where: { id: userId },
       data,
     });
-    const { password, verificationToken, ...userWithoutSensitiveData } = updatedUser;
+    const { password, verificationToken, ...userWithoutSensitiveData } =
+      updatedUser;
     return userWithoutSensitiveData;
   }
   async updateUser(userId: string, updaterId: string, data: UpdateUserData) {
@@ -429,11 +530,21 @@ export class UserService {
       throw createHttpError(404, "Usuario no encontrado");
     }
     if (updater.role === 1 && updater.businessId !== user.businessId) {
-      throw createHttpError(403, "No puede actualizar usuarios de otro negocio");
+      throw createHttpError(
+        403,
+        "No puede actualizar usuarios de otro negocio",
+      );
     }
     let { role, permissions } = data;
     if (role !== undefined && permissions !== undefined) {
-      const ALL_PERMISSIONS = ["POS", "PRODUCTOS", "VENTAS", "CLIENTES", "REPORTES", "CONFIGURACION"];
+      const ALL_PERMISSIONS = [
+        "POS",
+        "PRODUCTOS",
+        "VENTAS",
+        "CLIENTES",
+        "REPORTES",
+        "CONFIGURACION",
+      ];
       if (role === 2 && permissions.length === ALL_PERMISSIONS.length) {
         role = 1;
         permissions = [];
@@ -444,13 +555,18 @@ export class UserService {
     if (data.email) updateData.email = data.email;
     if (data.password) updateData.password = await hashPassword(data.password);
     if (role !== undefined) updateData.role = role;
-    if (permissions !== undefined) updateData.permissions = role === 1 ? [] : permissions;
+    if (permissions !== undefined)
+      updateData.permissions = role === 1 ? [] : permissions;
     if (data.status) updateData.status = data.status;
     const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: updateData,
     });
-    const { password: _, verificationToken: __, ...userWithoutSensitive } = updatedUser;
+    const {
+      password: _,
+      verificationToken: __,
+      ...userWithoutSensitive
+    } = updatedUser;
     return userWithoutSensitive;
   }
   async deleteUser(userId: string, deleterId: string) {
@@ -483,7 +599,10 @@ export class UserService {
         },
       });
       if (adminCount <= 1) {
-        throw createHttpError(400, "No se puede eliminar el último administrador del negocio");
+        throw createHttpError(
+          400,
+          "No se puede eliminar el último administrador del negocio",
+        );
       }
     }
     await prisma.user.update({
@@ -521,10 +640,7 @@ export class UserService {
         emailVerified: true,
         createdAt: true,
       },
-      orderBy: [
-        { role: "asc" },
-        { name: "asc" },
-      ],
+      orderBy: [{ role: "asc" }, { name: "asc" }],
     });
     return users;
   }

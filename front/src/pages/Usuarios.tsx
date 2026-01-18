@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
-import { User, usersApi, CreateUserData } from "@/api/services/users";
+import { User, CreateUserData } from "@/api/services/users";
+import { authApi } from "@/api/services/auth";
 import { useAuthStore } from "@/store/useAuthStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,15 +38,18 @@ import {
   Shield,
   User as UserIcon,
   Loader2,
-  CheckCircle,
-  XCircle,
   Eye,
   EyeOff,
+  Mail,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Avatar, AvatarFallback, AvatarImage } from "@radix-ui/react-avatar";
+
+// Import centralized hooks
+import { useUsers, useCreateUser, useUpdateUser, useDeleteUser } from "@/api/hooks";
+
+// Import shared components
+import { LoadingContainer, EmptyState, ConfirmDialog } from "@/components/shared";
 
 const ALL_PERMISSIONS = ["POS", "PRODUCTOS", "VENTAS", "CLIENTES", "REPORTES", "CONFIGURACION"];
 
@@ -66,7 +70,6 @@ const PERMISSION_LABELS: Record<string, string> = {
 };
 
 export default function Usuarios() {
-  const queryClient = useQueryClient();
   const { user: currentUser } = useAuthStore();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -74,6 +77,9 @@ export default function Usuarios() {
   const [selectedRole, setSelectedRole] = useState<number>(2);
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
   const [selectedPreset, setSelectedPreset] = useState<string>("custom");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [sendingRecovery, setSendingRecovery] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -81,48 +87,18 @@ export default function Usuarios() {
     password: "",
   });
 
-  const { data: users = [], isLoading } = useQuery<User[]>({
-    queryKey: ["users", currentUser?.businessId],
-    queryFn: () => usersApi.getUsersByBusiness(currentUser?.businessId || ""),
-    enabled: !!currentUser?.businessId,
-  });
+  // ============================================================================
+  // Queries and mutations from centralized hooks
+  // ============================================================================
+  
+  const { data: users = [], isLoading } = useUsers();
+  const createMutation = useCreateUser();
+  const updateMutation = useUpdateUser();
+  const deleteMutation = useDeleteUser();
 
-  const createMutation = useMutation({
-    mutationFn: (data: CreateUserData) => usersApi.createUser(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["users"] });
-      toast.success("Usuario creado exitosamente. Se envió un email de verificación.");
-      resetForm();
-      setIsDialogOpen(false);
-    },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.error?.message || "Error al crear usuario");
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) => usersApi.updateUser(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["users"] });
-      toast.success("Usuario actualizado exitosamente");
-      resetForm();
-      setIsDialogOpen(false);
-    },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.error?.message || "Error al actualizar usuario");
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => usersApi.deleteUser(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["users"] });
-      toast.success("Usuario eliminado exitosamente");
-    },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.error?.message || "Error al eliminar usuario");
-    },
-  });
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   const resetForm = () => {
     setFormData({ name: "", email: "", password: "" });
@@ -157,11 +133,6 @@ export default function Usuarios() {
       return;
     }
 
-    if (!editingUser && !formData.password) {
-      toast.error("La contraseña es requerida para nuevos usuarios");
-      return;
-    }
-
     let finalRole = selectedRole;
     let finalPermissions = selectedPermissions;
 
@@ -185,9 +156,19 @@ export default function Usuarios() {
     }
 
     if (editingUser) {
-      updateMutation.mutate({ id: editingUser.id, data: userData });
+      updateMutation.mutate({ id: editingUser.id, data: userData }, {
+        onSuccess: () => {
+          resetForm();
+          setIsDialogOpen(false);
+        },
+      });
     } else {
-      createMutation.mutate(userData as CreateUserData);
+      createMutation.mutate(userData as CreateUserData, {
+        onSuccess: () => {
+          resetForm();
+          setIsDialogOpen(false);
+        },
+      });
     }
   };
 
@@ -204,11 +185,25 @@ export default function Usuarios() {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (user: User) => {
-    if (confirm(`¿Estás seguro de eliminar a ${user.name}?`)) {
-      deleteMutation.mutate(user.id);
+  const handleDeleteClick = (user: User) => {
+    setUserToDelete(user);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (userToDelete) {
+      deleteMutation.mutate(userToDelete.id, {
+        onSuccess: () => {
+          setDeleteDialogOpen(false);
+          setUserToDelete(null);
+        },
+      });
     }
   };
+
+  // ============================================================================
+  // Helper functions
+  // ============================================================================
 
   const getRoleBadge = (role: number) => {
     if (role === 0) return <Badge variant="default" className="bg-purple-500 whitespace-nowrap">Super Admin</Badge>;
@@ -222,6 +217,10 @@ export default function Usuarios() {
     if (!emailVerified) return <Badge variant="outline" className="text-warning">Sin verificar</Badge>;
     return <Badge variant="default" className="bg-green-500">Activo</Badge>;
   };
+
+  // ============================================================================
+  // Render
+  // ============================================================================
 
   return (
     <MainLayout>
@@ -253,37 +252,31 @@ export default function Usuarios() {
         {/* Tabla de usuarios */}
         <div className="bunker-card overflow-hidden p-0 w-full max-w-full">
           {isLoading ? (
-            <div className="flex items-center justify-center p-8 sm:p-12">
-              <Loader2 className="w-6 h-6 sm:w-8 sm:h-8 animate-spin text-primary" />
-            </div>
+            <LoadingContainer className="p-8 sm:p-12" />
           ) : users.length === 0 ? (
-            <div className="text-center py-8 sm:py-12 px-4">
-              <UsersIcon className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-3 sm:mb-4 text-muted-foreground opacity-50" />
-              <p className="text-base sm:text-lg font-medium text-foreground">No hay usuarios</p>
-              <p className="text-sm text-muted-foreground mb-4">
-                Crea usuarios para tu equipo
-              </p>
-              <Button onClick={() => {
-                resetForm();
-                setIsDialogOpen(true);
-              }}>
-                <Plus className="w-4 h-4 mr-2" />
-                Crear primer usuario
-              </Button>
+            <div className="p-8">
+              <EmptyState
+                icon={UsersIcon}
+                title="No hay usuarios"
+                description="Crea usuarios para tu equipo"
+                action={
+                  <Button onClick={() => { resetForm(); setIsDialogOpen(true); }}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Crear primer usuario
+                  </Button>
+                }
+              />
             </div>
           ) : (
             <>
               {/* Vista móvil: Cards */}
               <div className="block md:hidden p-3 sm:p-4 space-y-3">
                 {users.map((user) => (
-                  <div
-                    key={user.id}
-                    className="bunker-card p-3 border border-border/50 w-full max-w-full overflow-hidden"
-                  >
+                  <div key={user.id} className="bunker-card p-3 border border-border/50">
                     <div className="flex items-start justify-between gap-3 mb-3">
                       <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                         <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                        <UserIcon className="w-5 h-5 text-primary" />
+                          <UserIcon className="w-5 h-5 text-primary" />
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="font-medium text-sm sm:text-base text-foreground truncate">{user.name}</p>
@@ -304,7 +297,7 @@ export default function Usuarios() {
                           variant="ghost"
                           size="sm"
                           className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-                          onClick={() => handleDelete(user)}
+                          onClick={() => handleDeleteClick(user)}
                           disabled={user.id === currentUser?.id}
                         >
                           <Trash2 className="w-4 h-4" />
@@ -312,13 +305,13 @@ export default function Usuarios() {
                       </div>
                     </div>
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 pt-2 border-t border-border/50">
-                      <div className="flex items-center gap-2 min-w-0">
+                      <div className="flex items-center gap-2">
                         <span className="text-xs text-muted-foreground">Rol:</span>
-                        <div className="shrink-0">{getRoleBadge(user.role)}</div>
+                        {getRoleBadge(user.role)}
                       </div>
-                      <div className="flex items-center gap-2 min-w-0">
+                      <div className="flex items-center gap-2">
                         <span className="text-xs text-muted-foreground">Estado:</span>
-                        <div className="shrink-0">{getStatusBadge(user.status, user.emailVerified)}</div>
+                        {getStatusBadge(user.status, user.emailVerified)}
                       </div>
                     </div>
                     {user.role === 2 && (
@@ -334,9 +327,7 @@ export default function Usuarios() {
                               </Badge>
                             ))}
                             {user.permissions.length > 3 && (
-                              <Badge variant="outline" className="text-xs">
-                                +{user.permissions.length - 3}
-                              </Badge>
+                              <Badge variant="outline" className="text-xs">+{user.permissions.length - 3}</Badge>
                             )}
                           </div>
                         )}
@@ -376,9 +367,7 @@ export default function Usuarios() {
                           </div>
                         </TableCell>
                         <TableCell className="text-muted-foreground">{user.email}</TableCell>
-                        <TableCell>
-                          <div className="whitespace-nowrap">{getRoleBadge(user.role)}</div>
-                        </TableCell>
+                        <TableCell>{getRoleBadge(user.role)}</TableCell>
                         <TableCell>
                           {user.role === 1 ? (
                             <Badge variant="outline" className="text-xs">Acceso completo</Badge>
@@ -392,9 +381,7 @@ export default function Usuarios() {
                                 </Badge>
                               ))}
                               {user.permissions.length > 2 && (
-                                <Badge variant="outline" className="text-xs">
-                                  +{user.permissions.length - 2}
-                                </Badge>
+                                <Badge variant="outline" className="text-xs">+{user.permissions.length - 2}</Badge>
                               )}
                             </div>
                           )}
@@ -414,7 +401,7 @@ export default function Usuarios() {
                               variant="ghost"
                               size="sm"
                               className="text-destructive hover:text-destructive"
-                              onClick={() => handleDelete(user)}
+                              onClick={() => handleDeleteClick(user)}
                               disabled={user.id === currentUser?.id}
                             >
                               <Trash2 className="w-4 h-4" />
@@ -437,14 +424,9 @@ export default function Usuarios() {
         }}>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>
-                {editingUser ? "Editar Usuario" : "Nuevo Usuario"}
-              </DialogTitle>
+              <DialogTitle>{editingUser ? "Editar Usuario" : "Nuevo Usuario"}</DialogTitle>
               <DialogDescription>
-                {editingUser 
-                  ? "Modifica los datos del usuario"
-                  : "Crea un nuevo usuario para tu equipo"
-                }
+                {editingUser ? "Modifica los datos del usuario" : "Crea un nuevo usuario para tu equipo"}
               </DialogDescription>
             </DialogHeader>
 
@@ -472,29 +454,47 @@ export default function Usuarios() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="password">
-                  {editingUser ? "Contraseña (dejar vacío para no cambiar)" : "Contraseña *"}
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    placeholder="••••••••"
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-full px-3"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </Button>
+              {/* Password recovery */}
+              {editingUser ? (
+                <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-muted-foreground">
+                      ¿El usuario olvidó su contraseña?
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={sendingRecovery}
+                      onClick={async () => {
+                        if (!editingUser.email) return;
+                        setSendingRecovery(true);
+                        try {
+                          await authApi.recoverPassword(editingUser.email);
+                          toast.success(`Email de recuperación enviado a ${editingUser.email}`);
+                        } catch (error: any) {
+                          toast.error(error.response?.data?.error?.message || "Error al enviar email");
+                        } finally {
+                          setSendingRecovery(false);
+                        }
+                      }}
+                    >
+                      {sendingRecovery ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Mail className="w-4 h-4 mr-2" />
+                      )}
+                      Enviar email de recuperación
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                  <p className="text-sm text-blue-400">
+                    💡 Se generará una contraseña temporal automáticamente y se enviará al correo del usuario.
+                  </p>
+                </div>
+              )}
 
               {/* Selección de rol */}
               <div className="space-y-2">
@@ -504,9 +504,7 @@ export default function Usuarios() {
                   onValueChange={(value) => {
                     const role = parseInt(value);
                     setSelectedRole(role);
-                    if (role === 1) {
-                      setSelectedPermissions([]);
-                    }
+                    if (role === 1) setSelectedPermissions([]);
                   }}
                 >
                   <SelectTrigger>
@@ -570,7 +568,7 @@ export default function Usuarios() {
                           />
                           <label
                             htmlFor={permission}
-                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                            className="text-sm font-medium leading-none cursor-pointer"
                           >
                             {PERMISSION_LABELS[permission]}
                           </label>
@@ -579,7 +577,6 @@ export default function Usuarios() {
                     </div>
                   </div>
 
-                  {/* Advertencia si tiene todos los permisos */}
                   {selectedPermissions.length === ALL_PERMISSIONS.length && (
                     <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
                       <p className="text-sm text-blue-400">
@@ -607,6 +604,18 @@ export default function Usuarios() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <ConfirmDialog
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          title="Eliminar Usuario"
+          description={`¿Estás seguro de eliminar a "${userToDelete?.name}"?`}
+          confirmLabel="Eliminar"
+          onConfirm={handleConfirmDelete}
+          isLoading={deleteMutation.isPending}
+          variant="destructive"
+        />
       </div>
     </MainLayout>
   );

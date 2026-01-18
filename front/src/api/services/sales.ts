@@ -1,4 +1,4 @@
-import client from '../client';
+import client from "../client";
 
 export interface SaleItem {
   productId?: string;
@@ -13,9 +13,9 @@ export interface CreateSaleData {
   customerId?: string;
   items: SaleItem[];
   taxRate?: number;
-  discountType?: 'PERCENTAGE' | 'FIXED';
+  discountType?: "PERCENTAGE" | "FIXED";
   discountValue?: number;
-  paymentMethod: 'CASH' | 'CARD' | 'TRANSFER' | 'OTHER';
+  paymentMethod: "CASH" | "CARD" | "TRANSFER" | "OTHER";
   isCredit?: boolean;
   notes?: string;
 }
@@ -67,7 +67,7 @@ export interface ManualProduct {
   price: number;
   suggestedProductId?: string;
   linkedProductId?: string;
-  status: 'PENDING' | 'LINKED' | 'CONVERTED' | 'IGNORED';
+  status: "PENDING" | "LINKED" | "CONVERTED" | "IGNORED";
   createdAt: string;
   suggestions?: {
     id: string;
@@ -86,21 +86,26 @@ export interface ParsedManualProduct {
 export const salesApi = {
   // Crear venta
   createSale: async (data: CreateSaleData): Promise<Sale> => {
-    const response = await client.post<{ success: boolean; data: Sale }>('/sales', data);
+    const response = await client.post<{ success: boolean; data: Sale }>(
+      "/sales",
+      data,
+    );
     return response.data.data;
   },
 
   // Obtener ventas
-  getSales: async (params: {
-    page?: number;
-    limit?: number;
-    startDate?: string;
-    endDate?: string;
-    status?: string;
-    customerId?: string;
-    isCredit?: boolean;
-    paymentMethod?: string;
-  } = {}): Promise<{ data: Sale[]; pagination: any }> => {
+  getSales: async (
+    params: {
+      page?: number;
+      limit?: number;
+      startDate?: string;
+      endDate?: string;
+      status?: string;
+      customerId?: string;
+      isCredit?: boolean;
+      paymentMethod?: string;
+    } = {},
+  ): Promise<{ data: Sale[]; pagination: any }> => {
     const searchParams = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined) {
@@ -108,15 +113,19 @@ export const salesApi = {
       }
     });
 
-    const response = await client.get<{ success: boolean; data: Sale[]; pagination: any }>(
-      `/sales?${searchParams}`
-    );
+    const response = await client.get<{
+      success: boolean;
+      data: Sale[];
+      pagination: any;
+    }>(`/sales?${searchParams}`);
     return { data: response.data.data, pagination: response.data.pagination };
   },
 
   // Obtener una venta
   getSale: async (id: string): Promise<Sale> => {
-    const response = await client.get<{ success: boolean; data: Sale }>(`/sales/${id}`);
+    const response = await client.get<{ success: boolean; data: Sale }>(
+      `/sales/${id}`,
+    );
     return response.data.data;
   },
 
@@ -126,12 +135,14 @@ export const salesApi = {
   },
 
   // Parsear texto de producto manual
-  parseManualProductText: async (text: string): Promise<ParsedManualProduct | null> => {
+  parseManualProductText: async (
+    text: string,
+  ): Promise<ParsedManualProduct | null> => {
     try {
-      const response = await client.post<{ success: boolean; data: ParsedManualProduct }>(
-        '/sales/manual-products/parse',
-        { text }
-      );
+      const response = await client.post<{
+        success: boolean;
+        data: ParsedManualProduct;
+      }>("/sales/manual-products/parse", { text });
       return response.data.data;
     } catch {
       return null;
@@ -148,16 +159,17 @@ export const salesApi = {
     const response = await client.post<{
       success: boolean;
       data: { manualProduct: ManualProduct; suggestions: any[] };
-    }>('/sales/manual-products', data);
+    }>("/sales/manual-products", data);
     return response.data.data;
   },
 
   // Obtener productos manuales
   getManualProducts: async (status?: string): Promise<ManualProduct[]> => {
-    const params = status ? `?status=${status}` : '';
-    const response = await client.get<{ success: boolean; data: ManualProduct[] }>(
-      `/sales/manual-products${params}`
-    );
+    const params = status ? `?status=${status}` : "";
+    const response = await client.get<{
+      success: boolean;
+      data: ManualProduct[];
+    }>(`/sales/manual-products${params}`);
     return response.data.data;
   },
 
@@ -167,10 +179,13 @@ export const salesApi = {
   },
 
   // Convertir producto manual
-  convertManualProduct: async (id: string, additionalData?: any): Promise<any> => {
+  convertManualProduct: async (
+    id: string,
+    additionalData?: any,
+  ): Promise<any> => {
     const response = await client.post<{ success: boolean; data: any }>(
       `/sales/manual-products/${id}/convert`,
-      additionalData || {}
+      additionalData || {},
     );
     return response.data.data;
   },
@@ -183,12 +198,12 @@ export const salesApi = {
   // Actualizar producto manual
   updateManualProduct: async (
     id: string,
-    data: { name?: string; quantity?: number; price?: number; status?: string }
+    data: { name?: string; quantity?: number; price?: number; status?: string },
   ): Promise<ManualProduct> => {
-    const response = await client.put<{ success: boolean; data: ManualProduct }>(
-      `/sales/manual-products/${id}`,
-      data
-    );
+    const response = await client.put<{
+      success: boolean;
+      data: ManualProduct;
+    }>(`/sales/manual-products/${id}`, data);
     return response.data.data;
   },
 };

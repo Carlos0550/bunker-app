@@ -1,30 +1,21 @@
 import { useState, useRef, useEffect } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Product, productsApi } from "@/api/services/products";
-import { salesApi, SaleItem as SaleItemType, CreateSaleData } from "@/api/services/sales";
+import { salesApi, SaleItem as SaleItemType, CreateSaleData, Sale } from "@/api/services/sales";
 import { customersApi } from "@/api/services/customers";
 import { businessApi, Multiplier } from "@/api/services/business";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
-  Search, 
-  Plus, 
-  Minus, 
-  Trash2, 
-  CreditCard, 
-  Banknote, 
-  Building2,
   User,
   ShoppingCart,
   Percent,
   Receipt,
   Loader2,
-  Package,
   AlertCircle,
-  FileText,
   UserPlus,
-  ScanLine,
+  CreditCard,
 } from "lucide-react";
 import { BarcodeScanner } from "@/components/BarcodeScanner";
 import { toast } from "sonner";
@@ -42,21 +33,28 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-
-interface CartItem {
-  id: string;
-  productId?: string;
-  name: string;
-  sku?: string;
-  price: number;
-  quantity: number;
-  isManual: boolean;
-  maxStock?: number; // Stock máximo disponible (solo para productos del inventario)
-}
+import { 
+  SaleSuccessDialog,
+  ProductSearch,
+  ManualProductInput,
+  CartItemComponent,
+  PaymentMethodSelector,
+  type CartItem,
+} from "@/components/pos";
 
 export default function POS() {
   const queryClient = useQueryClient();
@@ -80,6 +78,11 @@ export default function POS() {
   });
   const manualInputRef = useRef<HTMLInputElement>(null);
   const [scannerOpen, setScannerOpen] = useState(false);
+  const [completedSale, setCompletedSale] = useState<Sale | null>(null);
+  const [showSaleSuccess, setShowSaleSuccess] = useState(false);
+  const [showCartModal, setShowCartModal] = useState(false);
+  const [showStockWarning, setShowStockWarning] = useState(false);
+  const [outOfStockItems, setOutOfStockItems] = useState<CartItem[]>([]);
   
   // Barcode Scanner Buffer
   const barcodeBuffer = useRef<string>("");
@@ -91,10 +94,10 @@ export default function POS() {
     queryKey: ["posProducts", searchTerm],
     queryFn: () =>
       productsApi.getProducts(
-        { search: searchTerm || undefined, state: "ACTIVE" },
-        { page: 1, limit: 8 }
+        { search: searchTerm || undefined },
+        { page: 1, limit: 100 }
       ),
-    staleTime: 30000,
+    staleTime: 1000,
   });
 
   // Query para multiplicadores del negocio
@@ -145,16 +148,12 @@ export default function POS() {
 
   // Handlers
   const handleAddToCart = (product: Product) => {
-    if (product.stock === 0) {
-      toast.error("Producto sin stock disponible");
-      return;
-    }
-
     const existingItem = cart.find((item) => item.productId === product.id);
+    
     if (existingItem) {
+      // Warn if exceeding stock but don't block
       if (product.stock !== undefined && existingItem.quantity >= product.stock) {
-        toast.error(`Stock máximo alcanzado (${product.stock} disponibles)`);
-        return;
+        toast.warning(`Atención: Stock excedido (${product.stock} disponibles)`);
       }
       setCart(
         cart.map((item) =>
@@ -165,6 +164,10 @@ export default function POS() {
       );
       toast.success(`+1 ${product.name}`);
     } else {
+      // Warn if no stock but still add
+      if (product.stock === 0) {
+        toast.warning("Atención: Producto sin stock disponible");
+      }
       setCart([
         ...cart,
         {
@@ -291,11 +294,10 @@ export default function POS() {
     const newQty = item.quantity + delta;
     if (newQty <= 0) return;
 
-    // Si no es manual, verificar stock
-    if (!item.isManual && item.maxStock !== undefined) {
+    // Warn if exceeding stock but don't block
+    if (!item.isManual && item.maxStock !== undefined && delta > 0) {
       if (newQty > item.maxStock) {
-        toast.error(`Stock máximo: ${item.maxStock} unidades disponibles`);
-        return;
+        toast.warning(`Atención: Stock excedido (${item.maxStock} disponibles)`);
       }
     }
 
@@ -365,7 +367,7 @@ export default function POS() {
   const total = subtotal - discountAmount + multipliersTotal;
 
   // Procesar venta
-  const processSale = async () => {
+  const processSale = async (ignoreStockWarning = false) => {
     if (cart.length === 0) {
       toast.error("Agrega productos al carrito");
       return;
@@ -374,6 +376,22 @@ export default function POS() {
     if (isCredit && !selectedCustomer) {
       toast.error("Seleccione un cliente para venta a crédito");
       return;
+    }
+
+    // Check for out of stock items
+    if (!ignoreStockWarning) {
+      const problematicItems = cart.filter(
+        (item) =>
+          !item.isManual &&
+          item.maxStock !== undefined &&
+          item.quantity > item.maxStock
+      );
+
+      if (problematicItems.length > 0) {
+        setOutOfStockItems(problematicItems);
+        setShowStockWarning(true);
+        return;
+      }
     }
 
     setIsProcessing(true);
@@ -400,9 +418,10 @@ export default function POS() {
 
       const sale = await salesApi.createSale(saleData);
 
-      toast.success("¡Venta procesada exitosamente!", {
-        description: `${sale.saleNumber} - Total: $${total.toLocaleString()}`,
-      });
+      // Show success dialog with print option
+      setCompletedSale(sale);
+      setShowSaleSuccess(true);
+      setShowStockWarning(false); // Ensure warning is closed
 
       clearCart();
       queryClient.invalidateQueries({ queryKey: ["posProducts"] });
@@ -418,141 +437,92 @@ export default function POS() {
 
   return (
     <MainLayout title="Punto de Venta">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Products Section */}
-        <div className="lg:col-span-2 flex flex-col gap-4 min-h-[calc(100vh-8rem)]">
-          {/* Search */}
-          <div className="flex gap-2">
-            <div className="relative flex-1" data-tour="pos-search">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por nombre, SKU o código de barras..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 h-12 bg-card border-border text-lg"
-              />
-            </div>
-            <Button
-              variant="default"
-              className="h-12 px-4"
-              onClick={() => setScannerOpen(true)}
-              title="Escanear código de barras"
-              data-tour="pos-scan"
-            >
-              <ScanLine className="w-5 h-5 mr-2" />
-              Escanear
-            </Button>
-          </div>
+      <div className="relative">
+        {/* Products Section - Full width on mobile, with margin on desktop for fixed cart */}
+        <div className="lg:mr-[420px] flex flex-col gap-4">
+          <ManualProductInput
+              value={manualInput}
+              onChange={setManualInput}
+              onSubmit={handleManualInput}
+              onShowHelp={() => setShowManualHelp(true)}
+            />
+          <div className="flex flex-col gap-4 min-h-[calc(100vh-8rem)]">
+            <ProductSearch
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+              onScanClick={() => setScannerOpen(true)}
+              products={products}
+              isLoading={loadingProducts}
+              onProductClick={handleAddToCart}
+            />
 
-          {/* Manual Input */}
-          <div className="bunker-card p-3" data-tour="pos-manual">
-            <div className="flex items-center gap-2 mb-2">
-              <FileText className="w-4 h-4 text-primary" />
-              <span className="text-sm font-medium text-foreground">Carga Manual</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 px-2 text-xs"
-                onClick={() => setShowManualHelp(true)}
-              >
-                ¿Cómo funciona?
-              </Button>
-            </div>
-            <div className="flex gap-2">
-              <Input
-                ref={manualInputRef}
-                placeholder="Ej: 2 coca cola 2500"
-                value={manualInput}
-                onChange={(e) => setManualInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleManualInput()}
-                className="flex-1 bg-secondary/50"
-              />
-              <Button onClick={handleManualInput} disabled={!manualInput.trim()}>
-                <Plus className="w-4 h-4 mr-1" />
-                Agregar
-              </Button>
-            </div>
-          </div>
-
-          {/* Products Grid */}
-          <div className="flex-1 overflow-auto scrollbar-thin" data-tour="pos-products">
-            {loadingProducts ? (
-              <div className="flex items-center justify-center h-full">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
-              </div>
-            ) : products.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                <Package className="w-16 h-16 mb-4 opacity-50" />
-                <p>No se encontraron productos</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                {products.map((product) => (
-                  <button
-                    key={product.id}
-                    onClick={() => handleAddToCart(product)}
-                    disabled={product.stock === 0}
-                    className="bunker-card p-4 text-left transition-all hover:border-primary/50 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed group"
-                  >
-                    <div className="aspect-square rounded-lg bg-secondary/50 mb-3 flex items-center justify-center overflow-hidden">
-                      {product.imageUrl ? (
-                        <img
-                          src={product.imageUrl}
-                          alt={product.name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <ShoppingCart className="w-8 h-8 text-muted-foreground group-hover:text-primary transition-colors" />
-                      )}
-                    </div>
-                    <h3 className="font-medium text-sm text-foreground line-clamp-2 mb-1">
-                      {product.name}
-                    </h3>
-                    <p className="text-xs text-muted-foreground mb-2">
-                      {product.sku || "Sin SKU"}
-                    </p>
-                    <div className="flex items-center justify-between">
-                      <span className="text-lg font-bold text-primary">
-                        ${(product.sale_price || 0).toLocaleString()}
-                      </span>
-                      <Badge
-                        variant={
-                          product.stock <= (product.min_stock || 5)
-                            ? "destructive"
-                            : "secondary"
-                        }
-                        className="text-[10px]"
-                      >
-                        Stock: {product.stock}
-                      </Badge>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
+            
           </div>
         </div>
 
-        {/* Cart Section */}
-        <div className="bunker-card flex flex-col max-h-[calc(100vh-8rem)] overflow-hidden" data-tour="pos-cart">
-          {/* Cart Header */}
-          <div className="p-4 border-b border-border flex-shrink-0">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
-                <ShoppingCart className="w-5 h-5" />
-                Carrito
-              </h2>
-              <Badge variant="outline">{cart.length} items</Badge>
-            </div>
+        {/* Floating Cart Button - Mobile Only */}
+        <button
+          onClick={() => setShowCartModal(true)}
+          className="lg:hidden fixed bottom-6 right-6 z-40 w-16 h-16 bg-primary text-primary-foreground rounded-full shadow-lg flex items-center justify-center hover:scale-110 transition-transform"
+        >
+          <ShoppingCart className="w-6 h-6" />
+          {cart.length > 0 && (
+            <span className="absolute -top-2 -right-2 w-7 h-7 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-xs font-bold">
+              {cart.length}
+            </span>
+          )}
+        </button>
 
-            {/* Venta a crédito */}
-            <div className="flex items-center justify-between p-2 bg-secondary/30 rounded-lg" data-tour="pos-credit">
-              <div className="flex items-center gap-2">
-                <CreditCard className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm">Venta a Crédito (Fiado)</span>
+        {/* Cart Section - Fixed on Desktop, Modal on Mobile */}
+        <div className={`
+          lg:fixed lg:top-20 lg:right-6 lg:w-[400px] lg:max-h-[calc(100vh-7rem)]
+          ${showCartModal ? 'block' : 'hidden lg:block'}
+        `}>
+          {/* Mobile Modal Overlay */}
+          {showCartModal && (
+            <div
+              className="lg:hidden fixed inset-0 bg-black/50 z-40"
+              onClick={() => setShowCartModal(false)}
+            />
+          )}
+
+          {/* Cart Content */}
+          <div className={`
+            bunker-card flex flex-col overflow-hidden
+            lg:relative
+            ${showCartModal ? 'fixed inset-x-4 top-20 bottom-4 z-50 max-h-[calc(100vh-7rem)]' : ''}
+          `} data-tour="pos-cart">
+            {/* Cart Header */}
+            <div className="p-4 border-b border-border flex-shrink-0">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                  <ShoppingCart className="w-5 h-5" />
+                  Carrito
+                </h2>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline">{cart.length} items</Badge>
+                  {/* Close button for mobile modal */}
+                  {showCartModal && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="lg:hidden h-8 w-8"
+                      onClick={() => setShowCartModal(false)}
+                    >
+                      <span className="text-xl">×</span>
+                    </Button>
+                  )}
+                </div>
               </div>
-              <Switch checked={isCredit} onCheckedChange={handleCreditToggle} />
-            </div>
+
+              {/* Venta a crédito */}
+              <div className="flex items-center justify-between p-2 bg-secondary/30 rounded-lg" data-tour="pos-credit">
+                <div className="flex items-center gap-2">
+                  <CreditCard className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm">Venta a Crédito (Fiado)</span>
+                </div>
+                <Switch checked={isCredit} onCheckedChange={handleCreditToggle} />
+              </div>
 
             {/* Selector de cliente - Solo visible cuando isCredit está activo */}
             {isCredit && (
@@ -610,62 +580,12 @@ export default function POS() {
               </div>
             ) : (
               cart.map((item) => (
-                <div
+                <CartItemComponent
                   key={item.id}
-                  className={`flex items-center gap-3 p-3 rounded-lg ${
-                    item.isManual ? "bg-warning/10 border border-warning/20" : "bg-secondary/30"
-                  }`}
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1">
-                      <p className="text-sm font-medium text-foreground truncate">
-                        {item.name}
-                      </p>
-                      {item.isManual && (
-                        <Badge variant="outline" className="text-[10px] border-warning text-warning">
-                          Manual
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      ${item.price.toLocaleString()} c/u
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-7 w-7"
-                      onClick={() => handleUpdateQuantity(item.id, -1)}
-                    >
-                      <Minus className="w-3 h-3" />
-                    </Button>
-                    <span className="w-8 text-center font-medium">
-                      {item.quantity}
-                    </span>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-7 w-7"
-                      onClick={() => handleUpdateQuantity(item.id, 1)}
-                      disabled={!item.isManual && item.maxStock !== undefined && item.quantity >= item.maxStock}
-                      title={!item.isManual && item.maxStock !== undefined && item.quantity >= item.maxStock ? `Máximo ${item.maxStock} unidades` : "Aumentar cantidad"}
-                    >
-                      <Plus className="w-3 h-3" />
-                    </Button>
-                  </div>
-                  <p className="text-sm font-bold text-foreground w-20 text-right">
-                    ${(item.price * item.quantity).toLocaleString()}
-                  </p>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-7 w-7 text-destructive hover:text-destructive"
-                    onClick={() => handleRemoveItem(item.id)}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
+                  item={item}
+                  onUpdateQuantity={handleUpdateQuantity}
+                  onRemove={handleRemoveItem}
+                />
               ))
             )}
           </div>
@@ -734,57 +654,18 @@ export default function POS() {
 
             {/* Payment Method - Solo visible cuando NO es crédito */}
             {!isCredit && (
-              <div className="space-y-3" data-tour="pos-payment">
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { value: "CASH", icon: Banknote, label: "Efectivo" },
-                    { value: "CARD", icon: CreditCard, label: "Tarjeta" },
-                    { value: "TRANSFER", icon: Building2, label: "Transfer" },
-                  ].map(({ value, icon: Icon, label }) => (
-                    <Button
-                      key={value}
-                      variant={paymentMethod === value ? "default" : "secondary"}
-                      className="flex-col h-auto py-3 gap-1"
-                      onClick={() => {
-                        setPaymentMethod(value as typeof paymentMethod);
-                        if (value !== "CARD") setInstallments(1);
-                      }}
-                    >
-                      <Icon className="w-5 h-5" />
-                      <span className="text-xs">{label}</span>
-                    </Button>
-                  ))}
-                </div>
-
-                {/* Selector de cuotas */}
-                {paymentMethod === "CARD" && (
-                  <div className="flex items-center gap-2 bg-secondary/30 p-2 rounded-lg border border-border/50">
-                    <CreditCard className="w-4 h-4 text-primary" />
-                    <span className="text-sm font-medium whitespace-nowrap">
-                      Cuotas:
-                    </span>
-                    <div className="flex gap-1 flex-1 overflow-x-auto scrollbar-hide">
-                      {[1, 2, 3, 6, 12].map((n) => (
-                        <Button
-                          key={n}
-                          size="sm"
-                          variant={installments === n ? "default" : "outline"}
-                          className="h-7 px-3 text-xs"
-                          onClick={() => setInstallments(n)}
-                        >
-                          {n === 1 ? "1 (Contado)" : n}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
+              <PaymentMethodSelector
+                selected={paymentMethod}
+                onSelect={setPaymentMethod}
+                installments={installments}
+                onInstallmentsChange={setInstallments}
+              />
             )}
 
             {/* Process Sale */}
             <Button
               className="w-full h-12 text-lg font-semibold bunker-glow"
-              onClick={processSale}
+              onClick={() => processSale(false)}
               disabled={cart.length === 0 || isProcessing || (isCredit && !selectedCustomer)}
               data-tour="pos-process"
             >
@@ -795,6 +676,7 @@ export default function POS() {
               )}
               {isCredit ? "Registrar Fiado" : "Procesar Venta"}
             </Button>
+          </div>
           </div>
         </div>
       </div>
@@ -927,6 +809,62 @@ export default function POS() {
             });
           }
         }}
+      />
+      
+      {/* Stock Warning Dialog */}
+      <AlertDialog open={showStockWarning} onOpenChange={setShowStockWarning}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-yellow-600">
+              <AlertCircle className="w-5 h-5" />
+              Stock Insuficiente
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              <div className="space-y-4">
+                <p>
+                  Los siguientes productos superan el stock disponible:
+                </p>
+                <div className="bg-secondary/30 p-3 rounded-lg space-y-2 max-h-[200px] overflow-y-auto">
+                  {outOfStockItems.map((item) => (
+                    <div key={item.id} className="flex justify-between text-sm">
+                      <span className="font-medium">{item.name}</span>
+                      <span className="text-destructive">
+                         Solicitado: {item.quantity} | Disponible: {item.maxStock}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <p className="font-medium text-foreground">
+                  ¿Deseas continuar?
+                </p>
+                <p className="text-sm">
+                  Al confirmar, el sistema ajustará automáticamente el stock de estos productos 
+                  para permitir la venta (Stock mínimo + 1).
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => processSale(true)}
+              className="bg-yellow-600 hover:bg-yellow-700 text-white"
+            >
+              Confirmar y Procesar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Sale Success Dialog with Print Option */}
+      <SaleSuccessDialog
+        open={showSaleSuccess}
+        onClose={() => {
+          setShowSaleSuccess(false);
+          setCompletedSale(null);
+        }}
+        sale={completedSale}
+        businessName="BUNKER"
       />
     </MainLayout>
   );

@@ -75,14 +75,17 @@ class SaleService {
           },
         });
         if (!product) {
-          throw createHttpError(404, `Producto no encontrado: ${item.productName}`);
-        }
-        if (product.stock < item.quantity) {
           throw createHttpError(
-            400,
-            `Stock insuficiente para ${product.name}. Disponible: ${product.stock}, Solicitado: ${item.quantity}`
+            404,
+            `Producto no encontrado: ${item.productName}`,
           );
         }
+        // if (product.stock < item.quantity) {
+        //   throw createHttpError(
+        //     400,
+        //     `Stock insuficiente para ${product.name}. Disponible: ${product.stock}, Solicitado: ${item.quantity}`,
+        //   );
+        // }
       }
       itemsData.push({
         ...(item.productId && { product: { connect: { id: item.productId } } }),
@@ -120,7 +123,9 @@ class SaleService {
           discountValue: data.discountValue || null,
           total,
           // Si es crédito, usar CREDIT como método de pago, sino usar el método proporcionado
-          paymentMethod: data.isCredit ? PaymentMethod.CREDIT : data.paymentMethod,
+          paymentMethod: data.isCredit
+            ? PaymentMethod.CREDIT
+            : data.paymentMethod,
           status: data.isCredit ? SaleStatus.PENDING : SaleStatus.COMPLETED,
           isCredit: data.isCredit || false,
           notes: data.notes || null,
@@ -139,20 +144,44 @@ class SaleService {
       if (!data.isCredit) {
         for (const item of data.items) {
           if (!item.isManual && item.productId) {
-            await tx.products.update({
-              where: { id: item.productId },
-              data: {
-                stock: { decrement: item.quantity },
-              },
-            });
-            const updatedProduct = await tx.products.findUnique({
+            // Verificar stock actual antes de restar
+            const currentProduct = await tx.products.findUnique({
               where: { id: item.productId },
             });
-            if (updatedProduct && updatedProduct.stock <= 0) {
+
+            if (currentProduct) {
+              // Si el stock es insuficiente, sumar min_stock + 1
+              if (currentProduct.stock < item.quantity) {
+                const quantityToAdd = (currentProduct.min_stock || 0) + 1;
+                await tx.products.update({
+                  where: { id: item.productId },
+                  data: {
+                    stock: { increment: quantityToAdd },
+                    // Asegurar que el estado sea activo si estaba "AGOTADO"
+                    state: ProductState.ACTIVE,
+                  },
+                });
+              }
+
+              // Proceder con la resta normal
               await tx.products.update({
                 where: { id: item.productId },
-                data: { state: ProductState.OUT_OF_STOCK },
+                data: {
+                  stock: { decrement: item.quantity },
+                },
               });
+
+              // Verificar si quedó en 0 o menos para actualizar estado (aunque con la lógica anterior es difícil que quede < 0)
+              const updatedProduct = await tx.products.findUnique({
+                where: { id: item.productId },
+              });
+
+              if (updatedProduct && updatedProduct.stock <= 0) {
+                await tx.products.update({
+                  where: { id: item.productId },
+                  data: { state: ProductState.OUT_OF_STOCK },
+                });
+              }
             }
           }
         }
@@ -191,17 +220,23 @@ class SaleService {
   async getSales(
     businessId: string,
     filters: SaleFilters = {},
-    pagination: PaginationOptions = {}
+    pagination: PaginationOptions = {},
   ) {
-    const { startDate, endDate, status, customerId, isCredit, paymentMethod } = filters;
-    const { page = 1, limit = 20, sortBy = "createdAt", sortOrder = "desc" } = pagination;
+    const { startDate, endDate, status, customerId, isCredit, paymentMethod } =
+      filters;
+    const {
+      page = 1,
+      limit = 20,
+      sortBy = "createdAt",
+      sortOrder = "desc",
+    } = pagination;
     const skip = (page - 1) * limit;
     const where: Prisma.SaleWhereInput = { businessId };
     if (startDate) {
-      where.createdAt = { ...where.createdAt as any, gte: startDate };
+      where.createdAt = { ...(where.createdAt as any), gte: startDate };
     }
     if (endDate) {
-      where.createdAt = { ...where.createdAt as any, lte: endDate };
+      where.createdAt = { ...(where.createdAt as any), lte: endDate };
     }
     if (status) {
       where.status = status;
@@ -310,7 +345,8 @@ class SaleService {
       },
       take: 5,
     });
-    const suggestedProductId = similarProducts.length > 0 ? similarProducts[0].id : null;
+    const suggestedProductId =
+      similarProducts.length > 0 ? similarProducts[0].id : null;
     const manualProduct = await prisma.manualProduct.create({
       data: {
         businessId,
@@ -344,17 +380,23 @@ class SaleService {
             state: { not: ProductState.DELETED },
             OR: [
               { name: { contains: mp.name, mode: "insensitive" } },
-              { name: { contains: mp.name.split(" ")[0], mode: "insensitive" } },
+              {
+                name: { contains: mp.name.split(" ")[0], mode: "insensitive" },
+              },
             ],
           },
           take: 5,
         });
         return { ...mp, suggestions };
-      })
+      }),
     );
     return productsWithSuggestions;
   }
-  async linkManualProduct(manualProductId: string, productId: string, businessId: string) {
+  async linkManualProduct(
+    manualProductId: string,
+    productId: string,
+    businessId: string,
+  ) {
     const manualProduct = await prisma.manualProduct.findFirst({
       where: { id: manualProductId, businessId },
     });
@@ -376,7 +418,11 @@ class SaleService {
     });
     return { message: "Producto vinculado correctamente" };
   }
-  async convertManualProduct(manualProductId: string, businessId: string, additionalData?: any) {
+  async convertManualProduct(
+    manualProductId: string,
+    businessId: string,
+    additionalData?: any,
+  ) {
     const manualProduct = await prisma.manualProduct.findFirst({
       where: { id: manualProductId, businessId },
     });
@@ -418,7 +464,12 @@ class SaleService {
   async updateManualProduct(
     manualProductId: string,
     businessId: string,
-    data: { name?: string; quantity?: number; price?: number; status?: ManualProductStatus }
+    data: {
+      name?: string;
+      quantity?: number;
+      price?: number;
+      status?: ManualProductStatus;
+    },
   ) {
     const manualProduct = await prisma.manualProduct.findFirst({
       where: { id: manualProductId, businessId },

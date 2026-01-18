@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { MainLayout } from "@/components/layout/MainLayout";
-import { analyticsApi, SalesSummary, TopProduct, ChartDataPoint, RecentSale } from "@/api/services/analytics";
+import { analyticsApi } from "@/api/services/analytics";
 import { salesApi, Sale } from "@/api/services/sales";
 import { 
   AreaChart, 
@@ -45,7 +45,6 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { 
   Calendar,
-  Download,
   TrendingUp,
   TrendingDown,
   DollarSign,
@@ -65,6 +64,14 @@ import {
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
+// Import centralized hooks
+import { 
+  useSalesSummary, 
+  useTopProducts, 
+  useSalesChart, 
+  useStockLowProducts 
+} from "@/api/hooks";
+
 const COLORS = [
   "hsl(45, 100%, 51%)",  // Amarillo (primary)
   "hsl(142, 76%, 36%)",  // Verde
@@ -83,38 +90,29 @@ export default function Reportes() {
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
-  // Queries
+  // ============================================================================
+  // Queries using centralized hooks
+  // ============================================================================
+  
   const { data: stats, isLoading: loadingStats, refetch: refetchStats } = useQuery({
     queryKey: ["dashboardStats"],
     queryFn: analyticsApi.getDashboardStats,
   });
 
-  const { data: salesSummary, isLoading: loadingSummary } = useQuery({
-    queryKey: ["salesSummary", period],
-    queryFn: () => analyticsApi.getSalesSummary(period),
-  });
-
-  const { data: topProducts, isLoading: loadingTopProducts } = useQuery({
-    queryKey: ["topProducts", period],
-    queryFn: () => analyticsApi.getTopProducts(10, period),
-  });
-
-  const { data: chartData, isLoading: loadingChart } = useQuery({
-    queryKey: ["salesChart", period],
-    queryFn: () => analyticsApi.getSalesChart(period),
-  });
-
-  const { data: lowStockProducts } = useQuery({
-    queryKey: ["lowStockProducts"],
-    queryFn: analyticsApi.getLowStockProducts,
-  });
+  const { data: salesSummary, isLoading: loadingSummary } = useSalesSummary(period);
+  const { data: topProducts, isLoading: loadingTopProducts } = useTopProducts(10, period);
+  const { data: chartData, isLoading: loadingChart } = useSalesChart(period);
+  const { data: lowStockProducts } = useStockLowProducts();
 
   const { data: salesData, isLoading: loadingSales } = useQuery({
     queryKey: ["salesHistory", salesPage],
     queryFn: () => salesApi.getSales({ page: salesPage, limit: 20 }),
   });
 
-  // Formatear moneda
+  // ============================================================================
+  // Helper functions
+  // ============================================================================
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("es-MX", {
       style: "currency",
@@ -179,10 +177,14 @@ export default function Reportes() {
     }
   };
 
-  const handleViewSale = async (sale: Sale) => {
+  const handleViewSale = (sale: Sale) => {
     setSelectedSale(sale);
     setIsDetailOpen(true);
   };
+
+  // ============================================================================
+  // Render
+  // ============================================================================
 
   return (
     <MainLayout title="Reportes">
@@ -191,9 +193,7 @@ export default function Reportes() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Reportes y Análisis</h1>
-            <p className="text-muted-foreground">
-              Visualiza el rendimiento de tu negocio
-            </p>
+            <p className="text-muted-foreground">Visualiza el rendimiento de tu negocio</p>
           </div>
           <div className="flex items-center gap-2" data-tour="reportes-period">
             <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
@@ -215,14 +215,10 @@ export default function Reportes() {
           </div>
         </div>
 
-        {/* Stats */}
+        {/* Stats Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4" data-tour="reportes-stats">
           {loadingStats ? (
-            <>
-              {[...Array(4)].map((_, i) => (
-                <Skeleton key={i} className="h-28 sm:h-32" />
-              ))}
-            </>
+            [...Array(4)].map((_, i) => <Skeleton key={i} className="h-28 sm:h-32" />)
           ) : (
             <>
               <div className="stat-card min-w-0">
@@ -254,9 +250,7 @@ export default function Reportes() {
                 <div className="flex items-center justify-between">
                   <div className="min-w-0 flex-1">
                     <p className="text-xs sm:text-sm text-muted-foreground truncate">Ingresos del Mes</p>
-                    <p className="text-lg sm:text-2xl font-bold text-foreground truncate">
-                      {formatCurrency(stats?.totalRevenue || 0)}
-                    </p>
+                    <p className="text-lg sm:text-2xl font-bold text-foreground truncate">{formatCurrency(stats?.totalRevenue || 0)}</p>
                     <div className="flex items-center gap-1 mt-1">
                       {(stats?.monthlyGrowth || 0) >= 0 ? (
                         <>
@@ -306,9 +300,9 @@ export default function Reportes() {
                 <div className="flex items-center justify-between">
                   <div className="min-w-0 flex-1">
                     <p className="text-xs sm:text-sm text-muted-foreground truncate">Stock Bajo</p>
-                    <p className="text-xl sm:text-2xl font-bold text-foreground truncate">{stats?.lowStockProducts || 0}</p>
+                    <p className="text-xl sm:text-2xl font-bold text-foreground truncate">{lowStockProducts?.length || 0}</p>
                     <div className="flex items-center gap-1 mt-1">
-                      {(stats?.lowStockProducts || 0) > 0 ? (
+                      {(lowStockProducts?.length || 0) > 0 ? (
                         <>
                           <AlertTriangle className="w-3 h-3 sm:w-4 sm:h-4 text-warning shrink-0" />
                           <span className="text-[10px] sm:text-xs text-warning truncate">Atención</span>
@@ -379,35 +373,14 @@ export default function Reportes() {
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 15%, 22%)" vertical={false} />
-                      <XAxis 
-                        dataKey="name" 
-                        axisLine={false} 
-                        tickLine={false}
-                        tick={{ fill: 'hsl(215, 15%, 55%)', fontSize: 12 }}
-                      />
-                      <YAxis 
-                        axisLine={false} 
-                        tickLine={false}
-                        tick={{ fill: 'hsl(215, 15%, 55%)', fontSize: 12 }}
-                        tickFormatter={(value) => formatCurrency(value)}
-                      />
+                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'hsl(215, 15%, 55%)', fontSize: 12 }} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fill: 'hsl(215, 15%, 55%)', fontSize: 12 }} tickFormatter={(value) => formatCurrency(value)} />
                       <Tooltip 
-                        contentStyle={{ 
-                          backgroundColor: 'hsl(220, 18%, 15%)', 
-                          border: '1px solid hsl(220, 15%, 22%)',
-                          borderRadius: '8px'
-                        }}
+                        contentStyle={{ backgroundColor: 'hsl(220, 18%, 15%)', border: '1px solid hsl(220, 15%, 22%)', borderRadius: '8px' }}
                         labelStyle={{ color: 'hsl(210, 20%, 95%)' }}
                         formatter={(value: number) => [formatCurrency(value), 'Ventas']}
                       />
-                      <Area 
-                        type="monotone" 
-                        dataKey="ventas" 
-                        stroke="hsl(45, 100%, 51%)" 
-                        strokeWidth={2}
-                        fillOpacity={1} 
-                        fill="url(#colorVentasReport)" 
-                      />
+                      <Area type="monotone" dataKey="ventas" stroke="hsl(45, 100%, 51%)" strokeWidth={2} fillOpacity={1} fill="url(#colorVentasReport)" />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
@@ -440,38 +413,14 @@ export default function Reportes() {
                       margin={{ top: 0, right: 20, left: 0, bottom: 0 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 15%, 22%)" horizontal={false} />
-                      <XAxis 
-                        type="number"
-                        axisLine={false} 
-                        tickLine={false}
-                        tick={{ fill: 'hsl(215, 15%, 55%)', fontSize: 12 }}
-                        tickFormatter={(value) => formatCurrency(value)}
-                      />
-                      <YAxis 
-                        type="category"
-                        dataKey="name"
-                        axisLine={false} 
-                        tickLine={false}
-                        tick={{ fill: 'hsl(215, 15%, 55%)', fontSize: 12 }}
-                        width={180}
-                      />
+                      <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: 'hsl(215, 15%, 55%)', fontSize: 12 }} tickFormatter={(value) => formatCurrency(value)} />
+                      <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'hsl(215, 15%, 55%)', fontSize: 12 }} width={180} />
                       <Tooltip 
-                        contentStyle={{ 
-                          backgroundColor: 'hsl(220, 18%, 15%)', 
-                          border: '1px solid hsl(220, 15%, 22%)',
-                          borderRadius: '8px'
-                        }}
+                        contentStyle={{ backgroundColor: 'hsl(220, 18%, 15%)', border: '1px solid hsl(220, 15%, 22%)', borderRadius: '8px' }}
                         labelStyle={{ color: 'hsl(210, 20%, 95%)' }}
-                        formatter={(value: number, name: string) => [
-                          name === 'revenue' ? formatCurrency(value) : value,
-                          name === 'revenue' ? 'Ingresos' : 'Cantidad'
-                        ]}
+                        formatter={(value: number, name: string) => [name === 'revenue' ? formatCurrency(value) : value, name === 'revenue' ? 'Ingresos' : 'Cantidad']}
                       />
-                      <Bar 
-                        dataKey="revenue" 
-                        fill="hsl(45, 100%, 51%)" 
-                        radius={[0, 4, 4, 0]}
-                      />
+                      <Bar dataKey="revenue" fill="hsl(45, 100%, 51%)" radius={[0, 4, 4, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -498,25 +447,13 @@ export default function Reportes() {
                   <div className="h-[250px] sm:h-[300px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
-                        <Pie
-                          data={paymentMethodData}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={60}
-                          outerRadius={100}
-                          paddingAngle={4}
-                          dataKey="value"
-                        >
+                        <Pie data={paymentMethodData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={4} dataKey="value">
                           {paymentMethodData.map((entry, index) => (
                             <Cell key={`cell-${index}`} fill={entry.fill} />
                           ))}
                         </Pie>
                         <Tooltip 
-                          contentStyle={{ 
-                            backgroundColor: 'hsl(220, 18%, 15%)', 
-                            border: '1px solid hsl(220, 15%, 22%)',
-                            borderRadius: '8px'
-                          }}
+                          contentStyle={{ backgroundColor: 'hsl(220, 18%, 15%)', border: '1px solid hsl(220, 15%, 22%)', borderRadius: '8px' }}
                           formatter={(value: number) => [formatCurrency(value), 'Total']}
                         />
                       </PieChart>
@@ -537,53 +474,38 @@ export default function Reportes() {
                 
                 {loadingSummary ? (
                   <div className="space-y-4">
-                    {[...Array(4)].map((_, i) => (
-                      <Skeleton key={i} className="h-12" />
-                    ))}
+                    {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-12" />)}
                   </div>
                 ) : paymentMethodData.length > 0 ? (
                   <div className="space-y-4">
                     {paymentMethodData.map((method) => {
                       const total = paymentMethodData.reduce((acc, m) => acc + m.value, 0);
                       const percentage = total > 0 ? (method.value / total) * 100 : 0;
-                      
                       return (
                         <div key={method.name} className="flex items-center gap-2 sm:gap-4">
-                          <div 
-                            className="w-3 h-3 rounded-full flex-shrink-0"
-                            style={{ backgroundColor: method.fill }}
-                          />
+                          <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: method.fill }} />
                           <div className="flex-1 min-w-0">
                             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-0 mb-1">
                               <span className="font-medium text-foreground text-sm sm:text-base truncate">{method.name}</span>
                               <div className="flex items-center gap-2 sm:text-right">
                                 <span className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{method.count} ventas</span>
-                                <span className="text-xs sm:text-sm font-medium text-foreground whitespace-nowrap">
-                                  {formatCurrency(method.value)}
-                                </span>
+                                <span className="text-xs sm:text-sm font-medium text-foreground whitespace-nowrap">{formatCurrency(method.value)}</span>
                               </div>
                             </div>
                             <div className="h-2 rounded-full bg-secondary overflow-hidden">
                               <div 
                                 className="h-full rounded-full transition-all duration-500"
-                                style={{ 
-                                  width: `${percentage}%`,
-                                  backgroundColor: method.fill
-                                }}
+                                style={{ width: `${percentage}%`, backgroundColor: method.fill }}
                               />
                             </div>
                           </div>
                         </div>
                       );
                     })}
-
-                    {/* Resumen */}
                     <div className="pt-4 mt-4 border-t border-border">
                       <div className="flex justify-between items-center">
                         <span className="font-semibold text-foreground">Total {getPeriodLabel(period)}</span>
-                        <span className="text-xl font-bold text-primary">
-                          {formatCurrency(salesSummary?.totalRevenue || 0)}
-                        </span>
+                        <span className="text-xl font-bold text-primary">{formatCurrency(salesSummary?.totalRevenue || 0)}</span>
                       </div>
                       <div className="flex justify-between items-center mt-2 text-sm text-muted-foreground">
                         <span>{salesSummary?.totalSales || 0} ventas</span>
@@ -606,9 +528,7 @@ export default function Reportes() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                 <div>
                   <h3 className="text-lg font-semibold text-foreground">Historial de Ventas</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Todas las transacciones realizadas
-                  </p>
+                  <p className="text-sm text-muted-foreground">Todas las transacciones realizadas</p>
                 </div>
                 <div className="relative w-full sm:w-64">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -623,28 +543,21 @@ export default function Reportes() {
 
               {loadingSales ? (
                 <div className="space-y-2">
-                  {[...Array(10)].map((_, i) => (
-                    <Skeleton key={i} className="h-16" />
-                  ))}
+                  {[...Array(10)].map((_, i) => <Skeleton key={i} className="h-16" />)}
                 </div>
               ) : filteredSales.length > 0 ? (
                 <>
                   {/* Vista móvil: Cards */}
                   <div className="block md:hidden space-y-3 w-full max-w-full overflow-hidden">
                     {filteredSales.map((sale) => (
-                      <div
-                        key={sale.id}
-                        className="bunker-card p-3 border border-border/50 w-full max-w-full overflow-hidden"
-                      >
+                      <div key={sale.id} className="bunker-card p-3 border border-border/50 w-full max-w-full overflow-hidden">
                         <div className="flex items-start justify-between gap-2 mb-2 w-full">
                           <div className="flex-1 min-w-0 overflow-hidden">
                             <div className="flex items-center gap-1.5 mb-1 flex-wrap">
                               <span className="font-medium text-xs sm:text-sm font-mono truncate">#{sale.saleNumber}</span>
                               <div className="flex items-center gap-1 shrink-0">
                                 {getStatusBadge(sale.status)}
-                                {sale.isCredit && (
-                                  <Badge variant="outline" className="text-xs shrink-0">Fiado</Badge>
-                                )}
+                                {sale.isCredit && <Badge variant="outline" className="text-xs shrink-0">Fiado</Badge>}
                               </div>
                             </div>
                             <div className="text-xs text-muted-foreground space-y-0.5">
@@ -666,12 +579,7 @@ export default function Reportes() {
                           </div>
                           <div className="text-right shrink-0 flex flex-col items-end gap-1">
                             <p className="font-semibold text-sm whitespace-nowrap">{formatCurrency(sale.total)}</p>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 w-7 p-0"
-                              onClick={() => handleViewSale(sale)}
-                            >
+                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => handleViewSale(sale)}>
                               <Eye className="h-4 w-4" />
                             </Button>
                           </div>
@@ -721,20 +629,12 @@ export default function Reportes() {
                             <TableCell>
                               <div className="flex items-center gap-2">
                                 {getStatusBadge(sale.status)}
-                                {sale.isCredit && (
-                                  <Badge variant="outline" className="text-xs">Fiado</Badge>
-                                )}
+                                {sale.isCredit && <Badge variant="outline" className="text-xs">Fiado</Badge>}
                               </div>
                             </TableCell>
-                            <TableCell className="text-right font-semibold">
-                              {formatCurrency(sale.total)}
-                            </TableCell>
+                            <TableCell className="text-right font-semibold">{formatCurrency(sale.total)}</TableCell>
                             <TableCell className="text-center">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleViewSale(sale)}
-                              >
+                              <Button variant="ghost" size="icon" onClick={() => handleViewSale(sale)}>
                                 <Eye className="h-4 w-4" />
                               </Button>
                             </TableCell>
@@ -751,23 +651,11 @@ export default function Reportes() {
                         Mostrando {((salesPage - 1) * 20) + 1} - {Math.min(salesPage * 20, salesData.pagination.total)} de {salesData.pagination.total} ventas
                       </p>
                       <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setSalesPage(p => Math.max(1, p - 1))}
-                          disabled={salesPage === 1}
-                          className="text-xs sm:text-sm"
-                        >
+                        <Button variant="outline" size="sm" onClick={() => setSalesPage(p => Math.max(1, p - 1))} disabled={salesPage === 1} className="text-xs sm:text-sm">
                           <span className="sm:hidden">←</span>
                           <span className="hidden sm:inline">Anterior</span>
                         </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setSalesPage(p => p + 1)}
-                          disabled={salesPage >= salesData.pagination.totalPages}
-                          className="text-xs sm:text-sm"
-                        >
+                        <Button variant="outline" size="sm" onClick={() => setSalesPage(p => p + 1)} disabled={salesPage >= salesData.pagination.totalPages} className="text-xs sm:text-sm">
                           <span className="sm:hidden">→</span>
                           <span className="hidden sm:inline">Siguiente</span>
                         </Button>
@@ -799,9 +687,7 @@ export default function Reportes() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Fecha</p>
-                  <p className="font-medium">
-                    {format(new Date(selectedSale.createdAt), "dd 'de' MMMM yyyy, HH:mm", { locale: es })}
-                  </p>
+                  <p className="font-medium">{format(new Date(selectedSale.createdAt), "dd 'de' MMMM yyyy, HH:mm", { locale: es })}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Estado</p>
@@ -828,22 +714,14 @@ export default function Reportes() {
               {/* Items */}
               <div>
                 <h4 className="font-semibold mb-3">Productos</h4>
-                {/* Vista móvil: Cards */}
                 <div className="block md:hidden space-y-2">
                   {selectedSale.items.map((item) => (
-                    <div
-                      key={item.id}
-                      className="p-3 rounded-lg bg-secondary/30 border border-border/50"
-                    >
+                    <div key={item.id} className="p-3 rounded-lg bg-secondary/30 border border-border/50">
                       <div className="flex items-start justify-between gap-2 mb-2">
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-sm">{item.productName}</p>
-                          {item.productSku && (
-                            <p className="text-xs text-muted-foreground">SKU: {item.productSku}</p>
-                          )}
-                          {item.isManual && (
-                            <Badge variant="outline" className="text-xs mt-1">Manual</Badge>
-                          )}
+                          {item.productSku && <p className="text-xs text-muted-foreground">SKU: {item.productSku}</p>}
+                          {item.isManual && <Badge variant="outline" className="text-xs mt-1">Manual</Badge>}
                         </div>
                         <div className="text-right shrink-0">
                           <p className="font-medium text-sm">{formatCurrency(item.totalPrice)}</p>
@@ -856,7 +734,6 @@ export default function Reportes() {
                     </div>
                   ))}
                 </div>
-                {/* Vista desktop: Tabla */}
                 <div className="hidden md:block border rounded-lg overflow-hidden">
                   <Table>
                     <TableHeader>
@@ -873,12 +750,8 @@ export default function Reportes() {
                           <TableCell>
                             <div>
                               <p className="font-medium">{item.productName}</p>
-                              {item.productSku && (
-                                <p className="text-xs text-muted-foreground">SKU: {item.productSku}</p>
-                              )}
-                              {item.isManual && (
-                                <Badge variant="outline" className="text-xs mt-1">Manual</Badge>
-                              )}
+                              {item.productSku && <p className="text-xs text-muted-foreground">SKU: {item.productSku}</p>}
+                              {item.isManual && <Badge variant="outline" className="text-xs mt-1">Manual</Badge>}
                             </div>
                           </TableCell>
                           <TableCell className="text-center">{item.quantity}</TableCell>
@@ -921,9 +794,7 @@ export default function Reportes() {
               {selectedSale.notes && (
                 <div>
                   <h4 className="font-semibold mb-2">Notas</h4>
-                  <p className="text-sm text-muted-foreground bg-secondary/50 p-3 rounded-lg">
-                    {selectedSale.notes}
-                  </p>
+                  <p className="text-sm text-muted-foreground bg-secondary/50 p-3 rounded-lg">{selectedSale.notes}</p>
                 </div>
               )}
             </div>

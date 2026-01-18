@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tu cuenta ha sido creada - Bunker App</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+        line-height: 1.6;
+        color: #1a1a2e;
+        background-color: #f5f5f5;
+      }
+      .container {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      .email-wrapper {
+        background-color: #ffffff;
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+      .header {
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        padding: 40px 30px;
+        text-align: center;
+      }
+      .logo {
+        width: 60px;
+        height: 60px;
+        background: linear-gradient(135deg, #f5a623 0%, #f39c12 100%);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 16px;
+      }
+      .logo svg {
+        width: 36px;
+        height: 36px;
+        fill: white;
+      }
+      .header h1 {
+        color: #ffffff;
+        font-size: 28px;
+        font-weight: 700;
+        margin-bottom: 8px;
+      }
+      .header p {
+        color: #a0aec0;
+        font-size: 14px;
+      }
+      .content {
+        padding: 40px 30px;
+      }
+      .greeting {
+        font-size: 20px;
+        font-weight: 600;
+        color: #1a1a2e;
+        margin-bottom: 16px;
+      }
+      .message {
+        color: #4a5568;
+        font-size: 16px;
+        margin-bottom: 24px;
+      }
+      .credentials-box {
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        border-radius: 12px;
+        padding: 24px;
+        margin-bottom: 24px;
+      }
+      .credentials-box h3 {
+        color: #f5a623;
+        font-size: 14px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 16px;
+      }
+      .credential-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      .credential-item:last-child {
+        border-bottom: none;
+      }
+      .credential-label {
+        color: #a0aec0;
+        font-size: 14px;
+      }
+      .credential-value {
+        color: #ffffff;
+        font-weight: 600;
+        font-size: 16px;
+        font-family: monospace;
+        background-color: rgba(255, 255, 255, 0.1);
+        padding: 4px 12px;
+        border-radius: 4px;
+      }
+      .warning-box {
+        background-color: #fff3cd;
+        border-left: 4px solid #f5a623;
+        padding: 16px;
+        border-radius: 0 8px 8px 0;
+        margin-bottom: 24px;
+      }
+      .warning-box p {
+        color: #856404;
+        font-size: 14px;
+      }
+      .info-box {
+        background-color: #e7f3ff;
+        border-left: 4px solid #3182ce;
+        padding: 16px;
+        border-radius: 0 8px 8px 0;
+        margin-bottom: 24px;
+      }
+      .info-box p {
+        color: #1e4e8c;
+        font-size: 14px;
+      }
+      .button-container {
+        text-align: center;
+        margin: 32px 0;
+      }
+      .verify-button {
+        display: inline-block;
+        background: linear-gradient(135deg, #f5a623 0%, #f39c12 100%);
+        color: #1a1a2e;
+        text-decoration: none;
+        padding: 16px 40px;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 16px;
+        transition: transform 0.2s;
+      }
+      .verify-button:hover {
+        transform: translateY(-2px);
+      }
+      .link-fallback {
+        background-color: #f7fafc;
+        border-radius: 8px;
+        padding: 16px;
+        margin-top: 24px;
+      }
+      .link-fallback p {
+        color: #718096;
+        font-size: 13px;
+        margin-bottom: 8px;
+      }
+      .link-fallback a {
+        color: #3182ce;
+        word-break: break-all;
+        font-size: 12px;
+      }
+      .expiry-note {
+        text-align: center;
+        color: #a0aec0;
+        font-size: 13px;
+        margin-top: 24px;
+      }
+      .steps {
+        margin-bottom: 24px;
+      }
+      .step {
+        display: flex;
+        align-items: flex-start;
+        margin-bottom: 16px;
+      }
+      .step-number {
+        width: 28px;
+        height: 28px;
+        background: linear-gradient(135deg, #f5a623 0%, #f39c12 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #1a1a2e;
+        font-weight: 700;
+        font-size: 14px;
+        margin-right: 12px;
+        flex-shrink: 0;
+      }
+      .step-content {
+        color: #4a5568;
+        font-size: 14px;
+      }
+      .footer {
+        background-color: #f7fafc;
+        padding: 24px 30px;
+        text-align: center;
+        border-top: 1px solid #e2e8f0;
+      }
+      .footer p {
+        color: #a0aec0;
+        font-size: 13px;
+        margin-bottom: 8px;
+      }
+      .footer a {
+        color: #f5a623;
+        text-decoration: none;
+      }
+      @media (max-width: 600px) {
+        .container {
+          padding: 10px;
+        }
+        .header,
+        .content,
+        .footer {
+          padding: 24px 20px;
+        }
+        .header h1 {
+          font-size: 24px;
+        }
+        .credential-item {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 8px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="email-wrapper">
+        <div class="header">
+          <div class="logo">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M12 2L4 6V12C4 15.31 6.69 18.8 12 22C17.31 18.8 20 15.31 20 12V6L12 2ZM12 11.99H18C17.47 14.74 15.08 17.19 12 18.84V12H6V7.3L12 4.19V11.99Z"
+                fill="white"
+              />
+            </svg>
+          </div>
+          <h1>BUNKER</h1>
+          <p>Sistema de Gestión de Negocios</p>
+        </div>
+
+        <div class="content">
+          <p class="greeting">¡Hola {{name}}!</p>
+
+          <p class="message">
+            Un administrador ha creado una cuenta para ti en Bunker. A
+            continuación encontrarás tus credenciales de acceso.
+          </p>
+
+          <div class="credentials-box">
+            <h3>🔐 Tus credenciales de acceso</h3>
+            <div class="credential-item">
+              <span class="credential-label">Correo electrónico:</span>
+              <span class="credential-value">{{email}}</span>
+            </div>
+            <div class="credential-item">
+              <span class="credential-label">Contraseña temporal:</span>
+              <span class="credential-value">{{temporaryPassword}}</span>
+            </div>
+          </div>
+
+          <div class="warning-box">
+            <p>
+              <strong>⚠️ Importante:</strong> Por seguridad, te recomendamos
+              cambiar tu contraseña después de iniciar sesión por primera vez.
+            </p>
+          </div>
+
+          <div class="steps">
+            <h3 style="color: #1a1a2e; font-size: 16px; margin-bottom: 16px">
+              Pasos para comenzar:
+            </h3>
+            <div class="step">
+              <span class="step-number">1</span>
+              <span class="step-content"
+                >Haz clic en el botón "Verificar mi Cuenta" para activar tu
+                cuenta</span
+              >
+            </div>
+            <div class="step">
+              <span class="step-number">2</span>
+              <span class="step-content"
+                >Inicia sesión con tu correo y contraseña temporal</span
+              >
+            </div>
+            <div class="step">
+              <span class="step-number">3</span>
+              <span class="step-content"
+                >Cambia tu contraseña en la configuración de tu perfil</span
+              >
+            </div>
+          </div>
+
+          <div class="button-container">
+            <a href="{{verificationLink}}" class="verify-button">
+              Verificar mi Cuenta
+            </a>
+          </div>
+
+          <div class="link-fallback">
+            <p>
+              Si el botón no funciona, copia y pega el siguiente enlace en tu
+              navegador:
+            </p>
+            <a href="{{verificationLink}}">{{verificationLink}}</a>
+          </div>
+
+          <p class="expiry-note">
+            Este enlace expirará en 24 horas por seguridad.
+          </p>
+        </div>
+
+        <div class="footer">
+          <p>Si no esperabas este correo, contacta a tu administrador.</p>
+          <p>© 2024 Bunker App. Todos los derechos reservados.</p>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
