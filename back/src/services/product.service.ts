@@ -71,11 +71,12 @@ class ProductService {
       state: state || { not: ProductState.DELETED },
     };
     if (search) {
+      const searchTerm = search.trim();
       where.OR = [
-        { name: { contains: search, mode: "insensitive" } },
-        { sku: { contains: search, mode: "insensitive" } },
-        { bar_code: { contains: search, mode: "insensitive" } },
-        { description: { contains: search, mode: "insensitive" } },
+        { name: { contains: searchTerm, mode: "insensitive" } },
+        { sku: { contains: searchTerm, mode: "insensitive" } },
+        { bar_code: { contains: searchTerm, mode: "insensitive" } },
+        { description: { contains: searchTerm, mode: "insensitive" } },
       ];
     }
     if (categoryId) {
