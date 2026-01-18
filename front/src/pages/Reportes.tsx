@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { analyticsApi } from "@/api/services/analytics";
-import { salesApi, Sale } from "@/api/services/sales";
+import { salesApi, Sale, CreateSaleData } from "@/api/services/sales";
 import { 
   AreaChart, 
   Area, 
@@ -59,10 +59,27 @@ import {
   User,
   CreditCard,
   AlertTriangle,
-  RefreshCw
+  RefreshCw,
+  Trash2,
+  Edit,
+  Save,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { toast } from "sonner";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // Import centralized hooks
 import { 
@@ -71,6 +88,7 @@ import {
   useSalesChart, 
   useStockLowProducts 
 } from "@/api/hooks";
+import { SaleEditor } from "@/components/reportes/SaleEditor";
 
 const COLORS = [
   "hsl(45, 100%, 51%)",  // Amarillo (primary)
@@ -89,6 +107,11 @@ export default function Reportes() {
   const [salesSearch, setSalesSearch] = useState("");
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [saleToDelete, setSaleToDelete] = useState<string | null>(null);
+  
+  const queryClient = useQueryClient();
 
   // ============================================================================
   // Queries using centralized hooks
@@ -109,14 +132,42 @@ export default function Reportes() {
     queryFn: () => salesApi.getSales({ page: salesPage, limit: 20 }),
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => salesApi.deleteSale(id),
+    onSuccess: () => {
+      toast.success("Venta eliminada correctamente");
+      queryClient.invalidateQueries({ queryKey: ["salesHistory"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboardStats"] });
+      setIsDetailOpen(false);
+      setIsDeleteDialogOpen(false);
+    },
+    onError: () => {
+      toast.error("Error al eliminar la venta");
+    }
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<CreateSaleData> }) => 
+      salesApi.updateSale(id, data),
+    onSuccess: () => {
+      toast.success("Venta actualizada correctamente");
+      queryClient.invalidateQueries({ queryKey: ["salesHistory"] });
+      setIsEditing(false);
+      setIsDetailOpen(false);
+    },
+    onError: () => {
+      toast.error("Error al actualizar la venta");
+    }
+  });
+
   // ============================================================================
   // Helper functions
   // ============================================================================
 
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("es-MX", {
+    return new Intl.NumberFormat("es-AR", {
       style: "currency",
-      currency: "MXN",
+      currency: "ARS",
     }).format(value);
   };
 
@@ -179,7 +230,13 @@ export default function Reportes() {
 
   const handleViewSale = (sale: Sale) => {
     setSelectedSale(sale);
+    setIsEditing(false);
     setIsDetailOpen(true);
+  };
+
+  const handleDeleteClick = (id: string) => {
+    setSaleToDelete(id);
+    setIsDeleteDialogOpen(true);
   };
 
   // ============================================================================
@@ -677,130 +734,171 @@ export default function Reportes() {
       {/* Dialog de detalle de venta */}
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
         <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Detalle de Venta #{selectedSale?.saleNumber}</DialogTitle>
+          <DialogHeader className="flex flex-row items-center justify-between">
+            <DialogTitle>
+              {isEditing ? `Editando Venta #${selectedSale?.saleNumber}` : `Detalle de Venta #${selectedSale?.saleNumber}`}
+            </DialogTitle>
+            {!isEditing && selectedSale && (
+              <div className="flex items-center gap-2 mr-6">
+                <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+                  <Edit className="w-4 h-4 mr-2" />
+                  Editar
+                </Button>
+                <Button variant="outline" size="sm" className="text-destructive border-destructive hover:bg-destructive/10" onClick={() => handleDeleteClick(selectedSale.id)}>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Eliminar
+                </Button>
+              </div>
+            )}
           </DialogHeader>
 
           {selectedSale && (
             <div className="space-y-6">
-              {/* Info general */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">Fecha</p>
-                  <p className="font-medium">{format(new Date(selectedSale.createdAt), "dd 'de' MMMM yyyy, HH:mm", { locale: es })}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Estado</p>
-                  {getStatusBadge(selectedSale.status)}
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Cliente</p>
-                  <p className="font-medium">{selectedSale.customer?.name || "Cliente General"}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Método de Pago</p>
-                  <p className="font-medium">{getPaymentMethodLabel(selectedSale.paymentMethod)}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Vendedor</p>
-                  <p className="font-medium">{selectedSale.user?.name || "-"}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Tipo</p>
-                  <p className="font-medium">{selectedSale.isCredit ? "Venta a Crédito" : "Venta Normal"}</p>
-                </div>
-              </div>
-
-              {/* Items */}
-              <div>
-                <h4 className="font-semibold mb-3">Productos</h4>
-                <div className="block md:hidden space-y-2">
-                  {selectedSale.items.map((item) => (
-                    <div key={item.id} className="p-3 rounded-lg bg-secondary/30 border border-border/50">
-                      <div className="flex items-start justify-between gap-2 mb-2">
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm">{item.productName}</p>
-                          {item.productSku && <p className="text-xs text-muted-foreground">SKU: {item.productSku}</p>}
-                          {item.isManual && <Badge variant="outline" className="text-xs mt-1">Manual</Badge>}
-                        </div>
-                        <div className="text-right shrink-0">
-                          <p className="font-medium text-sm">{formatCurrency(item.totalPrice)}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <span>Cantidad: {item.quantity}</span>
-                        <span>Precio Unit.: {formatCurrency(item.unitPrice)}</span>
-                      </div>
+              {isEditing ? (
+                <SaleEditor 
+                  sale={selectedSale} 
+                  onCancel={() => setIsEditing(false)} 
+                  onSave={(data) => updateMutation.mutate({ id: selectedSale.id, data })}
+                  isLoading={updateMutation.isPending}
+                />
+              ) : (
+                <>
+                  {/* Info general */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Fecha</p>
+                      <p className="font-medium">{format(new Date(selectedSale.createdAt), "dd 'de' MMMM yyyy, HH:mm", { locale: es })}</p>
                     </div>
-                  ))}
-                </div>
-                <div className="hidden md:block border rounded-lg overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Producto</TableHead>
-                        <TableHead className="text-center">Cantidad</TableHead>
-                        <TableHead className="text-right">Precio Unit.</TableHead>
-                        <TableHead className="text-right">Total</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {selectedSale.items.map((item) => (
-                        <TableRow key={item.id}>
-                          <TableCell>
-                            <div>
-                              <p className="font-medium">{item.productName}</p>
-                              {item.productSku && <p className="text-xs text-muted-foreground">SKU: {item.productSku}</p>}
-                              {item.isManual && <Badge variant="outline" className="text-xs mt-1">Manual</Badge>}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-center">{item.quantity}</TableCell>
-                          <TableCell className="text-right">{formatCurrency(item.unitPrice)}</TableCell>
-                          <TableCell className="text-right font-medium">{formatCurrency(item.totalPrice)}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </div>
-
-              {/* Totales */}
-              <div className="border-t pt-4 space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Subtotal</span>
-                  <span>{formatCurrency(selectedSale.subtotal)}</span>
-                </div>
-                {selectedSale.discountValue && selectedSale.discountValue > 0 && (
-                  <div className="flex justify-between text-destructive">
-                    <span>Descuento ({selectedSale.discountType === "PERCENTAGE" ? `${selectedSale.discountValue}%` : "Fijo"})</span>
-                    <span>-{formatCurrency(
-                      selectedSale.discountType === "PERCENTAGE" 
-                        ? (selectedSale.subtotal * selectedSale.discountValue / 100)
-                        : selectedSale.discountValue
-                    )}</span>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Estado</p>
+                      {getStatusBadge(selectedSale.status)}
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Cliente</p>
+                      <p className="font-medium">{selectedSale.customer?.name || "Cliente General"}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Método de Pago</p>
+                      <p className="font-medium">{getPaymentMethodLabel(selectedSale.paymentMethod)}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Vendedor</p>
+                      <p className="font-medium">{selectedSale.user?.name || "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Tipo</p>
+                      <p className="font-medium">{selectedSale.isCredit ? "Venta a Crédito" : "Venta Normal"}</p>
+                    </div>
                   </div>
-                )}
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">IVA ({(selectedSale.taxRate * 100).toFixed(0)}%)</span>
-                  <span>{formatCurrency(selectedSale.taxAmount)}</span>
-                </div>
-                <div className="flex justify-between text-lg font-bold pt-2 border-t">
-                  <span>Total</span>
-                  <span className="text-primary">{formatCurrency(selectedSale.total)}</span>
-                </div>
-              </div>
 
-              {/* Notas */}
-              {selectedSale.notes && (
-                <div>
-                  <h4 className="font-semibold mb-2">Notas</h4>
-                  <p className="text-sm text-muted-foreground bg-secondary/50 p-3 rounded-lg">{selectedSale.notes}</p>
-                </div>
+                  {/* Items */}
+                  <div>
+                    <h4 className="font-semibold mb-3">Productos</h4>
+                    <div className="block md:hidden space-y-2">
+                      {selectedSale.items.map((item) => (
+                        <div key={item.id} className="p-3 rounded-lg bg-secondary/30 border border-border/50">
+                          <div className="flex items-start justify-between gap-2 mb-2">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm">{item.productName}</p>
+                              {item.productSku && <p className="text-xs text-muted-foreground">SKU: {item.productSku}</p>}
+                            </div>
+                            <div className="text-right shrink-0">
+                              <p className="font-medium text-sm">{formatCurrency(item.totalPrice)}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between text-xs text-muted-foreground">
+                            <span>Cantidad: {item.quantity}</span>
+                            <span>Precio Unit.: {formatCurrency(item.unitPrice)}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="hidden md:block border rounded-lg overflow-hidden">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Producto</TableHead>
+                            <TableHead className="text-center">Cantidad</TableHead>
+                            <TableHead className="text-right">Precio Unit.</TableHead>
+                            <TableHead className="text-right">Total</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {selectedSale.items.map((item) => (
+                            <TableRow key={item.id}>
+                              <TableCell>
+                                <div>
+                                  <p className="font-medium">{item.productName}</p>
+                                  {item.productSku && <p className="text-xs text-muted-foreground">SKU: {item.productSku}</p>}
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-center">{item.quantity}</TableCell>
+                              <TableCell className="text-right">{formatCurrency(item.unitPrice)}</TableCell>
+                              <TableCell className="text-right font-medium">{formatCurrency(item.totalPrice)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+
+                  {/* Totales */}
+                  <div className="border-t pt-4 space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Subtotal</span>
+                      <span>{formatCurrency(selectedSale.subtotal)}</span>
+                    </div>
+                    {selectedSale.discountValue && selectedSale.discountValue > 0 && (
+                      <div className="flex justify-between text-destructive">
+                        <span>Descuento ({selectedSale.discountType === "PERCENTAGE" ? `${selectedSale.discountValue}%` : "Fijo"})</span>
+                        <span>-{formatCurrency(
+                          selectedSale.discountType === "PERCENTAGE" 
+                            ? (selectedSale.subtotal * selectedSale.discountValue / 100)
+                            : selectedSale.discountValue
+                        )}</span>
+                      </div>
+                    )}
+                 
+                    <div className="flex justify-between text-lg font-bold pt-2 border-t">
+                      <span>Total</span>
+                      <span className="text-primary">{formatCurrency(selectedSale.total)}</span>
+                    </div>
+                  </div>
+
+                  {/* Notas */}
+                  {selectedSale.notes && (
+                    <div>
+                      <h4 className="font-semibold mb-2">Notas</h4>
+                      <p className="text-sm text-muted-foreground bg-secondary/50 p-3 rounded-lg">{selectedSale.notes}</p>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Estás completamente seguro?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción eliminará permanentemente la venta y revertirá el stock de los productos asociados y deudas relacionadas en cuentas corrientes. Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => saleToDelete && deleteMutation.mutate(saleToDelete)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? "Eliminando..." : "Eliminar Venta"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </MainLayout>
   );
 }

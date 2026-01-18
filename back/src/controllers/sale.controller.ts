@@ -33,11 +33,20 @@ class SaleController {
       if (!userId) throw createHttpError(401, "Usuario no autenticado");
       const businessId = await this.getBusinessId(userId);
       const filters = {
-        startDate: req.query.startDate ? new Date(req.query.startDate as string) : undefined,
-        endDate: req.query.endDate ? new Date(req.query.endDate as string) : undefined,
+        startDate: req.query.startDate
+          ? new Date(req.query.startDate as string)
+          : undefined,
+        endDate: req.query.endDate
+          ? new Date(req.query.endDate as string)
+          : undefined,
         status: req.query.status as any,
         customerId: req.query.customerId as string,
-        isCredit: req.query.isCredit === "true" ? true : req.query.isCredit === "false" ? false : undefined,
+        isCredit:
+          req.query.isCredit === "true"
+            ? true
+            : req.query.isCredit === "false"
+              ? false
+              : undefined,
         paymentMethod: req.query.paymentMethod as any,
       };
       const pagination = {
@@ -46,7 +55,11 @@ class SaleController {
         sortBy: req.query.sortBy as string,
         sortOrder: (req.query.sortOrder as "asc" | "desc") || "desc",
       };
-      const result = await saleService.getSales(businessId, filters, pagination);
+      const result = await saleService.getSales(
+        businessId,
+        filters,
+        pagination,
+      );
       res.status(200).json({
         success: true,
         ...result,
@@ -83,12 +96,51 @@ class SaleController {
       next(error);
     }
   };
-  createManualProduct = async (req: Request, res: Response, next: NextFunction) => {
+  updateSale = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const userId = req.user?.userId;
       if (!userId) throw createHttpError(401, "Usuario no autenticado");
       const businessId = await this.getBusinessId(userId);
-      const result = await saleService.createManualProduct(businessId, req.body);
+      const sale = await saleService.updateSale(
+        req.params.id,
+        businessId,
+        req.body,
+      );
+      res.status(200).json({
+        success: true,
+        data: sale,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+  deleteSale = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) throw createHttpError(401, "Usuario no autenticado");
+      const businessId = await this.getBusinessId(userId);
+      const result = await saleService.deleteSale(req.params.id, businessId);
+      res.status(200).json({
+        success: true,
+        message: result.message,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+  createManualProduct = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) => {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) throw createHttpError(401, "Usuario no autenticado");
+      const businessId = await this.getBusinessId(userId);
+      const result = await saleService.createManualProduct(
+        businessId,
+        req.body,
+      );
       res.status(201).json({
         success: true,
         data: result,
@@ -97,7 +149,11 @@ class SaleController {
       next(error);
     }
   };
-  getManualProducts = async (req: Request, res: Response, next: NextFunction) => {
+  getManualProducts = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) => {
     try {
       const userId = req.user?.userId;
       if (!userId) throw createHttpError(401, "Usuario no autenticado");
@@ -112,13 +168,21 @@ class SaleController {
       next(error);
     }
   };
-  linkManualProduct = async (req: Request, res: Response, next: NextFunction) => {
+  linkManualProduct = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) => {
     try {
       const userId = req.user?.userId;
       if (!userId) throw createHttpError(401, "Usuario no autenticado");
       const businessId = await this.getBusinessId(userId);
       const { productId } = req.body;
-      const result = await saleService.linkManualProduct(req.params.id, productId, businessId);
+      const result = await saleService.linkManualProduct(
+        req.params.id,
+        productId,
+        businessId,
+      );
       res.status(200).json({
         success: true,
         message: result.message,
@@ -127,12 +191,20 @@ class SaleController {
       next(error);
     }
   };
-  convertManualProduct = async (req: Request, res: Response, next: NextFunction) => {
+  convertManualProduct = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) => {
     try {
       const userId = req.user?.userId;
       if (!userId) throw createHttpError(401, "Usuario no autenticado");
       const businessId = await this.getBusinessId(userId);
-      const product = await saleService.convertManualProduct(req.params.id, businessId, req.body);
+      const product = await saleService.convertManualProduct(
+        req.params.id,
+        businessId,
+        req.body,
+      );
       res.status(201).json({
         success: true,
         data: product,
@@ -141,12 +213,19 @@ class SaleController {
       next(error);
     }
   };
-  ignoreManualProduct = async (req: Request, res: Response, next: NextFunction) => {
+  ignoreManualProduct = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) => {
     try {
       const userId = req.user?.userId;
       if (!userId) throw createHttpError(401, "Usuario no autenticado");
       const businessId = await this.getBusinessId(userId);
-      const result = await saleService.ignoreManualProduct(req.params.id, businessId);
+      const result = await saleService.ignoreManualProduct(
+        req.params.id,
+        businessId,
+      );
       res.status(200).json({
         success: true,
         message: result.message,
@@ -155,18 +234,26 @@ class SaleController {
       next(error);
     }
   };
-  updateManualProduct = async (req: Request, res: Response, next: NextFunction) => {
+  updateManualProduct = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) => {
     try {
       const userId = req.user?.userId;
       if (!userId) throw createHttpError(401, "Usuario no autenticado");
       const businessId = await this.getBusinessId(userId);
       const { name, quantity, price, status } = req.body;
-      const updated = await saleService.updateManualProduct(req.params.id, businessId, {
-        name,
-        quantity,
-        price,
-        status,
-      });
+      const updated = await saleService.updateManualProduct(
+        req.params.id,
+        businessId,
+        {
+          name,
+          quantity,
+          price,
+          status,
+        },
+      );
       res.status(200).json({
         success: true,
         data: updated,
@@ -175,7 +262,11 @@ class SaleController {
       next(error);
     }
   };
-  parseManualProductText = async (req: Request, res: Response, next: NextFunction) => {
+  parseManualProductText = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) => {
     try {
       const { text } = req.body;
       const parsed = saleService.parseManualProductText(text);
@@ -183,7 +274,8 @@ class SaleController {
         return res.status(400).json({
           success: false,
           error: {
-            message: "Formato inválido. Use: CANTIDAD NOMBRE PRECIO (ej: 2 coca cola 2500)",
+            message:
+              "Formato inválido. Use: CANTIDAD NOMBRE PRECIO (ej: 2 coca cola 2500)",
           },
         });
       }

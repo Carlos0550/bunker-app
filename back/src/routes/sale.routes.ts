@@ -9,19 +9,41 @@ import {
   linkManualProductSchema,
   updateManualProductSchema,
   parseManualTextSchema,
+  updateSaleSchema,
 } from "@/schemas/sale.schemas";
 const router = Router();
 router.use(authenticate);
 router.use(verifySubscription);
-router.post("/manual-products", validateBody(manualProductSchema), saleController.createManualProduct);
+router.post(
+  "/manual-products",
+  validateBody(manualProductSchema),
+  saleController.createManualProduct,
+);
 router.get("/manual-products", saleController.getManualProducts);
-router.post("/manual-products/parse", validateBody(parseManualTextSchema), saleController.parseManualProductText);
-router.put("/manual-products/:id", validateBody(updateManualProductSchema), saleController.updateManualProduct);
-router.post("/manual-products/:id/link", validateBody(linkManualProductSchema), saleController.linkManualProduct);
-router.post("/manual-products/:id/convert", saleController.convertManualProduct);
+router.post(
+  "/manual-products/parse",
+  validateBody(parseManualTextSchema),
+  saleController.parseManualProductText,
+);
+router.put(
+  "/manual-products/:id",
+  validateBody(updateManualProductSchema),
+  saleController.updateManualProduct,
+);
+router.post(
+  "/manual-products/:id/link",
+  validateBody(linkManualProductSchema),
+  saleController.linkManualProduct,
+);
+router.post(
+  "/manual-products/:id/convert",
+  saleController.convertManualProduct,
+);
 router.post("/manual-products/:id/ignore", saleController.ignoreManualProduct);
 router.post("/", validateBody(createSaleSchema), saleController.createSale);
 router.get("/", saleController.getSales);
 router.get("/:id", saleController.getSaleById);
+router.patch("/:id", validateBody(updateSaleSchema), saleController.updateSale);
+router.delete("/:id", saleController.deleteSale);
 router.post("/:id/cancel", saleController.cancelSale);
 export default router;

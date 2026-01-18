@@ -18,6 +18,7 @@ export interface CreateSaleData {
   paymentMethod: "CASH" | "CARD" | "TRANSFER" | "OTHER";
   isCredit?: boolean;
   notes?: string;
+  total?: number;
 }
 
 export interface Sale {
@@ -132,6 +133,23 @@ export const salesApi = {
   // Cancelar venta
   cancelSale: async (id: string): Promise<void> => {
     await client.post(`/sales/${id}/cancel`);
+  },
+
+  // Actualizar venta
+  updateSale: async (
+    id: string,
+    data: Partial<CreateSaleData>,
+  ): Promise<Sale> => {
+    const response = await client.patch<{ success: boolean; data: Sale }>(
+      `/sales/${id}`,
+      data,
+    );
+    return response.data.data;
+  },
+
+  // Eliminar venta
+  deleteSale: async (id: string): Promise<void> => {
+    await client.delete(`/sales/${id}`);
   },
 
   // Parsear texto de producto manual
