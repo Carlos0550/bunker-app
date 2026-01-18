@@ -223,39 +223,71 @@ export default function Productos() {
   // Global Key Listener for Scanner
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore if user is typing in an input/textarea or if any input is focused
       const target = e.target as HTMLElement;
-      const activeElement = document.activeElement as HTMLElement;
-      
-      if (
-        target.tagName === "INPUT" ||
-        target.tagName === "TEXTAREA" ||
-        target.isContentEditable ||
-        activeElement?.tagName === "INPUT" ||
-        activeElement?.tagName === "TEXTAREA" ||
-        activeElement?.isContentEditable
-      ) {
-        return;
-      }
+      const isSearchInput = target.tagName === "INPUT" && 
+                            (target as HTMLInputElement).placeholder?.includes("Buscar por nombre, SKU o código");
 
       const currentTime = Date.now();
-      
-      // If time between keys is too long, reset buffer (manual typing vs scanner)
-      if (currentTime - lastKeyTime.current > 100) {
-        barcodeBuffer.current = "";
-      }
-      
+      const isNewScan = currentTime - lastKeyTime.current > 100;
       lastKeyTime.current = currentTime;
 
+      // 1. Manejo de Enter
       if (e.key === "Enter") {
-        if (barcodeBuffer.current.length > 2) {
-          // Scanner detected barcode - use dedicated barcode endpoint
-          e.preventDefault(); // Prevent form submission
+        if (isSearchInput) {
+          const value = (target as HTMLInputElement).value.trim();
+          if (value.length >= 3) {
+            e.preventDefault();
+            processBarcodeSearch(value);
+            // Seleccionar todo para que el próximo escaneo lo pise
+            (target as HTMLInputElement).select();
+          }
+          return;
+        }
+        
+        if (barcodeBuffer.current.length >= 3) {
+          e.preventDefault();
           processBarcodeSearch(barcodeBuffer.current);
           barcodeBuffer.current = "";
         }
-      } else if (e.key.length === 1) {
-        // Collect printable characters
+        return;
+      }
+
+      // 2. Ignorar otros inputs (formularios, etc.)
+      const activeElement = document.activeElement as HTMLElement;
+      if (!isSearchInput && (
+          target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable ||
+          activeElement?.tagName === "INPUT" ||
+          activeElement?.tagName === "TEXTAREA" ||
+          activeElement?.isContentEditable
+      )) {
+        return;
+      }
+
+      // 3. Auto-foco y detección de nuevo escaneo
+      if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (!isSearchInput) {
+          const searchInput = document.querySelector('input[placeholder*="Buscar por nombre, SKU o código"]') as HTMLInputElement;
+          if (searchInput) {
+            e.preventDefault();
+            searchInput.focus();
+            // Insertar el primer carácter manualmente para no perderlo
+            searchInput.value = e.key;
+            // Disparar evento para que React se entere
+            const event = new Event('input', { bubbles: true });
+            searchInput.dispatchEvent(event);
+            return;
+          }
+        } else if (isNewScan && barcodeBuffer.current === "") {
+          // Si ya está enfocado pero es un nuevo escaneo, seleccionar todo
+          (target as HTMLInputElement).select();
+        }
+      }
+
+      // 4. Buffer global (fallback)
+      if (e.key.length === 1 && !isSearchInput) {
+        if (isNewScan) barcodeBuffer.current = "";
         barcodeBuffer.current += e.key;
       }
     };

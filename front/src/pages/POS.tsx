@@ -202,36 +202,68 @@ export default function POS() {
       toast.error("Error al buscar el producto");
     }
   };
-
   // Global Key Listener for Scanner
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore if user is typing in an input text field
       const target = e.target as HTMLElement;
+      const isSearchInput = target.tagName === "INPUT" && 
+                            (target as HTMLInputElement).placeholder?.includes("Buscar por nombre, SKU o código");
+
+      const currentTime = Date.now();
+      const isNewScan = currentTime - lastKeyTime.current > 100;
+      lastKeyTime.current = currentTime;
+
+      // 1. Manejo de Enter
+      if (e.key === "Enter") {
+        if (isSearchInput) {
+          const value = (target as HTMLInputElement).value.trim();
+          if (value.length >= 3) {
+            e.preventDefault();
+            processBarcode(value);
+            setSearchTerm(""); // Limpiar búsqueda
+          }
+          return;
+        }
+        
+        if (barcodeBuffer.current.length >= 3) {
+          e.preventDefault();
+          processBarcode(barcodeBuffer.current);
+          barcodeBuffer.current = "";
+        }
+        return;
+      }
+
+      // 2. Ignorar otros inputs
       if (
-        target.tagName === "INPUT" ||
-        target.tagName === "TEXTAREA" ||
-        target.isContentEditable
+        !isSearchInput && (
+          target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable
+        )
       ) {
         return;
       }
 
-      const currentTime = Date.now();
-      
-      // If time between keys is too long, reset buffer (it's probably manual typing)
-      if (currentTime - lastKeyTime.current > 100) {
-        barcodeBuffer.current = "";
-      }
-      
-      lastKeyTime.current = currentTime;
-
-      if (e.key === "Enter") {
-        if (barcodeBuffer.current.length > 2) {
-          processBarcode(barcodeBuffer.current);
-          barcodeBuffer.current = "";
+      // 3. Auto-foco y detección de nuevo escaneo
+      if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (!isSearchInput) {
+          const searchInput = document.querySelector('input[placeholder*="Buscar por nombre, SKU o código"]') as HTMLInputElement;
+          if (searchInput) {
+            e.preventDefault();
+            searchInput.focus();
+            searchInput.value = e.key;
+            const event = new Event('input', { bubbles: true });
+            searchInput.dispatchEvent(event);
+            return;
+          }
+        } else if (isNewScan && barcodeBuffer.current === "") {
+          (target as HTMLInputElement).select();
         }
-      } else if (e.key.length === 1) {
-        // Collect printable characters
+      }
+
+      // 4. Buffer global
+      if (e.key.length === 1 && !isSearchInput) {
+        if (isNewScan) barcodeBuffer.current = "";
         barcodeBuffer.current += e.key;
       }
     };
