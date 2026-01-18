@@ -13,7 +13,8 @@
     "remove-comments": "ts-node -r tsconfig-paths/register scripts/remove-comments.ts",
     "create-super-admin": "ts-node -r tsconfig-paths/register scripts/create-super-admin.ts",
     "cleanup-pending-payments": "ts-node -r tsconfig-paths/register scripts/cleanup-duplicate-pending-payments.ts",
-    "reset-stock": "ts-node -r tsconfig-paths/register scripts/reset-stock.ts"
+    "reset-stock": "ts-node -r tsconfig-paths/register scripts/reset-stock.ts",
+    "migrate-sku-to-barcode": "ts-node -r tsconfig-paths/register scripts/migrate-sku-to-barcode.ts"
   },
   "keywords": [],
   "author": "",
