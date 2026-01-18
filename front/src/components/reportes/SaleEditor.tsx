@@ -11,12 +11,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { 
-  Save, 
-  X, 
-  Trash2, 
-  CreditCard, 
-  Wallet, 
+import {
+  Save,
+  X,
+  Trash2,
+  CreditCard,
+  Wallet,
   Info,
   ShoppingCart,
   Receipt,
@@ -25,7 +25,8 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { useQuery } from "@tanstack/react-query";
+import { useAuthStore } from '@/store/useAuthStore';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { businessApi, Multiplier } from "@/api/services/business";
 import { productsApi, Product } from "@/api/services/products";
 import { Search, Loader2, PlusCircle, Package } from "lucide-react";
@@ -55,11 +56,15 @@ export function SaleEditor({ sale, onSave, onCancel, isLoading }: SaleEditorProp
   const [searchTerm, setSearchTerm] = useState("");
   const [isSearching, setIsSearching] = useState(false);
 
+  const { user } = useAuthStore();
+  const businessId = user?.businessId;
+
   // Multipliers query
   const { data: multipliers = [] } = useQuery({
-    queryKey: ["business", "multipliers"],
+    queryKey: ["business", "multipliers", businessId],
     queryFn: businessApi.getMultipliers,
     staleTime: 60000,
+    enabled: !!businessId,
   });
 
   // Products Search Query

@@ -293,7 +293,7 @@ model Sale {
   userId     String // Quien procesó la venta
 
   subtotal      Float
-  taxRate       Float         @default(0.16)
+  taxRate       Float         @default(0)
   taxAmount     Float
   discountType  DiscountType?
   discountValue Float?

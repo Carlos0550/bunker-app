@@ -8,15 +8,16 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
-  User,
+  Percent, 
   ShoppingCart,
-  Percent,
   Receipt,
   Loader2,
   AlertCircle,
   UserPlus,
   CreditCard,
+  User as UserIcon,
 } from "lucide-react";
+import { useAuthStore } from "@/store/useAuthStore";
 import { BarcodeScanner } from "@/components/BarcodeScanner";
 import { toast } from "sonner";
 import {
@@ -100,11 +101,15 @@ export default function POS() {
     staleTime: 1000,
   });
 
+  const { user } = useAuthStore();
+  const businessId = user?.businessId;
+
   // Query para multiplicadores del negocio
   const { data: multipliers = [] } = useQuery({
-    queryKey: ["business", "multipliers"],
+    queryKey: ["business", "multipliers", businessId],
     queryFn: businessApi.getMultipliers,
     staleTime: 60000,
+    enabled: !!businessId,
   });
 
   // Cargar clientes solo cuando venta a crédito está activa
@@ -556,7 +561,7 @@ export default function POS() {
                 <div className="flex items-center gap-2">
                   <Select value={selectedCustomer} onValueChange={setSelectedCustomer}>
                     <SelectTrigger className="flex-1 bg-secondary/50">
-                      <User className="w-4 h-4 mr-2" />
+                      <UserIcon className="w-4 h-4 mr-2" />
                       <SelectValue placeholder="Seleccionar cliente..." />
                     </SelectTrigger>
                     <SelectContent>

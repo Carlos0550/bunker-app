@@ -1,7 +1,8 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import { User } from '@/types';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import { User } from "@/types";
 import { useCartStore } from "@/store/useCartStore";
+import { queryClient } from "@/App";
 
 interface AuthState {
   token: string | null;
@@ -20,10 +21,11 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       login: (token, user) => set({ token, user, isAuthenticated: true }),
       logout: () => {
-        localStorage.removeItem('auth-storage');
-        localStorage.removeItem('business-storage');
-        localStorage.removeItem('cart-storage');
-        useCartStore.getState().clearCart()
+        localStorage.removeItem("auth-storage");
+        localStorage.removeItem("business-storage");
+        localStorage.removeItem("cart-storage");
+        useCartStore.getState().clearCart();
+        queryClient.clear();
         set({ token: null, user: null, isAuthenticated: false });
       },
       updateUser: (updatedData) =>
@@ -32,7 +34,7 @@ export const useAuthStore = create<AuthState>()(
         })),
     }),
     {
-      name: 'auth-storage',
-    }
-  )
+      name: "auth-storage",
+    },
+  ),
 );
