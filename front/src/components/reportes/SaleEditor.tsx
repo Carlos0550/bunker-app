@@ -115,6 +115,7 @@ export function SaleEditor({ sale, onSave, onCancel, isLoading }: SaleEditorProp
       notes,
       discountType: discountType as any,
       discountValue: Number(discountValue),
+      taxRate: 0,
       total,
     });
   };

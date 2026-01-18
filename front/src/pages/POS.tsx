@@ -439,6 +439,7 @@ export default function POS() {
         discountType: discount > 0 ? discountType : undefined,
         discountValue: discount > 0 ? discount : undefined,
         notes: notes || undefined,
+        total, // Enviamos el total calculado con multiplicadores
       };
 
       const sale = await salesApi.createSale(saleData);
