@@ -8,7 +8,8 @@ import {
   Shield,
   LogOut,
   User as UserIcon,
-  Crown
+  Crown,
+  Receipt
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -38,6 +39,7 @@ const mainMenuItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, permission: null, tourId: "sidebar-dashboard" }, // Todos pueden ver dashboard
   { title: "Punto de Venta", url: "/pos", icon: ShoppingCart, permission: Permission.POS, tourId: "sidebar-pos" },
   { title: "Productos", url: "/productos", icon: Package, permission: Permission.PRODUCTOS, tourId: "sidebar-productos" },
+  { title: "Ventas", url: "/reportes?tab=historial", icon: Receipt, permission: Permission.VENTAS, tourId: "sidebar-ventas" },
   { title: "Clientes", url: "/clientes", icon: Users, permission: Permission.CLIENTES, tourId: "sidebar-clientes" },
   { title: "Reportes", url: "/reportes", icon: BarChart3, permission: Permission.REPORTES, tourId: "sidebar-reportes" },
 ];
@@ -65,11 +67,22 @@ export function AppSidebar() {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   
   const collapsed = state === "collapsed";
+  
+  // DEBUG: Verificar qué datos del usuario tenemos
+  console.log("=== DEBUG SIDEBAR ===");
+  console.log("User completo:", user);
+  console.log("User role:", user?.role);
+  console.log("User permissions:", user?.permissions);
+  console.log("isSuperAdmin():", isSuperAdmin());
+  console.log("isAdmin():", isAdmin());
 
   // Filtrar items del menú según permisos
-  const filteredMainMenuItems = mainMenuItems.filter(item => 
-    !item.permission || hasPermission(item.permission)
-  );
+  const filteredMainMenuItems = mainMenuItems.filter(item => {
+    const result = !item.permission || hasPermission(item.permission);
+    console.log(`Item ${item.title}: permission=${item.permission}, hasPermission=${result}`);
+    return result;
+  });
+  console.log("filteredMainMenuItems:", filteredMainMenuItems.map(i => i.title));
 
   const filteredConfigItems = configItems.filter(item =>
     !item.permission || hasPermission(item.permission)

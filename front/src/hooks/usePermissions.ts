@@ -19,7 +19,10 @@ export const usePermissions = () => {
 
     // Usuarios (role 2) verifican sus permisos específicos
     if (user.role === 2) {
-      return user.permissions?.includes(permission) || false;
+      if (!user.permissions) return false;
+      return user.permissions.some(p => 
+        p.toUpperCase() === (permission as string).toUpperCase()
+      );
     }
 
     return false;
@@ -29,6 +32,7 @@ export const usePermissions = () => {
    * Verifica si el usuario tiene al menos uno de los permisos proporcionados
    */
   const hasAnyPermission = (permissions: (Permission | string)[]): boolean => {
+    console.log(permissions)
     return permissions.some(permission => hasPermission(permission));
   };
 

@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { analyticsApi } from "@/api/services/analytics";
 import { salesApi, Sale, CreateSaleData } from "@/api/services/sales";
@@ -110,6 +111,18 @@ export default function Reportes() {
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [saleToDelete, setSaleToDelete] = useState<string | null>(null);
+  
+  const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+  const initialTab = queryParams.get("tab") || "ventas";
+  const [activeTab, setActiveTab] = useState(initialTab);
+
+  useEffect(() => {
+    const tab = queryParams.get("tab");
+    if (tab) {
+      setActiveTab(tab);
+    }
+  }, [location.search]);
   
   const queryClient = useQueryClient();
 
@@ -379,7 +392,7 @@ export default function Reportes() {
         </div>
 
         {/* Tabs */}
-        <Tabs defaultValue="ventas" className="space-y-4">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide" data-tour="reportes-tabs">
             <TabsList className="bg-secondary/50 inline-flex w-max sm:w-auto min-w-full sm:min-w-0">
               <TabsTrigger value="ventas" className="text-sm sm:text-base px-3 sm:px-4 shrink-0">
