@@ -67,22 +67,11 @@ export function AppSidebar() {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   
   const collapsed = state === "collapsed";
-  
-  // DEBUG: Verificar qué datos del usuario tenemos
-  console.log("=== DEBUG SIDEBAR ===");
-  console.log("User completo:", user);
-  console.log("User role:", user?.role);
-  console.log("User permissions:", user?.permissions);
-  console.log("isSuperAdmin():", isSuperAdmin());
-  console.log("isAdmin():", isAdmin());
 
   // Filtrar items del menú según permisos
-  const filteredMainMenuItems = mainMenuItems.filter(item => {
-    const result = !item.permission || hasPermission(item.permission);
-    console.log(`Item ${item.title}: permission=${item.permission}, hasPermission=${result}`);
-    return result;
-  });
-  console.log("filteredMainMenuItems:", filteredMainMenuItems.map(i => i.title));
+  const filteredMainMenuItems = mainMenuItems.filter(item => 
+    !item.permission || hasPermission(item.permission)
+  );
 
   const filteredConfigItems = configItems.filter(item =>
     !item.permission || hasPermission(item.permission)

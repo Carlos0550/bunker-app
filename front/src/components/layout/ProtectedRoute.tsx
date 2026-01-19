@@ -31,7 +31,6 @@ export const ProtectedRoute = () => {
           const freshUser = await authApi.getCurrentUser();
           // Actualizar el store con los datos frescos del usuario
           updateUser(freshUser);
-          console.log("Usuario actualizado desde el backend:", freshUser);
         } catch (error) {
           console.error("Error al refrescar datos del usuario:", error);
           // Si falla por token inválido, hacer logout

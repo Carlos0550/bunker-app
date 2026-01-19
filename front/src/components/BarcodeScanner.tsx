@@ -115,6 +115,13 @@ export function BarcodeScanner({
       await stopScanner();
       await new Promise((resolve) => setTimeout(resolve, 150));
 
+      // Verificar que el contenedor exista en el DOM
+      const container = document.getElementById(scannerContainerId);
+      if (!container) {
+        console.warn("Scanner container not yet mounted");
+        return;
+      }
+
       const html5Qrcode = new Html5Qrcode(scannerContainerId, {
         formatsToSupport: BARCODE_FORMATS,
         verbose: false,
