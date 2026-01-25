@@ -33,7 +33,7 @@ export function ProfileEditModal({ open, onOpenChange }: ProfileEditModalProps) 
   const [previewImage, setPreviewImage] = useState<string | null>(user?.profilePhoto || null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-  // Actualizar el formulario cuando cambie el usuario o se abra el modal
+  
   useEffect(() => {
     if (open && user) {
       setFormData({
@@ -61,7 +61,7 @@ export function ProfileEditModal({ open, onOpenChange }: ProfileEditModalProps) 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Validar tipo de archivo
+      
       if (!file.type.startsWith("image/")) {
         toast({
           title: "Error",
@@ -71,7 +71,7 @@ export function ProfileEditModal({ open, onOpenChange }: ProfileEditModalProps) 
         return;
       }
 
-      // Validar tamaño (máximo 5MB)
+      
       if (file.size > 5 * 1024 * 1024) {
         toast({
           title: "Error",
@@ -95,7 +95,7 @@ export function ProfileEditModal({ open, onOpenChange }: ProfileEditModalProps) 
 
     setLoading(true);
     try {
-      // Primero actualizar la foto de perfil si hay una nueva
+      
       if (selectedFile) {
         try {
           const result = await authApi.updateProfilePhoto(selectedFile);
@@ -114,7 +114,7 @@ export function ProfileEditModal({ open, onOpenChange }: ProfileEditModalProps) 
         }
       }
 
-      // Actualizar datos del usuario si cambiaron
+      
       if (formData.name !== user.name || formData.email !== user.email) {
         try {
           const updatedUser = await authApi.updateProfile({
@@ -151,7 +151,7 @@ export function ProfileEditModal({ open, onOpenChange }: ProfileEditModalProps) 
   };
 
   const handleCancel = () => {
-    // Resetear formulario
+    
     setFormData({
       name: user?.name || "",
       email: user?.email || "",
@@ -172,7 +172,7 @@ export function ProfileEditModal({ open, onOpenChange }: ProfileEditModalProps) 
         </DialogHeader>
 
         <div className="space-y-6 py-4">
-          {/* Avatar Section */}
+          {}
           <div className="flex flex-col items-center gap-4">
             <div className="relative">
               <Avatar className="w-24 h-24 border-2 border-border">
@@ -202,7 +202,7 @@ export function ProfileEditModal({ open, onOpenChange }: ProfileEditModalProps) 
             </p>
           </div>
 
-          {/* Form Fields */}
+          {}
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="name">Nombre</Label>

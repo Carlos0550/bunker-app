@@ -216,8 +216,7 @@ class CustomerController {
     }
   };
 
-  // ==================== SALE ITEMS MANAGEMENT ====================
-
+  
   getSaleItems = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const userId = req.user?.userId;

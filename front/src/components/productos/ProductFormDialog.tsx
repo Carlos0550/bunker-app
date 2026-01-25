@@ -79,7 +79,7 @@ export function ProductFormDialog({
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        // Show error via toast from parent
+        
         return;
       }
       setSelectedImage(file);
@@ -97,7 +97,7 @@ export function ProductFormDialog({
         </DialogHeader>
         <form onSubmit={onSave} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            {/* Imagen del producto */}
+            {}
             <div className="col-span-2">
               <Label>Imagen del producto</Label>
               <div className="flex items-center gap-4 mt-2">

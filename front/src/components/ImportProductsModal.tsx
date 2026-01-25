@@ -63,7 +63,7 @@ export function ImportProductsModal({ open, onOpenChange }: ImportProductsModalP
   const [importResult, setImportResult] = useState<{ imported: number; failed: number; skipped: number; errors: any[] } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
-  // Reset state when modal closes
+  
   useEffect(() => {
     if (!open) {
       setStep("upload");
@@ -75,7 +75,7 @@ export function ImportProductsModal({ open, onOpenChange }: ImportProductsModalP
     }
   }, [open]);
 
-  // Mutations
+  
   const analyzeMutation = useMutation({
     mutationFn: (file: File) => importApi.analyzeFile(file),
     onSuccess: (result) => {
@@ -96,7 +96,7 @@ export function ImportProductsModal({ open, onOpenChange }: ImportProductsModalP
       if (result.hasDuplicates) {
         setStep("validation");
       } else {
-        // Sin duplicados, proceder directamente
+        
         handleProcessImport(false);
       }
     },
@@ -119,18 +119,13 @@ export function ImportProductsModal({ open, onOpenChange }: ImportProductsModalP
     },
   });
 
-  // Handlers
+  
   const handleFileSelect = useCallback((file: File) => {
     const validExtensions = ["csv", "xls", "xlsx"];
     const extension = file.name.split(".").pop()?.toLowerCase();
     
     if (!extension || !validExtensions.includes(extension)) {
       toast.error("Solo se permiten archivos CSV, XLS o XLSX");
-      return;
-    }
-
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error("El archivo no puede superar los 10MB");
       return;
     }
 
@@ -179,7 +174,7 @@ export function ImportProductsModal({ open, onOpenChange }: ImportProductsModalP
   const handleValidateAndProcess = () => {
     if (!analyzeResult) return;
 
-    // Validar columnas requeridas
+    
     const requiredColumns = analyzeResult.systemColumns.filter((c) => c.required);
     const mappedSystemColumns = Object.values(columnMapping);
 
@@ -190,7 +185,7 @@ export function ImportProductsModal({ open, onOpenChange }: ImportProductsModalP
       }
     }
 
-    // Iniciar validación
+    
     validateMutation.mutate({
       sessionId: analyzeResult.sessionId,
       mapping: columnMapping,
@@ -215,14 +210,14 @@ export function ImportProductsModal({ open, onOpenChange }: ImportProductsModalP
     onOpenChange(false);
   };
 
-  // Verificar si una columna del sistema ya está mapeada
+  
   const isSystemColumnMapped = (systemKey: string, excludeFileColumn?: string) => {
     return Object.entries(columnMapping).some(
       ([fileCol, sysCol]) => sysCol === systemKey && fileCol !== excludeFileColumn
     );
   };
 
-  // Obtener el mapeo inverso (systemColumn -> fileColumn)
+  
   const getFileColumnForSystem = (systemKey: string) => {
     return Object.entries(columnMapping).find(([_, sysCol]) => sysCol === systemKey)?.[0];
   };
@@ -245,7 +240,7 @@ export function ImportProductsModal({ open, onOpenChange }: ImportProductsModalP
         </DialogHeader>
 
         <div className="flex-1 overflow-auto py-4">
-          {/* Step: Upload */}
+          {}
           {step === "upload" && (
             <div
               className={cn(
@@ -270,7 +265,7 @@ export function ImportProductsModal({ open, onOpenChange }: ImportProductsModalP
                     Arrastra tu archivo aquí o haz clic para seleccionar
                   </p>
                   <p className="text-sm text-muted-foreground mb-4">
-                    Formatos soportados: CSV, XLS, XLSX (máx. 10MB)
+                    Formatos soportados: CSV, XLS, XLSX (máx. 50MB)
                   </p>
                   <input
                     ref={fileInputRef}
@@ -290,10 +285,10 @@ export function ImportProductsModal({ open, onOpenChange }: ImportProductsModalP
             </div>
           )}
 
-          {/* Step: Mapping */}
+          {}
           {step === "mapping" && analyzeResult && (
             <div className="space-y-6">
-              {/* Info del archivo */}
+              {}
               <div className="flex items-center justify-between p-4 bg-secondary/30 rounded-lg">
                 <div className="flex items-center gap-3">
                   <FileSpreadsheet className="w-8 h-8 text-primary" />
@@ -309,9 +304,9 @@ export function ImportProductsModal({ open, onOpenChange }: ImportProductsModalP
                 </Badge>
               </div>
 
-              {/* Mapeo visual */}
+              {}
               <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-start">
-                {/* Columnas del archivo CSV */}
+                {}
                 <div>
                   <h4 className="font-semibold mb-3 text-sm text-muted-foreground uppercase tracking-wide">
                     Columnas del Archivo
@@ -348,14 +343,14 @@ export function ImportProductsModal({ open, onOpenChange }: ImportProductsModalP
                   </div>
                 </div>
 
-                {/* Flecha central */}
+                {}
                 <div className="flex flex-col items-center justify-center py-12">
                   <div className="w-px h-full bg-border relative">
                     <ChevronRight className="w-6 h-6 text-primary absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-background" />
                   </div>
                 </div>
 
-                {/* Columnas del sistema */}
+                {}
                 <div>
                   <h4 className="font-semibold mb-3 text-sm text-muted-foreground uppercase tracking-wide">
                     Columnas del Sistema
@@ -440,7 +435,7 @@ export function ImportProductsModal({ open, onOpenChange }: ImportProductsModalP
                 </div>
               </div>
 
-              {/* Preview de datos */}
+              {}
               <div>
                 <h4 className="font-semibold mb-3">Vista previa de datos</h4>
                 <div className="border rounded-lg overflow-auto max-h-48">
@@ -479,7 +474,7 @@ export function ImportProductsModal({ open, onOpenChange }: ImportProductsModalP
             </div>
           )}
 
-          {/* Step: Validation - Duplicates Warning */}
+          {}
           {step === "validation" && validationResult && (
             <div className="py-6 space-y-6">
               <div className="text-center">
@@ -500,7 +495,7 @@ export function ImportProductsModal({ open, onOpenChange }: ImportProductsModalP
                 </p>
               </div>
 
-              {/* Duplicados en la base de datos */}
+              {}
               {validationResult.duplicatesInDb.length > 0 && (
                 <div className="space-y-3">
                   <h4 className="font-semibold flex items-center gap-2">
@@ -533,7 +528,7 @@ export function ImportProductsModal({ open, onOpenChange }: ImportProductsModalP
                 </div>
               )}
 
-              {/* Duplicados dentro del archivo */}
+              {}
               {validationResult.duplicatesInList.length > 0 && (
                 <div className="space-y-3">
                   <h4 className="font-semibold flex items-center gap-2">
@@ -561,7 +556,7 @@ export function ImportProductsModal({ open, onOpenChange }: ImportProductsModalP
                 </div>
               )}
 
-              {/* Opciones */}
+              {}
               <div className="p-4 bg-secondary/30 rounded-lg space-y-4">
                 <p className="font-medium">¿Qué deseas hacer?</p>
                 <div className="grid grid-cols-2 gap-4">
@@ -594,7 +589,7 @@ export function ImportProductsModal({ open, onOpenChange }: ImportProductsModalP
             </div>
           )}
 
-          {/* Step: Processing */}
+          {}
           {step === "processing" && (
             <div className="py-12 text-center space-y-6">
               <Loader2 className="w-16 h-16 mx-auto text-primary animate-spin" />
@@ -604,13 +599,18 @@ export function ImportProductsModal({ open, onOpenChange }: ImportProductsModalP
                   Esto puede tomar unos momentos
                 </p>
               </div>
-              <Progress value={undefined} className="w-64 mx-auto" />
+              <div className="w-64 h-2 bg-secondary rounded-full overflow-hidden mx-auto relative">
+                <div className="absolute top-0 left-0 h-full bg-primary animate-indeterminate w-1/3"></div>
+              </div>
+              <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+                Para archivos grandes (+10,000 filas), esto puede tomar varios minutos. Por favor no cierres esta ventana.
+              </p>
             </div>
           )}
 
-          {/* Step: Result */}
+          {}
           {step === "result" && importResult && (() => {
-            // Calcular el estado de la importación
+            
             const totalProcessed = importResult.imported + importResult.skipped + importResult.failed;
             const hasOnlyErrors = importResult.imported === 0 && importResult.skipped === 0 && importResult.failed > 0;
             const isSuccess = importResult.failed === 0 || (importResult.imported > 0);

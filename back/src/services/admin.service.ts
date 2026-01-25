@@ -2,19 +2,8 @@ import { prisma } from "@/config/db";
 import { Prisma } from "@prisma/client";
 import createHttpError from "http-errors";
 import { generateToken } from "@/config/jwt";
-interface CreatePlanData {
-  name: string;
-  price: number;
-  description?: string;
-  features?: string[];
-}
-interface UpdatePlanData {
-  name?: string;
-  price?: number;
-  description?: string;
-  features?: string[];
-  isActive?: boolean;
-}
+import { CreatePlanData, UpdatePlanData } from "@/types";
+
 class AdminService {
   async createPlan(data: CreatePlanData) {
     const existingActive = await prisma.businessPlan.findFirst({
@@ -288,7 +277,7 @@ class AdminService {
       throw createHttpError(404, "Usuario objetivo no encontrado");
     }
 
-    // Generate token for the target user
+    
     const payload = {
       userId: targetUser.id,
       email: targetUser.email,

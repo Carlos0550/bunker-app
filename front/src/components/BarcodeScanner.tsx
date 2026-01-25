@@ -22,7 +22,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 
-// Formatos de codigos de barras mas comunes en productos
+
 const BARCODE_FORMATS = [
   Html5QrcodeSupportedFormats.EAN_13,
   Html5QrcodeSupportedFormats.EAN_8,
@@ -35,7 +35,7 @@ const BARCODE_FORMATS = [
   Html5QrcodeSupportedFormats.QR_CODE,
 ];
 
-// Detectar si es un dispositivo movil
+
 const isMobileDevice = () => {
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
     navigator.userAgent
@@ -55,7 +55,7 @@ export function BarcodeScanner({
   onScan,
   title = "Escanear Codigo de Barras",
 }: BarcodeScannerProps) {
-  // En PC abrir en modo manual por defecto, en movil en modo camara
+  
   const [activeTab, setActiveTab] = useState<"camera" | "manual">(
     isMobileDevice() ? "camera" : "manual"
   );
@@ -70,7 +70,7 @@ export function BarcodeScanner({
   const isProcessingRef = useRef(false);
   const scannerContainerId = "barcode-scanner-container";
 
-  // Resetear isProcessingRef cuando se abre
+  
   useEffect(() => {
     if (open) {
       isProcessingRef.current = false;
@@ -91,7 +91,7 @@ export function BarcodeScanner({
       try {
         scanner.clear();
       } catch {
-        // Ignorar error de clear
+        
       }
       scannerRef.current = null;
     }
@@ -101,12 +101,10 @@ export function BarcodeScanner({
     if (isProcessingRef.current) return;
     isProcessingRef.current = true;
     
-    // 1. Notificar al padre inmediatamente
+    
     onScan(code.trim());
     
-    // 2. Cerrar el dialogo
-    // No esperamos a stopScanner aqui para mejorar la velocidad de respuesta.
-    // El cleanup del useEffect se encargara de detener la camara.
+    
     onClose();
   }, [onScan, onClose]);
 
@@ -115,7 +113,7 @@ export function BarcodeScanner({
       await stopScanner();
       await new Promise((resolve) => setTimeout(resolve, 150));
 
-      // Verificar que el contenedor exista en el DOM
+      
       const container = document.getElementById(scannerContainerId);
       if (!container) {
         console.warn("Scanner container not yet mounted");
@@ -180,7 +178,7 @@ export function BarcodeScanner({
     if (open && activeTab === "camera") {
       initScanner();
     } else if (open && activeTab === "manual") {
-      // Enfocar el input cuando se abre en modo manual
+      
       setTimeout(() => inputRef.current?.focus(), 100);
     }
 
@@ -189,16 +187,15 @@ export function BarcodeScanner({
     };
   }, [open, activeTab, initScanner, stopScanner]);
 
-  // Reset cuando se cierra
+  
   useEffect(() => {
     if (!open) {
       setManualCode("");
       setError(null);
-      // Resetear al tab por defecto segun dispositivo
+      
       setActiveTab(isMobileDevice() ? "camera" : "manual");
     }
   }, [open]);
-
 
 
   const handleManualSubmit = () => {

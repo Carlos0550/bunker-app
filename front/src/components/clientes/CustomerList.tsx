@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Search, Users, Loader2, Trash } from "lucide-react";
+import { formatCurrency } from "@/utils/helpers";
 import { BusinessCustomer } from "@/api/services/customers";
 
 interface CustomerListProps {
@@ -77,7 +78,7 @@ export function CustomerList({
                       <div className="flex items-center gap-1">
                         {(bc.totalDebt || 0) > 0 && (
                           <span className="text-sm font-bold text-destructive whitespace-nowrap">
-                            ${bc.totalDebt?.toLocaleString()}
+                            {formatCurrency(bc.totalDebt || 0)}
                           </span>
                         )}
                         <Button

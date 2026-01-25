@@ -21,6 +21,7 @@ import {
 import { CurrentAccount } from "@/api/services/customers";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { formatCurrency } from "@/utils/helpers";
 
 interface AccountCardProps {
   account: CurrentAccount;
@@ -97,7 +98,7 @@ export function AccountCard({
                   <div className="flex items-center gap-2">
                     {getStatusBadge(account.status)}
                     <span className="font-semibold">
-                      ${account.currentBalance.toLocaleString()}
+                      {formatCurrency(account.currentBalance)}
                     </span>
                   </div>
                   <p className={`text-xs ${daysInfo.color}`}>
@@ -110,7 +111,7 @@ export function AccountCard({
                   {format(new Date(account.createdAt), "dd MMM yyyy", { locale: es })}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Original: ${account.originalAmount.toLocaleString()}
+                  Original: {formatCurrency(account.originalAmount)}
                 </p>
               </div>
             </div>
@@ -119,21 +120,21 @@ export function AccountCard({
         
         <CollapsibleContent>
           <div className="border-t border-border p-4 space-y-4 bg-secondary/10">
-            {/* Detalles de la cuenta */}
+            {}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-xs text-muted-foreground">Monto Original</p>
-                <p className="font-semibold">${account.originalAmount.toLocaleString()}</p>
+                <p className="font-semibold">{formatCurrency(account.originalAmount)}</p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Saldo Actual</p>
                 <p className="font-semibold text-destructive">
-                  ${account.currentBalance.toLocaleString()}
+                  {formatCurrency(account.currentBalance)}
                 </p>
               </div>
             </div>
 
-            {/* Notas */}
+            {}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <p className="text-xs text-muted-foreground">Notas</p>
@@ -188,7 +189,7 @@ export function AccountCard({
               )}
             </div>
 
-            {/* Historial de pagos */}
+            {}
             {account.payments && account.payments.length > 0 && (
               <div className="space-y-2">
                 <p className="text-xs text-muted-foreground font-medium">
@@ -204,7 +205,7 @@ export function AccountCard({
                         <Banknote className="w-4 h-4 text-success" />
                         <div>
                           <p className="text-sm font-medium text-success">
-                            ${payment.amount.toLocaleString()}
+                            {formatCurrency(payment.amount)}
                           </p>
                           <p className="text-xs text-muted-foreground">
                             {getPaymentMethodLabel(payment.paymentMethod)}
@@ -227,7 +228,7 @@ export function AccountCard({
               </div>
             )}
 
-            {/* Acciones */}
+            {}
             <div className="flex gap-2 pt-2">
               {account.status !== "PAID" && (
                 <Button

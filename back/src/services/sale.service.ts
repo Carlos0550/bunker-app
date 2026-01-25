@@ -8,44 +8,14 @@ import {
   ManualProductStatus,
 } from "@prisma/client";
 import createHttpError from "http-errors";
-interface SaleItemInput {
-  productId?: string;
-  productName: string;
-  productSku?: string;
-  quantity: number;
-  unitPrice: number;
-  isManual?: boolean;
-}
-interface CreateSaleData {
-  customerId?: string;
-  items: SaleItemInput[];
-  taxRate?: number;
-  discountType?: DiscountType;
-  discountValue?: number;
-  paymentMethod: PaymentMethod;
-  isCredit?: boolean;
-  notes?: string;
-}
-interface ManualProductInput {
-  originalText: string;
-  name: string;
-  quantity: number;
-  price: number;
-}
-interface SaleFilters {
-  startDate?: Date;
-  endDate?: Date;
-  status?: SaleStatus;
-  customerId?: string;
-  isCredit?: boolean;
-  paymentMethod?: PaymentMethod;
-}
-interface PaginationOptions {
-  page?: number;
-  limit?: number;
-  sortBy?: string;
-  sortOrder?: "asc" | "desc";
-}
+import {
+  SaleItemInput,
+  CreateSaleData,
+  ManualProductInput,
+  SaleFilters,
+  PaginationOptions,
+} from "@/types";
+
 class SaleService {
   private async generateSaleNumber(businessId: string): Promise<string> {
     const today = new Date();
@@ -80,12 +50,8 @@ class SaleService {
             `Producto no encontrado: ${item.productName}`,
           );
         }
-        // if (product.stock < item.quantity) {
-        //   throw createHttpError(
-        //     400,
-        //     `Stock insuficiente para ${product.name}. Disponible: ${product.stock}, Solicitado: ${item.quantity}`,
-        //   );
-        // }
+        
+        
       }
       itemsData.push({
         ...(item.productId && { product: { connect: { id: item.productId } } }),
@@ -122,7 +88,7 @@ class SaleService {
           discountType: data.discountType || null,
           discountValue: data.discountValue || null,
           total,
-          // Si es crédito, usar CREDIT como método de pago, sino usar el método proporcionado
+          
           paymentMethod: data.isCredit
             ? PaymentMethod.CREDIT
             : data.paymentMethod,
@@ -144,13 +110,13 @@ class SaleService {
       if (!data.isCredit) {
         for (const item of data.items) {
           if (!item.isManual && item.productId) {
-            // Verificar stock actual antes de restar
+            
             const currentProduct = await tx.products.findUnique({
               where: { id: item.productId },
             });
 
             if (currentProduct) {
-              // Si el stock es insuficiente, sumar lo necesario para cubrir la venta + (min_stock + 1)
+              
               if (currentProduct.stock < item.quantity) {
                 const neededToSatisfySale =
                   item.quantity - currentProduct.stock;
@@ -165,7 +131,7 @@ class SaleService {
                 });
               }
 
-              // Proceder con la resta normal
+              
               await tx.products.update({
                 where: { id: item.productId },
                 data: {
@@ -173,7 +139,7 @@ class SaleService {
                 },
               });
 
-              // Verificar si quedó en 0 o menos para actualizar estado (aunque con la lógica anterior es difícil que quede < 0)
+              
               const updatedProduct = await tx.products.findUnique({
                 where: { id: item.productId },
               });
@@ -347,7 +313,7 @@ class SaleService {
     }
 
     await prisma.$transaction(async (tx) => {
-      // Revertir stock si la venta estaba completada
+      
       if (sale.status === SaleStatus.COMPLETED) {
         for (const item of sale.items) {
           if (item.productId) {
@@ -362,17 +328,12 @@ class SaleService {
         }
       }
 
-      // Eliminar registros asociados (Cascade se encarga de SaleItem si está configurado,
-      // peroCurrentAccount necesita limpieza manual si no tiene ondelete cascade)
-      // CurrentAccount tiene onDelete: Cascade? Revisando schema... no dice explícitamente en Sale,
-      // pero SaleItem sí tiene Cascade en saleId.
-
-      // Eliminar cuenta corriente si existe
+      
       await tx.currentAccount.deleteMany({
         where: { saleId },
       });
 
-      // Eliminar la venta
+      
       await tx.sale.delete({
         where: { id: saleId },
       });
@@ -392,7 +353,7 @@ class SaleService {
     }
 
     return await prisma.$transaction(async (tx) => {
-      // 1. Revertir stock viejo si estaba completada
+      
       if (sale.status === SaleStatus.COMPLETED) {
         for (const item of sale.items) {
           if (item.productId) {
@@ -407,7 +368,7 @@ class SaleService {
         }
       }
 
-      // 2. Si hay nuevos items, reemplazarlos
+      
       let finalItems = sale.items;
       if (data.items) {
         await tx.saleItem.deleteMany({ where: { saleId } });
@@ -432,7 +393,7 @@ class SaleService {
 
         await tx.saleItem.createMany({ data: newItems });
 
-        // Recalcular montos
+        
         const taxRate =
           data.taxRate !== undefined ? data.taxRate : sale.taxRate;
         const discountType = data.hasOwnProperty("discountType")
@@ -444,7 +405,7 @@ class SaleService {
 
         const baseForTax = subtotal;
 
-        // Si la data trae un total explícito (calculado con multiplicadores en el front), lo respetamos
+        
         let total = data.total;
 
         if (total === undefined) {
@@ -458,7 +419,7 @@ class SaleService {
 
         const taxAmount = baseForTax * taxRate;
 
-        // Actualizar header data
+        
         data.subtotal = subtotal;
         data.total = total;
         data.taxAmount = taxAmount;
@@ -466,7 +427,7 @@ class SaleService {
         finalItems = newItems as any;
       }
 
-      // 3. Aplicar nuevo stock si la venta resultante está COMPLETED
+      
       const finalStatus = data.status || sale.status;
       if (finalStatus === SaleStatus.COMPLETED) {
         const itemsToProcess = data.items || sale.items;
@@ -477,7 +438,7 @@ class SaleService {
               data: { stock: { decrement: item.quantity } },
             });
 
-            // Re-verificar estado OUT_OF_STOCK
+            
             const prod = await tx.products.findUnique({
               where: { id: item.productId },
             });
@@ -491,7 +452,7 @@ class SaleService {
         }
       }
 
-      // 4. Actualizar la venta
+      
       const { items, ...saleUpdateData } = data;
       const updatedSale = await tx.sale.update({
         where: { id: saleId },
@@ -499,7 +460,7 @@ class SaleService {
         include: { items: true, customer: true, user: true },
       });
 
-      // 5. Ajustar cuenta corriente si es crédito
+      
       if (updatedSale.isCredit && updatedSale.customerId) {
         const total = updatedSale.total;
         if (sale.currentAccount) {
@@ -507,16 +468,16 @@ class SaleService {
             where: { id: sale.currentAccount.id },
             data: {
               originalAmount: total,
-              currentBalance: total, // OJO: Esto asume que no había pagos parciales.
-              // Por simplicidad en edición pesada, reseteamos el balance.
+              currentBalance: total, 
+              
             },
           });
         } else {
-          // Crear cuenta corriente si no existía y ahora es crédito
-          // (Debería buscar el BusinessCustomer primero)
+          
+          
         }
       } else if (!updatedSale.isCredit && sale.currentAccount) {
-        // Eliminar cuenta si ya no es crédito
+        
         await tx.currentAccount.delete({
           where: { id: sale.currentAccount.id },
         });

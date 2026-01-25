@@ -4,7 +4,7 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  role: number; // 0=SuperAdmin, 1=Admin, 2=Usuario
+  role: number; 
   permissions: string[];
   status: string;
   emailVerified: boolean;

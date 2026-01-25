@@ -99,6 +99,10 @@ export default {
         shimmer: {
           "100%": { transform: "translateX(100%)" },
         },
+        indeterminate: {
+          "0%": { left: "-100%", width: "100%" },
+          "100%": { left: "100%", width: "100%" }
+        }
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -107,6 +111,7 @@ export default {
         "fade-in": "fade-in 0.3s ease-out",
         "scale-in": "scale-in 0.2s ease-out",
         shimmer: "shimmer 2s infinite",
+        indeterminate: "indeterminate 2s infinite linear",
       },
     },
   },

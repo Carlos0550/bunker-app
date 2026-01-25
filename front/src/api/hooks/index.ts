@@ -1,7 +1,5 @@
-// API Hooks
-// Centralized hooks for React Query operations
 
-// Products hooks
+
 export {
   useProductsStats,
   useCategories,
@@ -25,7 +23,7 @@ export {
   type InventoryParams,
 } from "./useProductsHooks";
 
-// Customers hooks
+
 export {
   useCustomers,
   useAccountsSummary,
@@ -41,7 +39,7 @@ export {
   useDeleteSaleItem,
 } from "./useCustomersHooks";
 
-// Stock hooks
+
 export {
   useStockProducts,
   useStockLowProducts,
@@ -50,7 +48,7 @@ export {
   useStockMovement,
 } from "./useStockHooks";
 
-// Reports hooks
+
 export {
   useSalesSummary,
   useTopProducts,
@@ -58,7 +56,7 @@ export {
   useRecentSales,
 } from "./useReportsHooks";
 
-// Users hooks
+
 export {
   useUsers,
   useCreateUser,

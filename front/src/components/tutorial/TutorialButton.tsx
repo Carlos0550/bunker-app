@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useTutorialStore, TutorialView } from "@/store/useTutorialStore";
 
-// Mapeo de rutas a vistas del tutorial
+
 const routeToView: Record<string, TutorialView> = {
   "/dashboard": "dashboard",
   "/pos": "pos",
@@ -24,7 +24,7 @@ const routeToView: Record<string, TutorialView> = {
   "/reportes": "reportes",
 };
 
-// Nombres legibles de las vistas
+
 const viewNames: Record<TutorialView, string> = {
   dashboard: "Dashboard",
   pos: "Punto de Venta",
@@ -50,7 +50,7 @@ export function TutorialButton() {
 
   const handleResetAllTutorials = () => {
     resetAllTutorials();
-    // Si hay una vista actual, iniciar su tutorial
+    
     if (currentView) {
       setTimeout(() => {
         startTutorial(currentView);
@@ -58,7 +58,7 @@ export function TutorialButton() {
     }
   };
 
-  // Si no hay vista con tutorial, no mostrar el botón
+  
   if (!currentView) {
     return null;
   }

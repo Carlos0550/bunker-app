@@ -53,7 +53,7 @@ export function DeletedProductsTab({
                 <TableCell>
                   <div>
                     <p className="font-medium text-foreground">{product.name}</p>
-                    {/* Info adicional en móvil */}
+                    {}
                     <div className="sm:hidden text-xs text-muted-foreground mt-1">
                       {product.sku && <span className="font-mono">{product.sku} • </span>}
                       {product.deletedAt && new Date(product.deletedAt).toLocaleDateString("es-ES")}

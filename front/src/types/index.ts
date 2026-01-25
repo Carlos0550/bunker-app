@@ -72,18 +72,18 @@ export interface CartItem extends SaleItem {
   productId: string;
 }
 
-// Interfaces de Autenticación
+
 export interface User {
   id: string;
   name: string;
   email: string;
-  role: number; // 0 = Super Admin, 1 = Admin, 2 = Empleado
-  permissions: string[]; // Permisos específicos para role=2
+  role: number; 
+  permissions: string[]; 
   profilePhoto?: string;
   businessId?: string;
 }
 
-// Enum de permisos (debe coincidir con el backend)
+
 export enum Permission {
   POS = 'POS',
   PRODUCTOS = 'PRODUCTOS',

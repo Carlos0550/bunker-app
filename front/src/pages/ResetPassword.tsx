@@ -79,7 +79,7 @@ const ResetPassword = () => {
         description: "Tu contraseña ha sido restablecida correctamente.",
       });
       
-      // Redirigir al login después de unos segundos
+      
       setTimeout(() => {
         navigate("/login");
       }, 3000);
@@ -121,7 +121,7 @@ const ResetPassword = () => {
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-background p-4 relative overflow-hidden">
-        {/* Background Effects */}
+        {}
         <div className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-primary/5 to-transparent -z-10" />
         <div className="absolute -top-24 -left-24 w-96 h-96 bg-primary/10 rounded-full blur-3xl -z-10 animate-pulse" />
         <div className="absolute top-1/2 -right-24 w-64 h-64 bg-secondary/10 rounded-full blur-3xl -z-10" />

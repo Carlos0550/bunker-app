@@ -1,5 +1,5 @@
-import React from "react";
 import { AlertTriangle, CheckCircle, Clock, Receipt } from "lucide-react";
+import { formatCurrency } from "@/utils/helpers";
 
 interface CustomerMetricsCardsProps {
   totalDebt: number;
@@ -22,7 +22,7 @@ export function CustomerMetricsCards({
           <span className="text-xs text-muted-foreground truncate">Deuda Actual</span>
         </div>
         <p className="text-lg sm:text-xl font-bold text-destructive truncate">
-          ${totalDebt.toLocaleString()}
+          {formatCurrency(totalDebt)}
         </p>
       </div>
       <div className="p-3 rounded-lg bg-success/10 min-w-0">
@@ -31,7 +31,7 @@ export function CustomerMetricsCards({
           <span className="text-xs text-muted-foreground truncate">Total Pagado</span>
         </div>
         <p className="text-lg sm:text-xl font-bold text-success truncate">
-          ${totalPaid.toLocaleString()}
+          {formatCurrency(totalPaid)}
         </p>
       </div>
       <div className="p-3 rounded-lg bg-primary/10 min-w-0">

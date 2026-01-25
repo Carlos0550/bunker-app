@@ -23,7 +23,7 @@ export function ProductSearch({
 }: ProductSearchProps) {
   return (
     <div className="flex flex-col gap-4 h-full">
-      {/* Search Bar */}
+      {}
       <div className="flex gap-2">
         <div className="relative flex-1" data-tour="pos-search">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
@@ -46,7 +46,7 @@ export function ProductSearch({
         </Button>
       </div>
 
-      {/* Products Grid */}
+      {}
       <div className="flex-1 overflow-auto scrollbar-thin" data-tour="pos-products">
         {isLoading ? (
           <div className="flex items-center justify-center h-full">

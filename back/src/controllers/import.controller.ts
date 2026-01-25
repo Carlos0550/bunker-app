@@ -2,14 +2,18 @@ import { Request, Response, NextFunction } from "express";
 import { importService } from "@/services/import.service";
 import { prisma } from "@/config/db";
 import createHttpError from "http-errors";
+import * as fs from "fs";
 const fileCache = new Map<
   string,
-  { buffer: Buffer; fileName: string; mimeType: string; expiresAt: number }
+  { path: string; fileName: string; mimeType: string; expiresAt: number }
 >();
 setInterval(() => {
   const now = Date.now();
   for (const [key, value] of fileCache.entries()) {
     if (value.expiresAt < now) {
+      if (fs.existsSync(value.path)) {
+        try { fs.unlinkSync(value.path); } catch(e) {}
+      }
       fileCache.delete(key);
     }
   }
@@ -43,11 +47,13 @@ class ImportController {
       if (!req.file) {
         throw createHttpError(400, "No se proporcionó ningún archivo");
       }
-      const { buffer, originalname, mimetype } = req.file;
-      const result = await importService.parseFile(buffer, originalname, mimetype);
+      const { path, originalname, mimetype } = req.file;
+      
+      const result = await importService.parseFile(path, originalname, mimetype);
       const sessionId = `import_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
       fileCache.set(sessionId, {
-        buffer,
+        path, 
         fileName: originalname,
         mimeType: mimetype,
         expiresAt: Date.now() + 30 * 60 * 1000,
@@ -82,7 +88,7 @@ class ImportController {
         );
       }
       const result = await importService.validateImport(
-        cachedFile.buffer,
+        cachedFile.path,
         cachedFile.fileName,
         cachedFile.mimeType,
         columnMapping,
@@ -121,7 +127,7 @@ class ImportController {
         }
       }
       const result = await importService.processImport(
-        cachedFile.buffer,
+        cachedFile.path,
         cachedFile.fileName,
         cachedFile.mimeType,
         columnMapping,
@@ -140,6 +146,7 @@ class ImportController {
         },
       });
     } catch (error) {
+      console.error("Import Process Error:", error);
       next(error);
     }
   };

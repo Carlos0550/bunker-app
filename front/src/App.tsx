@@ -31,14 +31,14 @@ const App = () => (
       <BrowserRouter>
         <TutorialProvider>
         <Routes>
-          {/* Rutas Públicas */}
+          {}
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
 
-          {/* Rutas Protegidas */}
+          {}
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/pos" element={<POS />} />
@@ -52,7 +52,7 @@ const App = () => (
             </Route>
           </Route>
 
-          {/* Ruta 404 (Accesible siempre) */}
+          {}
           <Route path="*" element={<NotFound />} />
         </Routes>
         </TutorialProvider>

@@ -12,9 +12,6 @@ import {
   UpdateSaleItemData,
 } from "../services/customers";
 
-// ============================================================================
-// Query Keys
-// ============================================================================
 
 export const customerKeys = {
   all: ["customers"] as const,
@@ -25,13 +22,7 @@ export const customerKeys = {
   saleItems: (saleId: string) => ["saleItems", saleId] as const,
 };
 
-// ============================================================================
-// Queries
-// ============================================================================
 
-/**
- * Hook para obtener listado de clientes con búsqueda
- */
 export function useCustomers(search?: string) {
   return useQuery({
     queryKey: customerKeys.list(search),
@@ -44,9 +35,7 @@ export function useCustomers(search?: string) {
   });
 }
 
-/**
- * Hook para obtener resumen de cuentas corrientes
- */
+
 export function useAccountsSummary() {
   return useQuery({
     queryKey: customerKeys.accountsSummary(),
@@ -54,9 +43,7 @@ export function useAccountsSummary() {
   });
 }
 
-/**
- * Hook para obtener métricas de un cliente específico
- */
+
 export function useCustomerMetrics(customerId: string | undefined) {
   return useQuery({
     queryKey: customerKeys.metrics(customerId || ""),
@@ -66,9 +53,7 @@ export function useCustomerMetrics(customerId: string | undefined) {
   });
 }
 
-/**
- * Hook para obtener items de una venta
- */
+
 export function useSaleItems(saleId: string | undefined) {
   return useQuery({
     queryKey: customerKeys.saleItems(saleId || ""),
@@ -77,13 +62,7 @@ export function useSaleItems(saleId: string | undefined) {
   });
 }
 
-// ============================================================================
-// Customer Mutations
-// ============================================================================
 
-/**
- * Hook para crear un nuevo cliente
- */
 export function useCreateCustomer() {
   const queryClient = useQueryClient();
 
@@ -104,9 +83,7 @@ export function useCreateCustomer() {
   });
 }
 
-/**
- * Hook para actualizar notas de un cliente
- */
+
 export function useUpdateCustomerNotes() {
   const queryClient = useQueryClient();
 
@@ -125,9 +102,7 @@ export function useUpdateCustomerNotes() {
   });
 }
 
-/**
- * Hook para eliminar un cliente
- */
+
 export function useDeleteCustomer() {
   const queryClient = useQueryClient();
 
@@ -148,13 +123,7 @@ export function useDeleteCustomer() {
   });
 }
 
-// ============================================================================
-// Account Mutations
-// ============================================================================
 
-/**
- * Hook para registrar un pago en cuenta corriente
- */
 export function useRegisterPayment() {
   const queryClient = useQueryClient();
 
@@ -186,9 +155,7 @@ export function useRegisterPayment() {
   });
 }
 
-/**
- * Hook para actualizar notas de una cuenta corriente
- */
+
 export function useUpdateAccountNotes() {
   const queryClient = useQueryClient();
 
@@ -207,13 +174,7 @@ export function useUpdateAccountNotes() {
   });
 }
 
-// ============================================================================
-// Sale Items Mutations
-// ============================================================================
 
-/**
- * Hook para agregar item a una venta
- */
 export function useAddSaleItem() {
   const queryClient = useQueryClient();
 
@@ -233,9 +194,7 @@ export function useAddSaleItem() {
   });
 }
 
-/**
- * Hook para actualizar item de una venta
- */
+
 export function useUpdateSaleItem() {
   const queryClient = useQueryClient();
 
@@ -260,9 +219,7 @@ export function useUpdateSaleItem() {
   });
 }
 
-/**
- * Hook para eliminar item de una venta
- */
+
 export function useDeleteSaleItem() {
   const queryClient = useQueryClient();
 

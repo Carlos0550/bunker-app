@@ -30,6 +30,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { businessApi, Multiplier } from "@/api/services/business";
 import { productsApi, Product } from "@/api/services/products";
 import { Search, Loader2, PlusCircle, Package } from "lucide-react";
+import { formatCurrency } from "@/utils/helpers";
 
 interface SaleEditorProps {
   sale: Sale;
@@ -59,7 +60,7 @@ export function SaleEditor({ sale, onSave, onCancel, isLoading }: SaleEditorProp
   const { user } = useAuthStore();
   const businessId = user?.businessId;
 
-  // Multipliers query
+  
   const { data: multipliers = [] } = useQuery({
     queryKey: ["business", "multipliers", businessId],
     queryFn: businessApi.getMultipliers,
@@ -67,7 +68,7 @@ export function SaleEditor({ sale, onSave, onCancel, isLoading }: SaleEditorProp
     enabled: !!businessId,
   });
 
-  // Products Search Query
+  
   const { data: productsData, isLoading: isLoadingProducts } = useQuery({
     queryKey: ["posProducts", searchTerm],
     queryFn: () => productsApi.getProducts({ search: searchTerm }, { page: 1, limit: 10 }),
@@ -91,7 +92,7 @@ export function SaleEditor({ sale, onSave, onCancel, isLoading }: SaleEditorProp
   };
 
   const handleAddProduct = (product: Product) => {
-    // Check if product already in items
+    
     const existingIndex = items.findIndex(item => item.productId === product.id);
     if (existingIndex !== -1) {
       handleUpdateItem(existingIndex, "quantity", items[existingIndex].quantity + 1);
@@ -125,12 +126,6 @@ export function SaleEditor({ sale, onSave, onCancel, isLoading }: SaleEditorProp
     });
   };
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("es-AR", {
-      style: "currency",
-      currency: "ARS",
-    }).format(value);
-  };
 
   const calculateSubtotal = () => {
     return items.reduce((acc, item) => acc + item.quantity * item.unitPrice, 0);
@@ -147,7 +142,7 @@ export function SaleEditor({ sale, onSave, onCancel, isLoading }: SaleEditorProp
 
   const baseForMultipliers = subtotal - discountAmount;
 
-  // Multipliers logic (similar to POS.tsx)
+  
   const activeMultipliers = multipliers.filter((m: Multiplier) => {
     if (!m.isActive) return false;
     return m.paymentMethods.includes(paymentMethod);
@@ -162,7 +157,7 @@ export function SaleEditor({ sale, onSave, onCancel, isLoading }: SaleEditorProp
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
-      {/* Configuration Header */}
+      {}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4 p-4 rounded-2xl bg-secondary/20 border border-border/50 backdrop-blur-sm">
         <div className="space-y-2">
           <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
@@ -209,7 +204,7 @@ export function SaleEditor({ sale, onSave, onCancel, isLoading }: SaleEditorProp
         </div>
       </div>
 
-      {/* Items Section */}
+      {}
       <div className="space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1">
           <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
@@ -223,7 +218,7 @@ export function SaleEditor({ sale, onSave, onCancel, isLoading }: SaleEditorProp
           </div>
         </div>
 
-        {/* Search Bar */}
+        {}
         <div className="relative">
           <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
             {isLoadingProducts ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
@@ -286,7 +281,7 @@ export function SaleEditor({ sale, onSave, onCancel, isLoading }: SaleEditorProp
               key={index} 
               className="group relative p-3 sm:p-4 rounded-xl bg-background/40 border border-border/50 hover:border-primary/30 hover:bg-background/60 transition-all"
             >
-              {/* Mobile Remove Button (Top Right) */}
+              {}
               <button
                 type="button"
                 className="absolute top-2 right-2 sm:hidden p-2 text-destructive hover:bg-destructive/10 rounded-full transition-colors"
@@ -296,7 +291,7 @@ export function SaleEditor({ sale, onSave, onCancel, isLoading }: SaleEditorProp
               </button>
 
               <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
-                {/* Product Info */}
+                {}
                 <div className="flex-1 min-w-0 pr-8 sm:pr-0">
                   <h4 className="font-bold text-sm text-foreground truncate">{item.productName}</h4>
                   <div className="flex gap-2 mt-1 flex-wrap">
@@ -313,10 +308,10 @@ export function SaleEditor({ sale, onSave, onCancel, isLoading }: SaleEditorProp
                   </div>
                 </div>
 
-                {/* Controls Container */}
+                {}
                 <div className="flex flex-wrap items-end sm:items-center gap-3 sm:gap-4 justify-between sm:justify-end w-full sm:w-auto">
                   
-                  {/* Quantity Control */}
+                  {}
                   <div className="space-y-1">
                     <span className="text-[10px] font-medium text-muted-foreground uppercase flex justify-center sm:justify-start">Cant.</span>
                     <div className="flex items-center gap-1 sm:gap-2 bg-secondary/30 rounded-lg p-1 border border-border/50">
@@ -347,7 +342,7 @@ export function SaleEditor({ sale, onSave, onCancel, isLoading }: SaleEditorProp
                     </div>
                   </div>
 
-                  {/* Price Control */}
+                  {}
                   <div className="space-y-1 flex-1 sm:flex-none min-w-[100px]">
                     <span className="text-[10px] font-medium text-muted-foreground uppercase flex justify-end pr-1">Precio Un.</span>
                     <div className="relative">
@@ -362,7 +357,7 @@ export function SaleEditor({ sale, onSave, onCancel, isLoading }: SaleEditorProp
                     </div>
                   </div>
 
-                  {/* Subtotal (Visible on Mobile now too) */}
+                  {}
                   <div className="text-right min-w-[80px] space-y-1 sm:block">
                     <span className="text-[10px] font-medium text-muted-foreground uppercase block">Subtotal</span>
                     <p className="text-sm font-bold text-primary">
@@ -370,7 +365,7 @@ export function SaleEditor({ sale, onSave, onCancel, isLoading }: SaleEditorProp
                     </p>
                   </div>
 
-                  {/* Desktop Remove Button */}
+                  {}
                   <Button
                     type="button"
                     variant="ghost"
@@ -394,7 +389,7 @@ export function SaleEditor({ sale, onSave, onCancel, isLoading }: SaleEditorProp
         )}
       </div>
 
-      {/* Notes & Summary Section */}
+      {}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="space-y-3">
           <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
@@ -449,7 +444,7 @@ export function SaleEditor({ sale, onSave, onCancel, isLoading }: SaleEditorProp
         </div>
       </div>
 
-      {/* Final Action Buttons */}
+      {}
       <div className="pt-4 flex flex-col sm:flex-row justify-end items-center gap-3">
         <Button 
           type="button" 

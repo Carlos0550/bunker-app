@@ -97,7 +97,7 @@ class BusinessController {
         throw createHttpError(401, "No autorizado");
       }
 
-      // If businessId is not in token, fetch from DB
+      
       if (!businessId) {
         const user = await prisma.user.findUnique({
           where: { id: userId },
@@ -134,7 +134,7 @@ class BusinessController {
         throw createHttpError(401, "No autorizado");
       }
 
-      // If businessId is not in token, fetch from DB
+      
       if (!businessId) {
         const user = await prisma.user.findUnique({
           where: { id: userId },
@@ -150,7 +150,7 @@ class BusinessController {
         });
       }
 
-      // Only admin can update multipliers
+      
       if (userRole !== 1 && userRole !== 0) {
         return res.status(403).json({
           success: false,

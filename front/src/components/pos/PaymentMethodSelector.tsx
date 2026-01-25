@@ -43,7 +43,7 @@ export function PaymentMethodSelector({
         ))}
       </div>
 
-      {/* Installments selector for card payments */}
+      {}
       {selected === "CARD" && onInstallmentsChange && (
         <div className="flex items-center gap-2 bg-secondary/30 p-2 rounded-lg border border-border/50">
           <CreditCard className="w-4 h-4 text-primary" />

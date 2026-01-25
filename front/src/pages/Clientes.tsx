@@ -31,8 +31,9 @@ import {
 import { toast } from "sonner";
 import { format, formatDistanceToNow, differenceInDays } from "date-fns";
 import { es } from "date-fns/locale";
+import { formatCurrency } from "@/utils/helpers";
 
-// Import centralized hooks
+
 import {
   useCustomers,
   useAccountsSummary,
@@ -47,7 +48,7 @@ import {
   useDeleteSaleItem,
 } from "@/api/hooks";
 
-// Import components
+
 import { LoadingContainer, StatsCard, StatsGrid, ConfirmDialog } from "@/components/shared";
 import {
   CustomerFormDialog,
@@ -78,11 +79,11 @@ const MONTH_NAMES: Record<string, string> = {
 };
 
 export default function Clientes() {
-  // Search and selection state
+  
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCustomer, setSelectedCustomer] = useState<BusinessCustomer | null>(null);
   
-  // Dialog states
+  
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [isEditingNotes, setIsEditingNotes] = useState(false);
@@ -90,44 +91,38 @@ export default function Clientes() {
   const [isSaleItemsDialogOpen, setIsSaleItemsDialogOpen] = useState(false);
   const [isEditItemDialogOpen, setIsEditItemDialogOpen] = useState(false);
   
-  // Selected items state
+  
   const [selectedAccount, setSelectedAccount] = useState<CurrentAccount | null>(null);
   const [selectedSale, setSelectedSale] = useState<SaleWithItems | null>(null);
   const [selectedItem, setSelectedItem] = useState<SaleItem | null>(null);
   const [customerToDelete, setCustomerToDelete] = useState<BusinessCustomer | null>(null);
   
-  // Payment form state
+  
   const [paymentAmount, setPaymentAmount] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState<"CASH" | "CARD" | "TRANSFER">("CASH");
   const [paymentNotes, setPaymentNotes] = useState("");
   
-  // Notes state
+  
   const [customerNotes, setCustomerNotes] = useState("");
   const [editingAccountNotes, setEditingAccountNotes] = useState<string | null>(null);
   const [accountNotes, setAccountNotes] = useState("");
   
-  // Item form state
+  
   const [itemProductName, setItemProductName] = useState("");
   const [itemQuantity, setItemQuantity] = useState(1);
   const [itemUnitPrice, setItemUnitPrice] = useState(0);
   
-  // Expanded accounts state
+  
   const [expandedAccounts, setExpandedAccounts] = useState<Set<string>>(new Set());
   
-  // Loading states
+  
   const [isLoadingSaleItems, setIsLoadingSaleItems] = useState(false);
   
-  // ============================================================================
-  // Queries using centralized hooks
-  // ============================================================================
   
   const { data: customersData, isLoading: loadingCustomers } = useCustomers(searchTerm);
   const { data: summary, isLoading: loadingSummary } = useAccountsSummary();
   const { data: customerMetrics, isLoading: loadingMetrics } = useCustomerMetrics(selectedCustomer?.id);
   
-  // ============================================================================
-  // Mutations using centralized hooks
-  // ============================================================================
   
   const createMutation = useCreateCustomer();
   const updateNotesMutation = useUpdateCustomerNotes();
@@ -138,15 +133,9 @@ export default function Clientes() {
   const updateItemMutation = useUpdateSaleItem();
   const deleteItemMutation = useDeleteSaleItem();
   
-  // ============================================================================
-  // Derived data
-  // ============================================================================
   
   const customers = customersData?.data || [];
   
-  // ============================================================================
-  // Effects
-  // ============================================================================
   
   useEffect(() => {
     if (createMutation.isSuccess) {
@@ -183,9 +172,6 @@ export default function Clientes() {
     }
   }, [updateAccountNotesMutation.isSuccess]);
   
-  // ============================================================================
-  // Handlers
-  // ============================================================================
   
   const handleSaveCustomer = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -283,7 +269,7 @@ export default function Clientes() {
     });
   };
   
-  // Item handlers
+  
   const resetItemForm = () => {
     setSelectedItem(null);
     setItemProductName("");
@@ -348,9 +334,6 @@ export default function Clientes() {
     }
   };
   
-  // ============================================================================
-  // Helper functions
-  // ============================================================================
   
   const getDaysInfo = (account: CurrentAccount) => {
     const days = differenceInDays(new Date(), new Date(account.createdAt));
@@ -368,14 +351,11 @@ export default function Clientes() {
     }
   };
   
-  // ============================================================================
-  // Render
-  // ============================================================================
   
   return (
     <MainLayout title="Clientes">
       <div className="space-y-4 sm:space-y-6">
-        {/* Header */}
+        {}
         <div className="flex items-start justify-between gap-2" data-tour="clientes-header">
           <div className="min-w-0">
             <h1 className="text-xl sm:text-2xl font-bold text-foreground">Clientes y Cuentas</h1>
@@ -390,7 +370,7 @@ export default function Clientes() {
           </Button>
         </div>
         
-        {/* Summary Stats */}
+        {}
         <StatsGrid columns={4} data-tour="clientes-stats">
           <StatsCard
             title="Total Clientes"
@@ -401,7 +381,7 @@ export default function Clientes() {
           />
           <StatsCard
             title="Deuda Total"
-            value={`$${(summary?.totalDebt || 0).toLocaleString()}`}
+            value={formatCurrency(summary?.totalDebt || 0, true)}
             icon={Banknote}
             iconBgColor="bg-destructive/20"
             iconColor="text-destructive"
@@ -422,9 +402,9 @@ export default function Clientes() {
           />
         </StatsGrid>
         
-        {/* Main Content Grid */}
+        {}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-          {/* Customer List */}
+          {}
           <CustomerList
             customers={customers}
             selectedCustomerId={selectedCustomer?.id}
@@ -435,7 +415,7 @@ export default function Clientes() {
             isLoading={loadingCustomers}
           />
           
-          {/* Customer Detail Panel */}
+          {}
           <div className="lg:col-span-2 bunker-card min-h-[400px]">
             {!selectedCustomer ? (
               <div className="flex flex-col items-center justify-center h-full p-8 text-muted-foreground">
@@ -448,7 +428,7 @@ export default function Clientes() {
             ) : customerMetrics ? (
               <ScrollArea className="h-full max-h-[calc(100vh-300px)]">
                 <div className="p-4 sm:p-6 space-y-6">
-                  {/* Customer Header */}
+                  {}
                   <div className="flex items-start justify-between">
                     <div>
                       <h2 className="text-xl font-bold text-foreground">{customerMetrics.customer.name}</h2>
@@ -462,12 +442,12 @@ export default function Clientes() {
                     </div>
                     {customerMetrics.creditLimit && (
                       <Badge variant="outline" className="shrink-0">
-                        Límite: ${customerMetrics.creditLimit.toLocaleString()}
+                        Límite: {formatCurrency(customerMetrics.creditLimit)}
                       </Badge>
                     )}
                   </div>
                   
-                  {/* Customer Metrics */}
+                  {}
                   <CustomerMetricsCards
                     totalDebt={customerMetrics.totalDebt}
                     totalPaid={customerMetrics.totalPaid}
@@ -475,7 +455,7 @@ export default function Clientes() {
                     totalAccountsCount={customerMetrics.totalAccountsCount}
                   />
                   
-                  {/* Notes Section */}
+                  {}
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <h3 className="text-sm font-medium text-muted-foreground">Notas del cliente</h3>
@@ -525,7 +505,7 @@ export default function Clientes() {
                     )}
                   </div>
                   
-                  {/* Accounts by Month */}
+                  {}
                   <div className="space-y-4">
                     <h3 className="text-sm font-medium text-muted-foreground">Cuentas Corrientes</h3>
                     {customerMetrics.accountsByMonth.length === 0 ? (
@@ -572,7 +552,7 @@ export default function Clientes() {
           </div>
         </div>
         
-        {/* Customer Form Dialog */}
+        {}
         <CustomerFormDialog
           open={isDialogOpen}
           onOpenChange={setIsDialogOpen}
@@ -580,7 +560,7 @@ export default function Clientes() {
           isLoading={createMutation.isPending}
         />
         
-        {/* Payment Dialog */}
+        {}
         <PaymentDialog
           open={isPaymentOpen}
           onOpenChange={setIsPaymentOpen}
@@ -595,7 +575,7 @@ export default function Clientes() {
           isLoading={paymentMutation.isPending}
         />
         
-        {/* Delete Confirmation Dialog */}
+        {}
         <ConfirmDialog
           open={isDeleteDialogOpen}
           onOpenChange={setIsDeleteDialogOpen}
@@ -607,7 +587,7 @@ export default function Clientes() {
           variant="destructive"
         />
         
-        {/* Sale Items Dialog */}
+        {}
         <Dialog open={isSaleItemsDialogOpen} onOpenChange={setIsSaleItemsDialogOpen}>
           <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
             <DialogHeader>
@@ -617,7 +597,7 @@ export default function Clientes() {
               <div className="space-y-4">
                 <div className="p-3 rounded-lg bg-secondary/30 text-sm">
                   <p className="text-muted-foreground">Venta #{selectedSale.saleNumber}</p>
-                  <p className="font-semibold">Total: ${selectedSale.total.toLocaleString()}</p>
+                  <p className="font-semibold">Total: {formatCurrency(selectedSale.total)}</p>
                 </div>
                 
                 <div className="space-y-2">
@@ -626,7 +606,7 @@ export default function Clientes() {
                       <div className="min-w-0 flex-1">
                         <p className="font-medium truncate">{item.productName}</p>
                         <p className="text-sm text-muted-foreground">
-                          {item.quantity} x ${item.unitPrice.toLocaleString()} = ${item.totalPrice.toLocaleString()}
+                          {item.quantity} x {formatCurrency(item.unitPrice)} = {formatCurrency(item.totalPrice)}
                         </p>
                       </div>
                       <div className="flex gap-1">
@@ -659,7 +639,7 @@ export default function Clientes() {
           </DialogContent>
         </Dialog>
         
-        {/* Edit Item Dialog */}
+        {}
         <Dialog open={isEditItemDialogOpen} onOpenChange={setIsEditItemDialogOpen}>
           <DialogContent className="max-w-sm">
             <DialogHeader>
@@ -697,7 +677,7 @@ export default function Clientes() {
                 </div>
               </div>
               <div className="p-2 rounded bg-secondary/30 text-sm">
-                Total: ${(itemQuantity * itemUnitPrice).toLocaleString()}
+                Total: {formatCurrency(itemQuantity * itemUnitPrice)}
               </div>
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsEditItemDialogOpen(false)}>

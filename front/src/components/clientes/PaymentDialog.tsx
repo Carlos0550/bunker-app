@@ -19,6 +19,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
 import { CurrentAccount } from "@/api/services/customers";
+import { formatCurrency } from "@/utils/helpers";
 
 interface PaymentDialogProps {
   open: boolean;
@@ -71,7 +72,7 @@ export function PaymentDialog({
             <div className="p-3 rounded-lg bg-secondary/30">
               <p className="text-sm text-muted-foreground">Saldo pendiente</p>
               <p className="text-xl font-bold text-destructive">
-                ${account.currentBalance.toLocaleString()}
+                {formatCurrency(account.currentBalance)}
               </p>
             </div>
           )}

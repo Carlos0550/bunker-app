@@ -56,6 +56,7 @@ import {
   PaymentMethodSelector,
   type CartItem,
 } from "@/components/pos";
+import { formatCurrency } from "@/utils/helpers";
 
 export default function POS() {
   const queryClient = useQueryClient();
@@ -85,12 +86,11 @@ export default function POS() {
   const [showStockWarning, setShowStockWarning] = useState(false);
   const [outOfStockItems, setOutOfStockItems] = useState<CartItem[]>([]);
   
-  // Barcode Scanner Buffer
+  
   const barcodeBuffer = useRef<string>("");
   const lastKeyTime = useRef<number>(0);
 
 
-  // Queries
   const { data: productsData, isLoading: loadingProducts } = useQuery({
     queryKey: ["posProducts", searchTerm],
     queryFn: () =>
@@ -104,7 +104,7 @@ export default function POS() {
   const { user } = useAuthStore();
   const businessId = user?.businessId;
 
-  // Query para multiplicadores del negocio
+  
   const { data: multipliers = [] } = useQuery({
     queryKey: ["business", "multipliers", businessId],
     queryFn: businessApi.getMultipliers,
@@ -112,7 +112,7 @@ export default function POS() {
     enabled: !!businessId,
   });
 
-  // Cargar clientes solo cuando venta a crédito está activa
+  
   const { data: customersData, isLoading: loadingCustomers } = useQuery({
     queryKey: ["posCustomers"],
     queryFn: () => customersApi.getCustomers({ page: 1, limit: 100 }),
@@ -123,23 +123,23 @@ export default function POS() {
   const products = productsData?.data || [];
   const customers = customersData?.data || [];
 
-  // Mutation para crear cliente rápido
+  
   const createCustomerMutation = useMutation({
     mutationFn: (data: typeof newCustomerData) => {
-      // Usar teléfono/email como identificador principal
+      
       const isEmail = data.phoneOrEmail.includes("@");
       return customersApi.createCustomer({
         identifier: data.phoneOrEmail,
         name: data.name,
         phone: !isEmail ? data.phoneOrEmail : undefined,
         email: isEmail ? data.phoneOrEmail : undefined,
-        // El DNI se puede agregar a notas por ahora (encriptado en backend si es necesario)
+        
         notes: data.dni ? `DNI: ${data.dni}` : undefined,
       });
     },
     onSuccess: (result) => {
       toast.success("Cliente creado exitosamente");
-      // Usar el customerId (Customer.id), no el BusinessCustomer.id
+      
       setSelectedCustomer(result.customerId);
       setShowNewCustomer(false);
       setNewCustomerData({ phoneOrEmail: "", name: "", dni: "" });
@@ -151,12 +151,11 @@ export default function POS() {
   });
 
 
-  // Handlers
   const handleAddToCart = (product: Product) => {
     const existingItem = cart.find((item) => item.productId === product.id);
     
     if (existingItem) {
-      // Warn if exceeding stock but don't block
+      
       if (product.stock !== undefined && existingItem.quantity >= product.stock) {
         toast.warning(`Atención: Stock excedido (${product.stock} disponibles)`);
       }
@@ -169,7 +168,7 @@ export default function POS() {
       );
       toast.success(`+1 ${product.name}`);
     } else {
-      // Warn if no stock but still add
+      
       if (product.stock === 0) {
         toast.warning("Atención: Producto sin stock disponible");
       }
@@ -190,7 +189,7 @@ export default function POS() {
     }
   };
 
-  // Barcode Scanner Logic
+  
   const processBarcode = async (code: string) => {
     try {
       toast.loading("Buscando producto...", { id: "scan-search" });
@@ -207,7 +206,7 @@ export default function POS() {
       toast.error("Error al buscar el producto");
     }
   };
-  // Global Key Listener for Scanner
+  
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
@@ -218,7 +217,7 @@ export default function POS() {
       const isNewScan = currentTime - lastKeyTime.current > 300;
       lastKeyTime.current = currentTime;
 
-      // 1. Manejo de Enter
+      
       if (e.key === "Enter") {
         if (isSearchInput) {
           const input = target as HTMLInputElement;
@@ -226,7 +225,7 @@ export default function POS() {
           if (value.length >= 3) {
             e.preventDefault();
             processBarcode(value);
-            setSearchTerm(""); // Limpiar búsqueda para el siguiente
+            setSearchTerm(""); 
           }
           return;
         }
@@ -239,7 +238,7 @@ export default function POS() {
         return;
       }
 
-      // 2. Ignorar otros inputs
+      
       if (
         !isSearchInput && (
           target.tagName === "INPUT" ||
@@ -250,16 +249,16 @@ export default function POS() {
         return;
       }
 
-      // 3. Auto-foco si no estamos enfocados
+      
       if (!isSearchInput && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
         const searchInput = document.querySelector('input[placeholder*="Buscar por nombre, SKU o código"]') as HTMLInputElement;
         if (searchInput) {
           searchInput.focus();
-          // No prevenimos el default para que el carácter se inserte normalmente
+          
         }
       }
 
-      // 4. Buffer global
+      
       if (e.key.length === 1 && !isSearchInput) {
         if (isNewScan) barcodeBuffer.current = "";
         barcodeBuffer.current += e.key;
@@ -268,12 +267,12 @@ export default function POS() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [cart]); // Dependencia necesaria para que handleAddToCart tenga el carrito actualizado
+  }, [cart]); 
 
   const handleManualInput = async () => {
     if (!manualInput.trim()) return;
 
-    // Parsear formato: CANTIDAD NOMBRE PRECIO
+    
     const regex = /^(\d+)\s+(.+?)\s+(\d+(?:\.\d{2})?)$/;
     const match = manualInput.trim().match(regex);
 
@@ -287,7 +286,7 @@ export default function POS() {
     const quantity = parseInt(quantityStr, 10);
     const price = parseFloat(priceStr);
 
-    // Agregar al carrito como producto manual
+    
     const manualItem: CartItem = {
       id: crypto.randomUUID(),
       productId: undefined,
@@ -300,7 +299,7 @@ export default function POS() {
 
     setCart([...cart, manualItem]);
     
-    // Registrar el producto manual en el backend para futura referencia
+    
     try {
       await salesApi.createManualProduct({
         originalText: manualInput.trim(),
@@ -324,7 +323,7 @@ export default function POS() {
     const newQty = item.quantity + delta;
     if (newQty <= 0) return;
 
-    // Warn if exceeding stock but don't block
+    
     if (!item.isManual && item.maxStock !== undefined && delta > 0) {
       if (newQty > item.maxStock) {
         toast.warning(`Atención: Stock excedido (${item.maxStock} disponibles)`);
@@ -363,17 +362,17 @@ export default function POS() {
     createCustomerMutation.mutate(newCustomerData);
   };
 
-  // Cálculos
+  
   const subtotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
   const discountAmount =
     discountType === "PERCENTAGE" ? (subtotal * discount) / 100 : discount;
   
-  // Calcular multiplicadores activos según método de pago
+  
   const activeMultipliers = multipliers.filter((m: Multiplier) => {
     if (!m.isActive) return false;
     if (!m.paymentMethods.includes(paymentMethod)) return false;
 
-    // Check installments condition for card payments
+    
     if (
       paymentMethod === "CARD" &&
       m.installmentsCondition &&
@@ -396,7 +395,7 @@ export default function POS() {
   
   const total = subtotal - discountAmount + multipliersTotal;
 
-  // Procesar venta
+  
   const processSale = async (ignoreStockWarning = false) => {
     if (cart.length === 0) {
       toast.error("Agrega productos al carrito");
@@ -408,7 +407,7 @@ export default function POS() {
       return;
     }
 
-    // Check for out of stock items
+    
     if (!ignoreStockWarning) {
       const problematicItems = cart.filter(
         (item) =>
@@ -444,15 +443,15 @@ export default function POS() {
         discountType: discount > 0 ? discountType : undefined,
         discountValue: discount > 0 ? discount : undefined,
         notes: notes || undefined,
-        total, // Enviamos el total calculado con multiplicadores
+        total, 
       };
 
       const sale = await salesApi.createSale(saleData);
 
-      // Show success dialog with print option
+      
       setCompletedSale(sale);
       setShowSaleSuccess(true);
-      setShowStockWarning(false); // Ensure warning is closed
+      setShowStockWarning(false); 
 
       clearCart();
       queryClient.invalidateQueries({ queryKey: ["posProducts"] });
@@ -469,7 +468,7 @@ export default function POS() {
   return (
     <MainLayout title="Punto de Venta">
       <div className="relative">
-        {/* Products Section - Full width on mobile, with margin on desktop for fixed cart */}
+        {}
         <div className="lg:mr-[420px] flex flex-col gap-4">
           <ManualProductInput
               value={manualInput}
@@ -491,7 +490,7 @@ export default function POS() {
           </div>
         </div>
 
-        {/* Floating Cart Button - Mobile Only */}
+        {}
         <button
           onClick={() => setShowCartModal(true)}
           className="lg:hidden fixed bottom-6 right-6 z-40 w-16 h-16 bg-primary text-primary-foreground rounded-full shadow-lg flex items-center justify-center hover:scale-110 transition-transform"
@@ -504,12 +503,12 @@ export default function POS() {
           )}
         </button>
 
-        {/* Cart Section - Fixed on Desktop, Modal on Mobile */}
+        {}
         <div className={`
           lg:fixed lg:top-20 lg:right-6 lg:w-[400px] lg:max-h-[calc(100vh-7rem)]
           ${showCartModal ? 'block' : 'hidden lg:block'}
         `}>
-          {/* Mobile Modal Overlay */}
+          {}
           {showCartModal && (
             <div
               className="lg:hidden fixed inset-0 bg-black/50 z-40"
@@ -517,13 +516,13 @@ export default function POS() {
             />
           )}
 
-          {/* Cart Content */}
+          {}
           <div className={`
             bunker-card flex flex-col overflow-hidden
             lg:relative
             ${showCartModal ? 'fixed inset-x-4 top-20 bottom-4 z-50 max-h-[calc(100vh-7rem)]' : ''}
           `} data-tour="pos-cart">
-            {/* Cart Header */}
+            {}
             <div className="p-4 border-b border-border flex-shrink-0">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
@@ -532,7 +531,7 @@ export default function POS() {
                 </h2>
                 <div className="flex items-center gap-2">
                   <Badge variant="outline">{cart.length} items</Badge>
-                  {/* Close button for mobile modal */}
+                  {}
                   {showCartModal && (
                     <Button
                       variant="ghost"
@@ -546,7 +545,7 @@ export default function POS() {
                 </div>
               </div>
 
-              {/* Venta a crédito */}
+              {}
               <div className="flex items-center justify-between p-2 bg-secondary/30 rounded-lg" data-tour="pos-credit">
                 <div className="flex items-center gap-2">
                   <CreditCard className="w-4 h-4 text-muted-foreground" />
@@ -555,7 +554,7 @@ export default function POS() {
                 <Switch checked={isCredit} onCheckedChange={handleCreditToggle} />
               </div>
 
-            {/* Selector de cliente - Solo visible cuando isCredit está activo */}
+            {}
             {isCredit && (
               <div className="mt-3 space-y-2">
                 <div className="flex items-center gap-2">
@@ -601,7 +600,7 @@ export default function POS() {
             )}
           </div>
 
-          {/* Cart Items */}
+          {}
           <div className="flex-1 overflow-y-auto scrollbar-thin p-4 space-y-2 min-h-0">
             {cart.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
@@ -621,9 +620,9 @@ export default function POS() {
             )}
           </div>
 
-          {/* Cart Footer */}
+          {}
           <div className="p-4 border-t border-border space-y-4 flex-shrink-0">
-            {/* Discount */}
+            {}
             <div className="flex items-center gap-2" data-tour="pos-discount">
               <Percent className="w-4 h-4 text-muted-foreground" />
               <Select
@@ -649,7 +648,7 @@ export default function POS() {
               />
             </div>
 
-            {/* Notes */}
+            {}
             <Textarea
               placeholder="Notas de la venta (opcional)"
               value={notes}
@@ -657,33 +656,33 @@ export default function POS() {
               className="bg-secondary/50 h-16 resize-none"
             />
 
-            {/* Totals */}
+            {}
             <div className="space-y-2 text-sm">
               <div className="flex justify-between text-muted-foreground">
                 <span>Subtotal</span>
-                <span>${subtotal.toLocaleString()}</span>
+                <span>{formatCurrency(subtotal)}</span>
               </div>
               {discount > 0 && (
                 <div className="flex justify-between text-success">
                   <span>
-                    Descuento ({discountType === "PERCENTAGE" ? `${discount}%` : `$${discount}`})
+                    Descuento ({discountType === "PERCENTAGE" ? `${discount}%` : formatCurrency(discount)})
                   </span>
-                  <span>-${discountAmount.toLocaleString()}</span>
+                  <span>-{formatCurrency(discountAmount)}</span>
                 </div>
               )}
               {activeMultipliers.map((multiplier: Multiplier) => (
                 <div key={multiplier.id} className="flex justify-between text-muted-foreground">
                   <span>{multiplier.name} ({(multiplier.value * 100).toFixed(2)}%)</span>
-                  <span>${((subtotal - discountAmount) * multiplier.value).toLocaleString()}</span>
+                  <span>{formatCurrency((subtotal - discountAmount) * multiplier.value)}</span>
                 </div>
               ))}
               <div className="flex justify-between text-lg font-bold text-foreground pt-2 border-t border-border">
                 <span>Total</span>
-                <span className="text-primary">${total.toLocaleString()}</span>
+                <span className="text-primary">{formatCurrency(total)}</span>
               </div>
             </div>
 
-            {/* Payment Method - Solo visible cuando NO es crédito */}
+            {}
             {!isCredit && (
               <PaymentMethodSelector
                 selected={paymentMethod}
@@ -693,7 +692,7 @@ export default function POS() {
               />
             )}
 
-            {/* Process Sale */}
+            {}
             <Button
               className="w-full h-12 text-lg font-semibold bunker-glow"
               onClick={() => processSale(false)}
@@ -712,7 +711,7 @@ export default function POS() {
         </div>
       </div>
 
-      {/* Manual Input Help Dialog */}
+      {}
       <Dialog open={showManualHelp} onOpenChange={setShowManualHelp}>
         <DialogContent>
           <DialogHeader>
@@ -749,7 +748,7 @@ export default function POS() {
         </DialogContent>
       </Dialog>
 
-      {/* New Customer Quick Dialog */}
+      {}
       <Dialog open={showNewCustomer} onOpenChange={setShowNewCustomer}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -816,7 +815,7 @@ export default function POS() {
         </DialogContent>
       </Dialog>
 
-      {/* Escáner de códigos de barras */}
+      {}
       <BarcodeScanner
         open={scannerOpen}
         onClose={() => setScannerOpen(false)}
@@ -825,10 +824,10 @@ export default function POS() {
           try {
             const product = await productsApi.findByBarcode(code);
             if (product) {
-              // Producto encontrado, agregarlo al carrito
+              
               handleAddToCart(product);
-              // Feedback visual extra si se quiere, pero handleAddToCart ya tiene toast
-              setScannerOpen(false); // Opcional: cerrar scanner al encontrar? Mejor dejar abierto para escanear varios
+              
+              setScannerOpen(false); 
             } else {
               toast.error("Producto no encontrado", {
                 description: `No existe producto con código: ${code}`,
@@ -842,7 +841,7 @@ export default function POS() {
         }}
       />
       
-      {/* Stock Warning Dialog */}
+      {}
       <AlertDialog open={showStockWarning} onOpenChange={setShowStockWarning}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -887,7 +886,7 @@ export default function POS() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Sale Success Dialog with Print Option */}
+      {}
       <SaleSuccessDialog
         open={showSaleSuccess}
         onClose={() => {

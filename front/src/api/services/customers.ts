@@ -153,7 +153,7 @@ export interface UpdateSaleItemData {
 }
 
 export const customersApi = {
-  // Crear cliente
+  
   createCustomer: async (data: CreateCustomerData): Promise<BusinessCustomer> => {
     const response = await client.post<{ success: boolean; data: BusinessCustomer }>(
       '/customers',
@@ -162,7 +162,7 @@ export const customersApi = {
     return response.data.data;
   },
 
-  // Obtener clientes
+  
   getCustomers: async (params: {
     search?: string;
     page?: number;
@@ -183,7 +183,7 @@ export const customersApi = {
     return { data: response.data.data, pagination: response.data.pagination };
   },
 
-  // Obtener detalle de cliente
+  
   getCustomerDetail: async (id: string): Promise<BusinessCustomer & {
     totalDebt: number;
     totalPaid: number;
@@ -195,7 +195,7 @@ export const customersApi = {
     return response.data.data;
   },
 
-  // Actualizar cliente
+  
   updateCustomer: async (
     id: string,
     data: { creditLimit?: number; notes?: string }
@@ -207,7 +207,7 @@ export const customersApi = {
     return response.data.data;
   },
 
-  // Obtener cuentas corrientes
+  
   getCurrentAccounts: async (params: {
     status?: string;
     page?: number;
@@ -228,7 +228,7 @@ export const customersApi = {
     return { data: response.data.data, pagination: response.data.pagination };
   },
 
-  // Registrar pago
+  
   registerPayment: async (
     accountId: string,
     data: {
@@ -244,7 +244,7 @@ export const customersApi = {
     return response.data.data;
   },
 
-  // Obtener historial de pagos
+  
   getAccountPayments: async (accountId: string): Promise<AccountPayment[]> => {
     const response = await client.get<{ success: boolean; data: AccountPayment[] }>(
       `/customers/accounts/${accountId}/payments`
@@ -252,7 +252,7 @@ export const customersApi = {
     return response.data.data;
   },
 
-  // Obtener resumen de cuentas
+  
   getAccountsSummary: async (): Promise<AccountsSummary> => {
     const response = await client.get<{ success: boolean; data: AccountsSummary }>(
       '/customers/accounts/summary'
@@ -260,7 +260,7 @@ export const customersApi = {
     return response.data.data;
   },
 
-  // Obtener métricas de un cliente
+  
   getCustomerMetrics: async (id: string): Promise<CustomerMetrics> => {
     const response = await client.get<{ success: boolean; data: CustomerMetrics }>(
       `/customers/${id}/metrics`
@@ -275,7 +275,7 @@ export const customersApi = {
     return response.data.message;
   },
 
-  // Sale items management
+  
   getSaleItems: async (saleId: string): Promise<SaleWithItems> => {
     const response = await client.get<{ success: boolean; data: SaleWithItems }>(
       `/customers/sales/${saleId}/items`
@@ -306,7 +306,7 @@ export const customersApi = {
     return response.data.data;
   },
 
-  // Account notes
+  
   updateAccountNotes: async (accountId: string, notes: string): Promise<CurrentAccount> => {
     const response = await client.patch<{ success: boolean; data: CurrentAccount }>(
       `/customers/accounts/${accountId}/notes`,

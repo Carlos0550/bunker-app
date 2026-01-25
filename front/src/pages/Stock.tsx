@@ -49,7 +49,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { toast } from "sonner";
 
-// Import centralized hooks
+
 import {
   useStockProducts,
   useStockLowProducts,
@@ -57,7 +57,7 @@ import {
   useStockMovement,
 } from "@/api/hooks";
 
-// Import shared components
+
 import { LoadingContainer, EmptyState, StatsCard, StatsGrid } from "@/components/shared";
 
 interface StockMovement {
@@ -78,21 +78,18 @@ const movementTypeConfig = {
 };
 
 export default function Stock() {
-  // Estados para búsqueda y paginación de inventario
+  
   const [inventorySearch, setInventorySearch] = useState("");
   const [inventoryPage, setInventoryPage] = useState(1);
   const [inventoryLimit] = useState(10);
   
-  // Estados para búsqueda de movimientos (local por ahora)
+  
   const [movementSearch, setMovementSearch] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   
-  // Movimientos locales (temporal hasta que haya API)
+  
   const [localMovements, setLocalMovements] = useState<StockMovement[]>([]);
 
-  // ============================================================================
-  // Queries using centralized hooks
-  // ============================================================================
   
   const { data: productsData, isLoading: loadingProducts } = useStockProducts(
     inventorySearch, 
@@ -104,12 +101,12 @@ export default function Stock() {
   
   const stockMovementMutation = useStockMovement();
 
-  // Derived data
+  
   const products = productsData?.data || [];
   const pagination = productsData?.pagination;
   const allProducts = allProductsData?.data || [];
 
-  // Calcular estadísticas de movimientos locales
+  
   const todayMovements = localMovements.filter(m => {
     const today = new Date();
     const movementDate = new Date(m.createdAt);
@@ -119,10 +116,7 @@ export default function Stock() {
   const todayInCount = todayMovements.filter(m => m.type === "in").reduce((sum, m) => sum + m.quantity, 0);
   const todayOutCount = todayMovements.filter(m => m.type === "out").reduce((sum, m) => sum + m.quantity, 0);
 
-  // ============================================================================
-  // Handlers
-  // ============================================================================
-
+  
   const handleNewMovement = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
@@ -144,7 +138,7 @@ export default function Stock() {
         currentStock: product.stock 
       });
       
-      // Registrar movimiento local
+      
       const movement: StockMovement = {
         id: `MOV-${Date.now()}`,
         productId,
@@ -159,7 +153,7 @@ export default function Stock() {
       setLocalMovements((prev) => [movement, ...prev]);
       setIsDialogOpen(false);
     } catch (error) {
-      // Error ya manejado en el hook
+      
     }
   };
 
@@ -169,7 +163,7 @@ export default function Stock() {
       m.id.toLowerCase().includes(movementSearch.toLowerCase())
   );
 
-  // Paginación
+  
   const totalPages = pagination?.totalPages || 1;
   const currentPage = pagination?.page || 1;
 
@@ -206,14 +200,11 @@ export default function Stock() {
     return pages;
   };
 
-  // ============================================================================
-  // Render
-  // ============================================================================
-
+  
   return (
     <MainLayout title="Control de Stock">
       <div className="space-y-6">
-        {/* Header */}
+        {}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Control de Stock</h1>
@@ -289,7 +280,7 @@ export default function Stock() {
           </Dialog>
         </div>
 
-        {/* Stats */}
+        {}
         <StatsGrid columns={3}>
           <StatsCard
             title="Entradas Hoy"
@@ -314,7 +305,7 @@ export default function Stock() {
           />
         </StatsGrid>
 
-        {/* Tabs */}
+        {}
         <Tabs defaultValue="inventory" className="space-y-4">
           <TabsList className="bg-secondary/50">
             <TabsTrigger value="inventory">Inventario</TabsTrigger>
@@ -329,7 +320,7 @@ export default function Stock() {
             </TabsTrigger>
           </TabsList>
 
-          {/* Tab Inventario */}
+          {}
           <TabsContent value="inventory" className="space-y-4">
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="relative flex-1">
@@ -413,7 +404,7 @@ export default function Stock() {
               )}
             </div>
 
-            {/* Paginación */}
+            {}
             {pagination && pagination.totalPages > 1 && (
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4">
                 <p className="text-sm text-muted-foreground">
@@ -446,7 +437,7 @@ export default function Stock() {
             )}
           </TabsContent>
 
-          {/* Tab Movimientos */}
+          {}
           <TabsContent value="movements" className="space-y-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -507,7 +498,7 @@ export default function Stock() {
             </div>
           </TabsContent>
 
-          {/* Tab Alertas */}
+          {}
           <TabsContent value="alerts" className="space-y-4">
             {lowStockProducts.length === 0 ? (
               <div className="bunker-card p-12">

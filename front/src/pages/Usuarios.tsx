@@ -45,10 +45,10 @@ import {
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
 
-// Import centralized hooks
+
 import { useUsers, useCreateUser, useUpdateUser, useDeleteUser } from "@/api/hooks";
 
-// Import shared components
+
 import { LoadingContainer, EmptyState, ConfirmDialog } from "@/components/shared";
 
 const ALL_PERMISSIONS = ["POS", "PRODUCTOS", "VENTAS", "CLIENTES", "REPORTES", "CONFIGURACION"];
@@ -87,19 +87,13 @@ export default function Usuarios() {
     password: "",
   });
 
-  // ============================================================================
-  // Queries and mutations from centralized hooks
-  // ============================================================================
   
   const { data: users = [], isLoading } = useUsers();
   const createMutation = useCreateUser();
   const updateMutation = useUpdateUser();
   const deleteMutation = useDeleteUser();
 
-  // ============================================================================
-  // Handlers
-  // ============================================================================
-
+  
   const resetForm = () => {
     setFormData({ name: "", email: "", password: "" });
     setSelectedRole(2);
@@ -136,7 +130,7 @@ export default function Usuarios() {
     let finalRole = selectedRole;
     let finalPermissions = selectedPermissions;
 
-    // Si es usuario y tiene todos los permisos, cambiar a admin
+    
     if (selectedRole === 2 && selectedPermissions.length === ALL_PERMISSIONS.length) {
       finalRole = 1;
       finalPermissions = [];
@@ -201,10 +195,7 @@ export default function Usuarios() {
     }
   };
 
-  // ============================================================================
-  // Helper functions
-  // ============================================================================
-
+  
   const getRoleBadge = (role: number) => {
     if (role === 0) return <Badge variant="default" className="bg-purple-500 whitespace-nowrap">Super Admin</Badge>;
     if (role === 1) return <Badge variant="default" className="whitespace-nowrap">Administrador</Badge>;
@@ -218,14 +209,11 @@ export default function Usuarios() {
     return <Badge variant="default" className="bg-green-500">Activo</Badge>;
   };
 
-  // ============================================================================
-  // Render
-  // ============================================================================
-
+  
   return (
     <MainLayout>
       <div className="space-y-4 sm:space-y-6 w-full max-w-full overflow-x-hidden">
-        {/* Header */}
+        {}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="min-w-0 flex-1">
             <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground flex items-center gap-2 sm:gap-3">
@@ -249,7 +237,7 @@ export default function Usuarios() {
           </Button>
         </div>
 
-        {/* Tabla de usuarios */}
+        {}
         <div className="bunker-card overflow-hidden p-0 w-full max-w-full">
           {isLoading ? (
             <LoadingContainer className="p-8 sm:p-12" />
@@ -269,7 +257,7 @@ export default function Usuarios() {
             </div>
           ) : (
             <>
-              {/* Vista móvil: Cards */}
+              {}
               <div className="block md:hidden p-3 sm:p-4 space-y-3">
                 {users.map((user) => (
                   <div key={user.id} className="bunker-card p-3 border border-border/50">
@@ -342,7 +330,7 @@ export default function Usuarios() {
                 ))}
               </div>
 
-              {/* Vista desktop: Tabla */}
+              {}
               <div className="hidden md:block overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -417,7 +405,7 @@ export default function Usuarios() {
           )}
         </div>
 
-        {/* Dialog para crear/editar usuario */}
+        {}
         <Dialog open={isDialogOpen} onOpenChange={(open) => {
           setIsDialogOpen(open);
           if (!open) resetForm();
@@ -431,7 +419,7 @@ export default function Usuarios() {
             </DialogHeader>
 
             <div className="space-y-4 sm:space-y-6 py-4">
-              {/* Datos básicos */}
+              {}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Nombre *</Label>
@@ -454,7 +442,7 @@ export default function Usuarios() {
                 </div>
               </div>
 
-              {/* Password recovery */}
+              {}
               {editingUser ? (
                 <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
                   <div className="flex items-center justify-between">
@@ -496,7 +484,7 @@ export default function Usuarios() {
                 </div>
               )}
 
-              {/* Selección de rol */}
+              {}
               <div className="space-y-2">
                 <Label>Rol</Label>
                 <Select
@@ -527,7 +515,7 @@ export default function Usuarios() {
                 </Select>
               </div>
 
-              {/* Permisos (solo si es usuario) */}
+              {}
               {selectedRole === 2 && (
                 <div className="space-y-4 p-4 border rounded-lg bg-secondary/20">
                   <div>
@@ -537,7 +525,7 @@ export default function Usuarios() {
                     </p>
                   </div>
 
-                  {/* Roles predefinidos */}
+                  {}
                   <div className="space-y-2">
                     <Label className="text-sm">Roles Predefinidos (opcional)</Label>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -555,7 +543,7 @@ export default function Usuarios() {
                     </div>
                   </div>
 
-                  {/* Permisos individuales */}
+                  {}
                   <div className="space-y-3">
                     <Label className="text-sm">O personaliza los permisos:</Label>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -605,7 +593,7 @@ export default function Usuarios() {
           </DialogContent>
         </Dialog>
 
-        {/* Delete Confirmation Dialog */}
+        {}
         <ConfirmDialog
           open={deleteDialogOpen}
           onOpenChange={setDeleteDialogOpen}

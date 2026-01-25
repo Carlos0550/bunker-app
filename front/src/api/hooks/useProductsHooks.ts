@@ -11,9 +11,6 @@ import {
 } from "../services/products";
 import { salesApi, ManualProduct } from "../services/sales";
 
-// ============================================================================
-// Query Keys
-// ============================================================================
 
 export const productKeys = {
   all: ["products"] as const,
@@ -27,13 +24,7 @@ export const productKeys = {
   linkProducts: (search: string) => ["linkProducts", search] as const,
 };
 
-// ============================================================================
-// Queries
-// ============================================================================
 
-/**
- * Hook para obtener estadísticas de productos (todos los productos sin filtros)
- */
 export function useProductsStats() {
   return useQuery({
     queryKey: productKeys.stats(),
@@ -41,9 +32,7 @@ export function useProductsStats() {
   });
 }
 
-/**
- * Hook para obtener categorías
- */
+
 export function useCategories() {
   return useQuery({
     queryKey: productKeys.categories(),
@@ -51,9 +40,7 @@ export function useCategories() {
   });
 }
 
-/**
- * Hook para obtener productos con stock bajo
- */
+
 export function useLowStockProducts() {
   return useQuery({
     queryKey: productKeys.lowStock(),
@@ -61,13 +48,12 @@ export function useLowStockProducts() {
   });
 }
 
-/**
- * Hook para obtener productos eliminados
- */
-export function useDeletedProducts() {
+
+export function useDeletedProducts(enabled: boolean = true) {
   return useQuery({
     queryKey: productKeys.deletedProducts(),
     queryFn: () => productsApi.getDeletedProducts({ page: 1, limit: 50 }),
+    enabled,
   });
 }
 
@@ -87,9 +73,7 @@ export interface InventoryParams {
   limit?: number;
 }
 
-/**
- * Hook para obtener inventario con filtros y paginación
- */
+
 export function useInventory(params: InventoryParams, enabled: boolean = true) {
   const { page, search, lowStock, sortBy, state, categoryId, limit } = params;
 
@@ -111,7 +95,7 @@ export function useInventory(params: InventoryParams, enabled: boolean = true) {
         categoryId: categoryId !== "all" ? categoryId : undefined,
       };
 
-      // Determinar ordenamiento
+      
       let sortByField: string | undefined;
       let sortOrder: "asc" | "desc" | undefined;
 
@@ -148,9 +132,7 @@ export function useInventory(params: InventoryParams, enabled: boolean = true) {
   });
 }
 
-/**
- * Hook para obtener productos manuales del POS
- */
+
 export function useManualProducts(enabled: boolean = true) {
   return useQuery({
     queryKey: productKeys.manualProducts(),
@@ -159,9 +141,7 @@ export function useManualProducts(enabled: boolean = true) {
   });
 }
 
-/**
- * Hook para obtener productos disponibles para vincular
- */
+
 export function useLinkProducts(search: string, enabled: boolean = true) {
   return useQuery({
     queryKey: productKeys.linkProducts(search),
@@ -174,13 +154,7 @@ export function useLinkProducts(search: string, enabled: boolean = true) {
   });
 }
 
-// ============================================================================
-// Mutations
-// ============================================================================
 
-/**
- * Hook para crear producto
- */
 export function useCreateProduct() {
   const queryClient = useQueryClient();
 
@@ -217,9 +191,7 @@ export function useCreateProduct() {
   });
 }
 
-/**
- * Hook para actualizar producto
- */
+
 export function useUpdateProduct() {
   const queryClient = useQueryClient();
 
@@ -259,9 +231,7 @@ export function useUpdateProduct() {
   });
 }
 
-/**
- * Hook para eliminar producto (soft delete)
- */
+
 export function useDeleteProduct() {
   const queryClient = useQueryClient();
 
@@ -281,9 +251,7 @@ export function useDeleteProduct() {
   });
 }
 
-/**
- * Hook para restaurar producto de papelera
- */
+
 export function useRestoreProduct() {
   const queryClient = useQueryClient();
 
@@ -300,9 +268,7 @@ export function useRestoreProduct() {
   });
 }
 
-/**
- * Hook para actualizar stock
- */
+
 export function useUpdateStock() {
   const queryClient = useQueryClient();
 
@@ -330,13 +296,7 @@ export function useUpdateStock() {
   });
 }
 
-// ============================================================================
-// Manual Products Mutations
-// ============================================================================
 
-/**
- * Hook para vincular producto manual con producto existente
- */
 export function useLinkManualProduct() {
   const queryClient = useQueryClient();
 
@@ -360,9 +320,7 @@ export function useLinkManualProduct() {
   });
 }
 
-/**
- * Hook para convertir producto manual en producto del catálogo
- */
+
 export function useConvertManualProduct() {
   const queryClient = useQueryClient();
 
@@ -381,9 +339,7 @@ export function useConvertManualProduct() {
   });
 }
 
-/**
- * Hook para ignorar producto manual
- */
+
 export function useIgnoreManualProduct() {
   const queryClient = useQueryClient();
 
@@ -401,9 +357,7 @@ export function useIgnoreManualProduct() {
   });
 }
 
-/**
- * Hook para actualizar producto manual
- */
+
 export function useUpdateManualProduct() {
   const queryClient = useQueryClient();
 
@@ -432,13 +386,7 @@ export function useUpdateManualProduct() {
   });
 }
 
-// ============================================================================
-// Category Mutations
-// ============================================================================
 
-/**
- * Hook para crear categoría
- */
 export function useCreateCategory() {
   const queryClient = useQueryClient();
 
@@ -456,9 +404,7 @@ export function useCreateCategory() {
   });
 }
 
-/**
- * Hook para actualizar categoría
- */
+
 export function useUpdateCategory() {
   const queryClient = useQueryClient();
 
@@ -477,9 +423,7 @@ export function useUpdateCategory() {
   });
 }
 
-/**
- * Hook para eliminar categoría
- */
+
 export function useDeleteCategory() {
   const queryClient = useQueryClient();
 

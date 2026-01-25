@@ -23,10 +23,7 @@ function isValidValue(value: unknown): boolean {
   return true;
 }
 
-/**
- * Validates that no properties in the object are explicitly 'undefined'.
- * We allow 'null' because Zod schemas can specifically allow it.
- */
+
 function validateNoUndefined(
   obj: Record<string, unknown>,
   path: string = "",
@@ -76,7 +73,7 @@ export function validateBody<T extends ZodSchema>(schema: T) {
         throw createHttpError(400, "El body debe contener al menos un campo");
       }
 
-      // Check for 'undefined' values specifically. Nulls are left for Zod.
+      
       const undefErrors = validateNoUndefined(req.body);
       if (undefErrors.length > 0) {
         throw createHttpError(400, undefErrors.join("; "));

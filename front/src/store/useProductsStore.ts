@@ -14,8 +14,8 @@ export interface Provider{
     phone?: string;
     email?: string;
     address?: string;
-    payment_terms?: string;   // "30 días", "contado"
-    delivery_days?: number;  // demora promedio
+    payment_terms?: string;   
+    delivery_days?: number;  
     minimum_order?: number;
     status: 'active' | 'inactive' | 'blocked';
 }
@@ -29,12 +29,12 @@ export interface Product{
     category_id?: string;
     description?: string;
     state: ProductState;
-    sku?: string;              // Código interno
-    supplier_id?: string;     // Proveedor
-    cost_price?: number;      // Precio de costo
-    sale_price?: number;      // Precio de venta
-    min_stock?: number;       // Stock mínimo
-    reserved_stock?: number; // Reservas
+    sku?: string;              
+    supplier_id?: string;     
+    cost_price?: number;      
+    sale_price?: number;      
+    min_stock?: number;       
+    reserved_stock?: number; 
     notes?: string;
     system_message?: string;
     multipliers: Record<string, number>;

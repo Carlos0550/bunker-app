@@ -56,8 +56,9 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { subscriptionApi } from "@/api/services/subscription";
+import { formatCurrency } from "@/utils/helpers";
 
-// Types
+
 interface Plan {
   id: string;
   name: string;
@@ -102,15 +103,15 @@ interface SystemStats {
   recentPayments: any[];
 }
 
-// API calls
+
 const adminApi = {
-  // Stats
+  
   getSystemStats: async (): Promise<SystemStats> => {
     const res = await client.get<{ success: boolean; data: SystemStats }>("/admin/stats");
     return res.data.data;
   },
 
-  // Plans
+  
   getPlans: async (): Promise<Plan[]> => {
     const res = await client.get<{ success: boolean; data: Plan[] }>("/admin/plans?includeInactive=true");
     return res.data.data;
@@ -131,7 +132,7 @@ const adminApi = {
     await client.delete(`/admin/plans/${id}`);
   },
 
-  // Businesses
+  
   getBusinesses: async (page = 1, search?: string): Promise<{ data: Business[]; pagination: any }> => {
     const params = new URLSearchParams({ page: String(page), limit: "20" });
     if (search) params.append("search", search);
@@ -143,7 +144,7 @@ const adminApi = {
     return res.data;
   },
 
-  // Users & Impersonation
+  
   getUsersByBusiness: async (businessId: string): Promise<User[]> => {
     const res = await client.get<{ success: boolean; data: User[] }>(`/admin/businesses/${businessId}/users`);
     return res.data.data;
@@ -160,7 +161,7 @@ export default function AdminPanel() {
   const [businessPage, setBusinessPage] = useState(1);
   const [viewingBusinessUsers, setViewingBusinessUsers] = useState<string | null>(null);
   
-  // Plan modal state
+  
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
   const [planForm, setPlanForm] = useState({
@@ -170,12 +171,12 @@ export default function AdminPanel() {
     features: "",
   });
 
-  // Manual Payment State
+  
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedBusinessForPayment, setSelectedBusinessForPayment] = useState<Business | null>(null);
   const [paymentForm, setPaymentForm] = useState({ amount: 0, months: 1, notes: "" });
 
-  // Queries
+  
   const { data: stats, isLoading: loadingStats } = useQuery({
     queryKey: ["adminStats"],
     queryFn: adminApi.getSystemStats,
@@ -191,7 +192,7 @@ export default function AdminPanel() {
     queryFn: () => adminApi.getBusinesses(businessPage, searchBusiness || undefined),
   });
 
-  // Mutations
+  
   const createPlanMutation = useMutation({
     mutationFn: adminApi.createPlan,
     onSuccess: () => {
@@ -241,7 +242,7 @@ export default function AdminPanel() {
     }
   });
 
-  // Business Users Logic
+  
   const { data: businessUsers, isLoading: loadingBusinessUsers } = useQuery({
     queryKey: ["adminBusinessUsers", viewingBusinessUsers],
     queryFn: () => adminApi.getUsersByBusiness(viewingBusinessUsers!),
@@ -253,12 +254,12 @@ export default function AdminPanel() {
     onSuccess: (data) => {
       toast.success(`Ingresando como ${data.user.name}...`);
       
-      // Clear non-auth storage
+      
       localStorage.removeItem("business-storage");
       localStorage.removeItem("cart-storage");
       sessionStorage.clear();
       
-      // Set auth data in Zustand's persisted format
+      
       const authStorage = {
         state: {
           token: data.token,
@@ -269,7 +270,7 @@ export default function AdminPanel() {
       };
       localStorage.setItem("auth-storage", JSON.stringify(authStorage));
       
-      // Force full page reload to reinitialize all stores and contexts
+      
       window.location.replace("/dashboard");
     },
     onError: (error: any) => {
@@ -277,14 +278,7 @@ export default function AdminPanel() {
     },
   });
 
-  // Helpers
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("es-MX", {
-      style: "currency",
-      currency: "MXN",
-    }).format(value);
-  };
-
+  
   const resetPlanForm = () => {
     setPlanForm({ name: "", price: 0, description: "", features: "" });
     setEditingPlan(null);
@@ -323,7 +317,7 @@ export default function AdminPanel() {
   return (
     <MainLayout title="Panel de Administración">
       <div className="space-y-6">
-        {/* Header */}
+        {}
         <div className="flex items-center gap-3">
           <div className="p-3 rounded-xl bg-primary/20">
             <Crown className="w-8 h-8 text-primary" />
@@ -336,7 +330,7 @@ export default function AdminPanel() {
           </div>
         </div>
 
-        {/* Stats Cards */}
+        {}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {loadingStats ? (
             [...Array(4)].map((_, i) => <Skeleton key={i} className="h-28" />)
@@ -396,7 +390,7 @@ export default function AdminPanel() {
           )}
         </div>
 
-        {/* Tabs */}
+        {}
         <Tabs defaultValue="plans" className="space-y-6">
           <TabsList className="bg-secondary/50">
             <TabsTrigger value="plans" className="gap-2">
@@ -409,7 +403,7 @@ export default function AdminPanel() {
             </TabsTrigger>
           </TabsList>
 
-          {/* Planes Tab */}
+          {}
           <TabsContent value="plans" className="space-y-4">
             <div className="flex justify-between items-center">
               <div>
@@ -518,7 +512,7 @@ export default function AdminPanel() {
             )}
           </TabsContent>
 
-          {/* Negocios Tab */}
+          {}
           <TabsContent value="businesses" className="space-y-4">
             {viewingBusinessUsers ? (
               <div className="space-y-4">
@@ -732,7 +726,7 @@ export default function AdminPanel() {
         </Tabs>
       </div>
 
-      {/* Plan Modal */}
+      {}
       <Dialog open={showPlanModal} onOpenChange={setShowPlanModal}>
         <DialogContent>
           <DialogHeader>
@@ -754,7 +748,7 @@ export default function AdminPanel() {
             </div>
 
             <div>
-              <Label htmlFor="planPrice">Precio mensual (MXN)</Label>
+              <Label htmlFor="planPrice">Precio mensual (ARS)</Label>
               <Input
                 id="planPrice"
                 type="number"
@@ -806,7 +800,7 @@ export default function AdminPanel() {
         </DialogContent>
       </Dialog>
 
-      {/* Payment Modal */}
+      {}
       <Dialog open={showPaymentModal} onOpenChange={setShowPaymentModal}>
         <DialogContent>
           <DialogHeader>
@@ -818,7 +812,7 @@ export default function AdminPanel() {
 
           <div className="space-y-4 py-4">
             <div>
-              <Label htmlFor="paymentAmount">Monto (MXN)</Label>
+              <Label htmlFor="paymentAmount">Monto (ARS)</Label>
               <Input
                 id="paymentAmount"
                 type="number"

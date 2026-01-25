@@ -6,76 +6,118 @@
 
 @layer base {
   :root {
-    --background: 220 20% 10%;
-    --foreground: 210 20% 95%;
+    /* Main Palette - Modern Light (White/Black/Red) */
+    --background: 0 0% 100%;
+    --foreground: 0 0% 0%; /* Pure Black for high contrast */
 
-    --card: 220 18% 13%;
-    --card-foreground: 210 20% 95%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 0%;
 
-    --popover: 220 18% 15%;
-    --popover-foreground: 210 20% 95%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 0%;
 
-    --primary: 45 100% 51%;
-    --primary-foreground: 220 20% 10%;
+    /* Red Primary */
+    --primary: 346 87% 43%; /* A Deep, Professional Red (ex: #CD0E2D) */
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 15% 20%;
-    --secondary-foreground: 210 20% 90%;
+    --secondary: 0 0% 96%; /* Subtle light gray */
+    --secondary-foreground: 0 0% 0%;
 
-    --muted: 220 15% 18%;
-    --muted-foreground: 215 15% 55%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
 
-    --accent: 45 90% 45%;
-    --accent-foreground: 220 20% 10%;
+    --accent: 0 0% 96%;
+    --accent-foreground: 346 87% 43%;
 
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
 
-    --success: 142 71% 45%;
-    --success-foreground: 210 40% 98%;
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 98%;
 
     --warning: 38 92% 50%;
-    --warning-foreground: 220 20% 10%;
+    --warning-foreground: 0 0% 0%;
 
-    --border: 220 15% 22%;
-    --input: 220 15% 20%;
-    --ring: 45 100% 51%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 346 87% 43%;
 
     --radius: 0.5rem;
 
-    --sidebar-background: 220 20% 8%;
-    --sidebar-foreground: 210 20% 85%;
-    --sidebar-primary: 45 100% 51%;
-    --sidebar-primary-foreground: 220 20% 10%;
-    --sidebar-accent: 220 15% 15%;
-    --sidebar-accent-foreground: 210 20% 95%;
-    --sidebar-border: 220 15% 18%;
-    --sidebar-ring: 45 100% 51%;
+    /* Sidebar - High Contrast (Black) for harmony, or White */
+    /* User said "system is too dark", but "harmony between white, red, black" usually implies a mix */
+    /* Let's try a White Sidebar with Red accents for maximum lightness. */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 0 0% 40%;
+    --sidebar-primary: 346 87% 43%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 96%;
+    --sidebar-accent-foreground: 346 87% 43%;
+    --sidebar-border: 0 0% 90%;
+    --sidebar-ring: 346 87% 43%;
 
-    /* Custom gradients */
+    /* Custom gradients & Shadows */
+    /* Remove dark gradients, replaced with subtle or white-based ones */
     --gradient-bunker: linear-gradient(
       135deg,
-      hsl(220 20% 12%) 0%,
-      hsl(220 18% 8%) 100%
+      hsl(0 0% 100%) 0%,
+      hsl(0 0% 98%) 100%
     );
+
+    /* Red Gradient */
     --gradient-gold: linear-gradient(
       135deg,
-      hsl(45 100% 51%) 0%,
-      hsl(38 92% 50%) 100%
+      hsl(346 87% 43%) 0%,
+      hsl(346 87% 55%) 100%
     );
+
+    /* Clean Card Gradient */
     --gradient-card: linear-gradient(
       180deg,
-      hsl(220 18% 15%) 0%,
-      hsl(220 18% 12%) 100%
+      hsl(0 0% 100%) 0%,
+      hsl(0 0% 99%) 100%
     );
 
-    /* Shadows */
-    --shadow-glow: 0 0 20px hsl(45 100% 51% / 0.15);
-    --shadow-card: 0 4px 24px hsl(0 0% 0% / 0.4);
+    /* Shadows - Red Glow */
+    --shadow-glow: 0 0 20px hsl(346 87% 43% / 0.15);
+    --shadow-card: 0 2px 10px hsl(0 0% 0% / 0.05); /* Softer shadow */
   }
 
+  /* Dark mode override - If they really want dark mode, we give them a Red/Black theme, 
+     but slightly lighter than before */
   .dark {
-    --background: 220 20% 10%;
-    --foreground: 210 20% 95%;
+    --background: 0 0% 5%;
+    --foreground: 0 0% 95%;
+
+    --card: 0 0% 8%;
+    --card-foreground: 0 0% 95%;
+
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 95%;
+
+    --primary: 346 87% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 95%;
+
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 60%;
+
+    --accent: 0 0% 12%;
+    --accent-foreground: 346 87% 50%;
+
+    --border: 0 0% 15%;
+    --input: 0 0% 15%;
+    --ring: 346 87% 50%;
+
+    --sidebar-background: 0 0% 5%;
+    --sidebar-foreground: 0 0% 70%;
+    --sidebar-primary: 346 87% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 12%;
+    --sidebar-accent-foreground: 346 87% 50%;
+    --sidebar-border: 0 0% 15%;
   }
 }
 
@@ -120,10 +162,12 @@
 
   .stat-card:hover {
     box-shadow: var(--shadow-glow);
+    @apply border-primary/50;
   }
 
   .glass-effect {
-    @apply backdrop-blur-md bg-card/80;
+    @apply backdrop-blur-md bg-white/80 dark:bg-black/50;
+    /* Updated for light mode support */
   }
 
   .text-gradient {

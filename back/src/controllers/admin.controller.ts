@@ -121,7 +121,7 @@ class AdminController {
   async impersonateUser(req: Request, res: Response, next: NextFunction) {
     try {
       const adminId = req.user?.userId;
-      const { id } = req.params; // target user id
+      const { id } = req.params; 
 
       if (!adminId) {
         throw new Error("Usuario no autenticado");

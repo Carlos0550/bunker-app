@@ -49,7 +49,7 @@ export function ProductFilters({
 
   return (
     <div className="space-y-3">
-      {/* Búsqueda principal */}
+      {}
       <div className="flex gap-2" data-tour="productos-search">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -72,12 +72,12 @@ export function ProductFilters({
         </Button>
       </div>
 
-      {/* Filtros - scroll horizontal en móvil */}
+      {}
       <div className="flex items-center gap-2">
         <Filter className="w-4 h-4 text-muted-foreground shrink-0 hidden sm:block" />
         <div className="flex-1 overflow-x-auto scrollbar-hide -mx-1 px-1">
           <div className="flex gap-1.5 sm:gap-2 items-center w-max min-w-full sm:min-w-0">
-            {/* Filtro Stock Bajo */}
+            {}
             <Button
               variant={lowStock === true ? "default" : "outline"}
               size="sm"
@@ -88,7 +88,7 @@ export function ProductFilters({
               <span className="hidden sm:inline">Bajo</span>
             </Button>
 
-            {/* Filtro Estado */}
+            {}
             <Select value={state} onValueChange={(value: StateFilter) => onStateChange(value)}>
               <SelectTrigger className="h-8 sm:h-7 text-xs w-[100px] sm:w-[110px] shrink-0">
                 <SelectValue />
@@ -101,7 +101,7 @@ export function ProductFilters({
               </SelectContent>
             </Select>
 
-            {/* Filtro Categoría */}
+            {}
             <Select value={categoryId} onValueChange={onCategoryChange}>
               <SelectTrigger className="h-8 sm:h-7 text-xs w-[110px] sm:w-[120px] shrink-0">
                 <SelectValue placeholder="Categoría" />
@@ -116,7 +116,7 @@ export function ProductFilters({
               </SelectContent>
             </Select>
 
-            {/* Ordenar por */}
+            {}
             <Select
               value={sortBy || "none"}
               onValueChange={(value) => onSortChange(value === "none" ? undefined : value as SortOption)}
@@ -135,7 +135,7 @@ export function ProductFilters({
               </SelectContent>
             </Select>
 
-            {/* Botón limpiar filtros */}
+            {}
             {hasActiveFilters && (
               <Button
                 variant="ghost"

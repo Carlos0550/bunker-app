@@ -82,7 +82,7 @@ export interface PaginatedResponse<T> {
 }
 
 export const productsApi = {
-  // Obtener productos con filtros y paginación
+  
   getProducts: async (
     filters: ProductFilters = {},
     pagination: PaginationOptions = {},
@@ -103,14 +103,13 @@ export const productsApi = {
     if (pagination.sortBy) params.append("sortBy", pagination.sortBy);
     if (pagination.sortOrder) params.append("sortOrder", pagination.sortOrder);
 
-    console.log("Parametros en el POS:", params);
     const response = await client.get<PaginatedResponse<Product>>(
       `/products?${params}`,
     );
     return response.data;
   },
 
-  // Obtener un producto por ID
+  
   getProduct: async (id: string): Promise<Product> => {
     const response = await client.get<{ success: boolean; data: Product }>(
       `/products/${id}`,
@@ -118,7 +117,7 @@ export const productsApi = {
     return response.data.data;
   },
 
-  // Crear producto
+  
   createProduct: async (data: CreateProductData): Promise<Product> => {
     const response = await client.post<{ success: boolean; data: Product }>(
       "/products",
@@ -127,7 +126,7 @@ export const productsApi = {
     return response.data.data;
   },
 
-  // Crear productos en lote
+  
   createProductsBulk: async (
     products: CreateProductData[],
   ): Promise<{
@@ -141,7 +140,7 @@ export const productsApi = {
     return response.data.data;
   },
 
-  // Actualizar producto
+  
   updateProduct: async (
     id: string,
     data: UpdateProductData,
@@ -153,7 +152,7 @@ export const productsApi = {
     return response.data.data;
   },
 
-  // Actualizar imagen del producto
+  
   updateProductImage: async (
     id: string,
     file: File,
@@ -170,7 +169,7 @@ export const productsApi = {
     return response.data.data;
   },
 
-  // Actualizar stock
+  
   updateStock: async (
     id: string,
     quantity: number,
@@ -183,22 +182,22 @@ export const productsApi = {
     return response.data.data;
   },
 
-  // Soft delete
+  
   deleteProduct: async (id: string): Promise<void> => {
     await client.delete(`/products/${id}`);
   },
 
-  // Hard delete
+  
   permanentDeleteProduct: async (id: string): Promise<void> => {
     await client.delete(`/products/${id}/permanent`);
   },
 
-  // Restaurar producto
+  
   restoreProduct: async (id: string): Promise<void> => {
     await client.post(`/products/${id}/restore`);
   },
 
-  // Obtener productos eliminados
+  
   getDeletedProducts: async (
     pagination: PaginationOptions = {},
   ): Promise<PaginatedResponse<Product>> => {
@@ -212,7 +211,7 @@ export const productsApi = {
     return response.data;
   },
 
-  // Obtener productos con stock bajo
+  
   getLowStockProducts: async (): Promise<
     (Product & { threshold: number; deficit: number })[]
   > => {
@@ -223,7 +222,7 @@ export const productsApi = {
     return response.data.data;
   },
 
-  // Buscar por código de barras
+  
   findByBarcode: async (barcode: string): Promise<Product | null> => {
     try {
       const response = await client.get<{ success: boolean; data: Product }>(
@@ -236,7 +235,7 @@ export const productsApi = {
     }
   },
 
-  // Obtener categorías
+  
   getCategories: async (): Promise<Category[]> => {
     const response = await client.get<{ success: boolean; data: Category[] }>(
       "/products/categories",
@@ -244,7 +243,7 @@ export const productsApi = {
     return response.data.data;
   },
 
-  // Crear categoría
+  
   createCategory: async (name: string): Promise<Category> => {
     const response = await client.post<{ success: boolean; data: Category }>(
       "/products/categories",
@@ -253,7 +252,7 @@ export const productsApi = {
     return response.data.data;
   },
 
-  // Actualizar categoría
+  
   updateCategory: async (id: string, name: string): Promise<Category> => {
     const response = await client.patch<{ success: boolean; data: Category }>(
       `/products/categories/${id}`,
@@ -262,7 +261,7 @@ export const productsApi = {
     return response.data.data;
   },
 
-  // Eliminar categoría
+  
   deleteCategory: async (id: string): Promise<void> => {
     await client.delete(`/products/categories/${id}`);
   },

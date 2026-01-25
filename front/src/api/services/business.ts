@@ -3,10 +3,10 @@ import client from "../client";
 export interface Multiplier {
   id: string;
   name: string;
-  value: number; // Decimal (0.16 = 16%)
+  value: number; 
   isActive: boolean;
-  paymentMethods: string[]; // ["CASH", "CARD", "TRANSFER"]
-  installmentsCondition?: string; // "1", "3", "6", etc. or undefined for specific installments logic
+  paymentMethods: string[]; 
+  installmentsCondition?: string; 
 }
 
 export interface Business {

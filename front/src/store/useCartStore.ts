@@ -4,7 +4,7 @@ import { Product } from '@/types';
 
 export interface CartItem extends Product {
   quantity: number;
-  maxStock: number; // Stock máximo disponible
+  maxStock: number; 
 }
 
 interface CartState {
@@ -30,12 +30,12 @@ export const useCartStore = create<CartState>()(
         const currentQuantity = existingItem?.quantity || 0;
         const availableStock = product.stock;
 
-        // Verificar si hay stock disponible
+        
         if (availableStock <= 0) {
           return { success: false, message: "Producto sin stock disponible" };
         }
 
-        // Verificar si ya se alcanzó el límite
+        
         if (currentQuantity >= availableStock) {
           return { success: false, message: `Stock máximo alcanzado (${availableStock} disponibles)` };
         }
@@ -82,12 +82,12 @@ export const useCartStore = create<CartState>()(
           return { success: false, message: "Producto no encontrado en el carrito" };
         }
 
-        // No permitir cantidad menor a 1
+        
         if (quantity < 1) {
           return { success: false, message: "La cantidad mínima es 1" };
         }
 
-        // No permitir exceder el stock
+        
         if (quantity > item.maxStock) {
           return { success: false, message: `Stock máximo: ${item.maxStock} unidades` };
         }

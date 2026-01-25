@@ -1,5 +1,4 @@
-// Clientes Components
-// Components specific to the Clientes page
+
 
 export { CustomerFormDialog } from "./CustomerFormDialog";
 export { CustomerList } from "./CustomerList";

@@ -8,9 +8,6 @@ import {
 import { useAuthStore } from "@/store/useAuthStore";
 import { toast } from "sonner";
 
-// ============================================================================
-// Query Hooks
-// ============================================================================
 
 export function useUsers() {
   const { user } = useAuthStore();
@@ -23,9 +20,6 @@ export function useUsers() {
   });
 }
 
-// ============================================================================
-// Mutation Hooks
-// ============================================================================
 
 export function useCreateUser() {
   const queryClient = useQueryClient();

@@ -1,10 +1,6 @@
 import { prisma } from "@/config/db";
 import { SaleStatus, ProductState, AccountStatus } from "@prisma/client";
-type Period = "today" | "yesterday" | "week" | "month" | "custom";
-interface DateRange {
-  startDate: Date;
-  endDate: Date;
-}
+import { Period, DateRange } from "@/types";
 class AnalyticsService {
   private getDateRange(period: Period, customStart?: Date, customEnd?: Date): DateRange {
     const now = new Date();
@@ -76,7 +72,7 @@ class AnalyticsService {
       acc + sale.items.reduce((itemAcc, item) => itemAcc + item.quantity, 0), 0
     );
     const averageTicket = totalSales > 0 ? totalRevenue / totalSales : 0;
-    // Para ventas de contado, usar el método de pago de la venta
+    
     const cashSales = await prisma.sale.groupBy({
       by: ["paymentMethod"],
       where: {
@@ -89,7 +85,7 @@ class AnalyticsService {
       _sum: { total: true },
     });
 
-    // Para ventas a crédito pagadas, usar los métodos de pago de los abonos
+    
     const creditPayments = await prisma.accountPayment.groupBy({
       by: ["paymentMethod"],
       where: {
@@ -106,10 +102,10 @@ class AnalyticsService {
       _count: true,
     });
 
-    // Combinar ambos resultados
+    
     const paymentMethodMap = new Map<string, { count: number; total: number }>();
 
-    // Agregar ventas de contado
+    
     cashSales.forEach((s) => {
       paymentMethodMap.set(s.paymentMethod, {
         count: s._count,
@@ -117,15 +113,15 @@ class AnalyticsService {
       });
     });
 
-    // Agregar pagos de crédito
+    
     creditPayments.forEach((p) => {
       const existing = paymentMethodMap.get(p.paymentMethod);
       if (existing) {
         existing.total += p._sum.amount || 0;
-        // No incrementar count porque ya contamos la venta
+        
       } else {
         paymentMethodMap.set(p.paymentMethod, {
-          count: 0, // No contar como venta nueva, solo el monto
+          count: 0, 
           total: p._sum.amount || 0,
         });
       }
@@ -369,7 +365,7 @@ class AnalyticsService {
     const monthNames = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
     if (period === "today") {
-      // Mostrar ventas por hora del día actual
+      
       const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
       const currentHour = today.getHours();
       
@@ -395,7 +391,7 @@ class AnalyticsService {
         });
       }
     } else if (period === "yesterday") {
-      // Mostrar ventas por hora del día anterior
+      
       const startOfYesterday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1);
       
       for (let hour = 0; hour < 24; hour++) {
@@ -420,7 +416,7 @@ class AnalyticsService {
         });
       }
     } else if (period === "week") {
-      // Mostrar últimos 7 días
+      
       for (let i = 6; i >= 0; i--) {
         const date = new Date(today);
         date.setDate(date.getDate() - i);
@@ -444,7 +440,7 @@ class AnalyticsService {
         });
       }
     } else if (period === "month") {
-      // Mostrar últimos 30 días agrupados por semana (o cada 5 días para más detalle)
+      
       for (let i = 29; i >= 0; i--) {
         const date = new Date(today);
         date.setDate(date.getDate() - i);
@@ -472,7 +468,7 @@ class AnalyticsService {
     return data;
   }
 
-  // Mantener el método original para compatibilidad con el Dashboard
+  
   async getWeeklySalesChart(businessId: string) {
     return this.getSalesChart(businessId, "week");
   }

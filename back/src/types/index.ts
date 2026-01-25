@@ -1,1 +1,62 @@
-import { BusinessPlan } from "@prisma/client";export interface EmailOptions {  to: string | string[];  subject: string;  html: string;  from?: string;  replyTo?: string;  attachments?: Array<{    filename: string;    content: Buffer | string;    contentType?: string;  }>;}export interface EmailResult {  success: boolean;  messageId?: string;  error?: string;  previewUrl?: string;}export interface IEmailProvider {  sendEmail(options: EmailOptions): Promise<EmailResult>;}export interface EmailTemplateData {  email: string;  name?: string;  [key: string]: any;}export interface SendEmailWithTemplateOptions {  to: string | string[];  subject: string;  templateName: string;  data: EmailTemplateData;  from?: string;  replyTo?: string;  attachments?: EmailOptions['attachments'];}export interface BusinessResponse {  id: string;  name: string;  address: string;  contact_phone: string;  contact_email: string;  business_page: string;  businessPlan: BusinessPlan;  createdAt: Date;  updatedAt: Date;}
+import { BusinessPlan } from "@prisma/client";
+
+export interface EmailOptions {
+  to: string | string[];
+  subject: string;
+  html: string;
+  from?: string;
+  replyTo?: string;
+  attachments?: Array<{
+    filename: string;
+    content: Buffer | string;
+    contentType?: string;
+  }>;
+}
+
+export interface EmailResult {
+  success: boolean;
+  messageId?: string;
+  error?: string;
+  previewUrl?: string;
+}
+
+export interface IEmailProvider {
+  sendEmail(options: EmailOptions): Promise<EmailResult>;
+}
+
+export interface EmailTemplateData {
+  email: string;
+  name?: string;
+  [key: string]: any;
+}
+
+export interface SendEmailWithTemplateOptions {
+  to: string | string[];
+  subject: string;
+  templateName: string;
+  data: EmailTemplateData;
+  from?: string;
+  replyTo?: string;
+  attachments?: EmailOptions['attachments'];
+}
+
+export interface BusinessResponse {
+  id: string;
+  name: string;
+  address: string;
+  contact_phone: string;
+  contact_email: string;
+  business_page: string;
+  businessPlan: BusinessPlan;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export * from "./common.types";
+export * from "./product.types";
+export * from "./sale.types";
+export * from "./customer.types";
+export * from "./user.types";
+export * from "./analytics.types";
+export * from "./import.types";
+export * from "./admin.types";

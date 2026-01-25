@@ -82,7 +82,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-// Import centralized hooks
+
 import { 
   useSalesSummary, 
   useTopProducts, 
@@ -90,14 +90,15 @@ import {
   useStockLowProducts 
 } from "@/api/hooks";
 import { SaleEditor } from "@/components/reportes/SaleEditor";
+import { formatCurrency } from "@/utils/helpers";
 
 const COLORS = [
-  "hsl(45, 100%, 51%)",  // Amarillo (primary)
-  "hsl(142, 76%, 36%)",  // Verde
-  "hsl(217, 91%, 60%)",  // Azul
-  "hsl(0, 84%, 60%)",    // Rojo
-  "hsl(280, 87%, 65%)",  // Morado
-  "hsl(24, 95%, 53%)",   // Naranja
+  "hsl(45, 100%, 51%)",  
+  "hsl(142, 76%, 36%)",  
+  "hsl(217, 91%, 60%)",  
+  "hsl(0, 84%, 60%)",    
+  "hsl(280, 87%, 65%)",  
+  "hsl(24, 95%, 53%)",   
 ];
 
 type Period = "today" | "yesterday" | "week" | "month";
@@ -126,9 +127,6 @@ export default function Reportes() {
   
   const queryClient = useQueryClient();
 
-  // ============================================================================
-  // Queries using centralized hooks
-  // ============================================================================
   
   const { data: stats, isLoading: loadingStats, refetch: refetchStats } = useQuery({
     queryKey: ["dashboardStats"],
@@ -173,17 +171,7 @@ export default function Reportes() {
     }
   });
 
-  // ============================================================================
-  // Helper functions
-  // ============================================================================
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("es-AR", {
-      style: "currency",
-      currency: "ARS",
-    }).format(value);
-  };
-
+  
   const paymentMethodData = (salesSummary?.salesByPaymentMethod || []).map((pm, index) => ({
     name: pm.paymentMethod === "CASH" ? "Efectivo" :
           pm.paymentMethod === "CARD" ? "Tarjeta" :
@@ -252,14 +240,11 @@ export default function Reportes() {
     setIsDeleteDialogOpen(true);
   };
 
-  // ============================================================================
-  // Render
-  // ============================================================================
-
+  
   return (
     <MainLayout title="Reportes">
       <div className="space-y-6 w-full max-w-full overflow-x-hidden">
-        {/* Header */}
+        {}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Reportes y Análisis</h1>
@@ -285,7 +270,7 @@ export default function Reportes() {
           </div>
         </div>
 
-        {/* Stats Cards */}
+        {}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4" data-tour="reportes-stats">
           {loadingStats ? (
             [...Array(4)].map((_, i) => <Skeleton key={i} className="h-28 sm:h-32" />)
@@ -391,7 +376,7 @@ export default function Reportes() {
           )}
         </div>
 
-        {/* Tabs */}
+        {}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide" data-tour="reportes-tabs">
             <TabsList className="bg-secondary/50 inline-flex w-max sm:w-auto min-w-full sm:min-w-0">
@@ -414,7 +399,7 @@ export default function Reportes() {
             </TabsList>
           </div>
 
-          {/* Tendencia de Ventas */}
+          {}
           <TabsContent value="ventas">
             <div className="bunker-card p-6">
               <div className="flex items-center justify-between mb-6">
@@ -462,7 +447,7 @@ export default function Reportes() {
             </div>
           </TabsContent>
 
-          {/* Top Productos */}
+          {}
           <TabsContent value="productos">
             <div className="bunker-card p-6">
               <div className="flex items-center justify-between mb-6">
@@ -502,7 +487,7 @@ export default function Reportes() {
             </div>
           </TabsContent>
 
-          {/* Métodos de Pago */}
+          {}
           <TabsContent value="metodos">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="bunker-card p-6">
@@ -592,7 +577,7 @@ export default function Reportes() {
             </div>
           </TabsContent>
 
-          {/* Historial de Ventas */}
+          {}
           <TabsContent value="historial">
             <div className="bunker-card p-4 sm:p-6 w-full max-w-full overflow-hidden">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -617,7 +602,7 @@ export default function Reportes() {
                 </div>
               ) : filteredSales.length > 0 ? (
                 <>
-                  {/* Vista móvil: Cards */}
+                  {}
                   <div className="block md:hidden space-y-3 w-full max-w-full overflow-hidden">
                     {filteredSales.map((sale) => (
                       <div key={sale.id} className="bunker-card p-3 border border-border/50 w-full max-w-full overflow-hidden">
@@ -658,7 +643,7 @@ export default function Reportes() {
                     ))}
                   </div>
 
-                  {/* Vista desktop: Tabla */}
+                  {}
                   <div className="hidden md:block overflow-x-auto">
                     <Table>
                       <TableHeader>
@@ -714,7 +699,7 @@ export default function Reportes() {
                     </Table>
                   </div>
 
-                  {/* Paginación */}
+                  {}
                   {salesData?.pagination && (
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4 pt-4 border-t border-border">
                       <p className="text-xs sm:text-sm text-muted-foreground text-center sm:text-left">
@@ -744,7 +729,7 @@ export default function Reportes() {
         </Tabs>
       </div>
 
-      {/* Dialog de detalle de venta */}
+      {}
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader className="flex flex-row items-center justify-between">
@@ -776,7 +761,7 @@ export default function Reportes() {
                 />
               ) : (
                 <>
-                  {/* Info general */}
+                  {}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <p className="text-sm text-muted-foreground">Fecha</p>
@@ -804,7 +789,7 @@ export default function Reportes() {
                     </div>
                   </div>
 
-                  {/* Items */}
+                  {}
                   <div>
                     <h4 className="font-semibold mb-3">Productos</h4>
                     <div className="block md:hidden space-y-2">
@@ -855,7 +840,7 @@ export default function Reportes() {
                     </div>
                   </div>
 
-                  {/* Totales */}
+                  {}
                   <div className="border-t pt-4 space-y-2">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Subtotal</span>
@@ -878,7 +863,7 @@ export default function Reportes() {
                     </div>
                   </div>
 
-                  {/* Notas */}
+                  {}
                   {selectedSale.notes && (
                     <div>
                       <h4 className="font-semibold mb-2">Notas</h4>

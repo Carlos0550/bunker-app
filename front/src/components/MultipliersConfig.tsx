@@ -60,13 +60,13 @@ export function MultipliersConfig() {
     installmentsCondition: "any",
   });
 
-  // Query para obtener multiplicadores
+  
   const { data: multipliers = [], isLoading } = useQuery({
     queryKey: ["business", "multipliers"],
     queryFn: businessApi.getMultipliers,
   });
 
-  // Mutation para actualizar multiplicadores
+  
   const updateMutation = useMutation({
     mutationFn: businessApi.updateMultipliers,
     onSuccess: () => {
@@ -89,7 +89,7 @@ export function MultipliersConfig() {
     setEditingMultiplier(multiplier);
     setFormData({
       name: multiplier.name,
-      value: String(multiplier.value * 100), // Convert 0.16 to 16
+      value: String(multiplier.value * 100), 
       paymentMethods: multiplier.paymentMethods,
       isActive: multiplier.isActive,
       installmentsCondition: multiplier.installmentsCondition || "any",
@@ -116,7 +116,7 @@ export function MultipliersConfig() {
       return;
     }
 
-    const value = parseFloat(formData.value) / 100; // Convert 16 to 0.16
+    const value = parseFloat(formData.value) / 100; 
 
     if (isNaN(value) || value <= 0) {
       toast.error("Valor inválido");
@@ -126,7 +126,7 @@ export function MultipliersConfig() {
     let updated: Multiplier[];
 
     if (editingMultiplier) {
-      // Edit existing
+      
       updated = multipliers.map((m) =>
         m.id === editingMultiplier.id
           ? {
@@ -143,7 +143,7 @@ export function MultipliersConfig() {
           : m
       );
     } else {
-      // Add new
+      
       const newMultiplier: Multiplier = {
         id: crypto.randomUUID(),
         name: formData.name,
@@ -271,7 +271,7 @@ export function MultipliersConfig() {
         )}
       </CardContent>
 
-      {/* Dialog para agregar/editar */}
+      {}
       <Dialog open={showDialog} onOpenChange={closeDialog}>
         <DialogContent>
           <DialogHeader>

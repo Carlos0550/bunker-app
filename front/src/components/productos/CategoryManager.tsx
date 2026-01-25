@@ -94,7 +94,7 @@ export function CategoryManager({
 
   return (
     <div className="space-y-4">
-      {/* Header con botón de agregar */}
+      {}
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold text-foreground">Categorías</h3>
@@ -108,7 +108,7 @@ export function CategoryManager({
         </Button>
       </div>
 
-      {/* Lista de categorías */}
+      {}
       {categories.length === 0 ? (
         <div className="bunker-card p-12">
           <EmptyState
@@ -181,7 +181,7 @@ export function CategoryManager({
         </div>
       )}
 
-      {/* Dialog para crear/editar categoría */}
+      {}
       <Dialog open={dialogOpen} onOpenChange={(open) => {
         setDialogOpen(open);
         if (!open) {

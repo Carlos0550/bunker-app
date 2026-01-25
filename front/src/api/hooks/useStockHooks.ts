@@ -7,9 +7,6 @@ import {
 } from "@/api/services/analytics";
 import { toast } from "sonner";
 
-// ============================================================================
-// Query Hooks
-// ============================================================================
 
 export function useStockProducts(
   search: string,
@@ -49,9 +46,6 @@ export function useAllProductsForSelect() {
   });
 }
 
-// ============================================================================
-// Mutation Hooks
-// ============================================================================
 
 export function useStockMovement() {
   const queryClient = useQueryClient();
@@ -71,7 +65,7 @@ export function useStockMovement() {
         newStock = data.currentStock - data.quantity;
         if (newStock < 0) throw new Error("Stock insuficiente");
       } else {
-        newStock = data.quantity; // Ajuste directo
+        newStock = data.quantity; 
       }
 
       return productsApi.updateProduct(data.productId, { stock: newStock });

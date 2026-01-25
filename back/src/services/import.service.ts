@@ -1,9 +1,20 @@
 import * as XLSX from "xlsx";
 import { parse } from "csv-parse/sync";
+import { parse as parseStream } from "csv-parse";
+import * as fs from "fs";
 import { prisma } from "@/config/db";
 import { ProductState, Prisma } from "@prisma/client";
 import createHttpError from "http-errors";
 import { normalizeProductName } from "@/utils/text.util";
+import {
+  ParsedFile,
+  ColumnMapping,
+  ImportResult,
+  ValidationResult,
+} from "@/types";
+import { stringify } from "csv-stringify";
+
+
 export const SYSTEM_PRODUCT_COLUMNS = [
   { key: "name", label: "Nombre del Producto", required: true },
   { key: "sku", label: "SKU / Código", required: false },
@@ -30,47 +41,57 @@ const COLUMN_SYNONYMS: Record<string, string[]> = {
   supplier: ["proveedor", "supplier", "vendor", "provider"],
   notes: ["notas", "notes", "observaciones", "comments", "comentarios"],
 };
-interface ParsedFile {
-  headers: string[];
-  previewData: Record<string, any>[];
-  totalRows: number;
-  suggestedMapping: Record<string, string>;
-}
-interface ColumnMapping {
-  [fileColumn: string]: string;
-}
-interface ImportResult {
-  success: number;
-  failed: number;
-  skipped: number;
-  errors: { row: number; error: string }[];
-}
-interface ValidationResult {
-  totalProducts: number;
-  duplicatesInDb: { name: string; existingName: string }[];
-  duplicatesInList: { name: string; count: number }[];
-  hasDuplicates: boolean;
-}
+
 class ImportService {
-  async parseFile(fileBuffer: Buffer, fileName: string, mimeType: string): Promise<ParsedFile> {
-    const extension = fileName.split(".").pop()?.toLowerCase();
-    let data: any[][] = [];
+  async parseFile(filePath: string, originalName: string, mimeType: string): Promise<ParsedFile> {
+    const extension = originalName.split(".").pop()?.toLowerCase();
+    let headers: string[] = [];
+    const previewData: Record<string, any>[] = [];
+    let totalRows = 0;
+
     try {
       if (extension === "csv" || mimeType === "text/csv") {
-        const content = fileBuffer.toString("utf-8");
-        data = parse(content, {
-          skip_empty_lines: true,
-          relax_column_count: true,
-        });
+        const parser = fs.createReadStream(filePath).pipe(
+          parseStream({
+            delimiter: [",", ";", "\t", "|"], 
+            columns: false,
+            to: 6,
+            skip_empty_lines: true,
+            relax_column_count: true
+          })
+        );
+        
+        let rowCount = 0;
+        for await (const row of parser) {
+          if (rowCount === 0) {
+            headers = (row as string[]).map(h => String(h || "").trim()).filter(h => h !== "");
+          } else {
+             const rowData: Record<string, any> = {};
+             headers.forEach((header, index) => {
+               rowData[header] = row[index] !== undefined ? String(row[index]) : "";
+             });
+             previewData.push(rowData);
+          }
+          rowCount++;
+        }
+        totalRows = await this.countFileLines(filePath) - 1;
+        
       } else if (
         ["xlsx", "xls"].includes(extension || "") ||
         mimeType.includes("spreadsheet") ||
         mimeType.includes("excel")
       ) {
-        const workbook = XLSX.read(fileBuffer, { type: "buffer" });
+        const workbook = XLSX.readFile(filePath);
         const firstSheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[firstSheetName];
-        data = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
+        const range = XLSX.utils.decode_range(worksheet["!ref"] || "A1:A1");
+        
+        const headerRow = XLSX.utils.sheet_to_json(worksheet, { header: 1, range: 0, defval: "" })[0] as string[];
+        headers = headerRow.map(h => String(h || "").trim()).filter(h => h !== "");
+        
+        const previewRows = XLSX.utils.sheet_to_json(worksheet, { header: headers, range: 1, defval: "" }).slice(0, 5) as any[];
+        previewData.push(...previewRows);
+        totalRows = range.e.r; 
       } else {
         throw createHttpError(400, "Formato de archivo no soportado. Use CSV, XLS o XLSX.");
       }
@@ -78,34 +99,42 @@ class ImportService {
       if (error instanceof Error && error.message.includes("no soportado")) {
         throw error;
       }
+      console.error(error);
       throw createHttpError(400, "Error al leer el archivo. Verifique que el formato sea correcto.");
     }
-    if (data.length < 2) {
-      throw createHttpError(400, "El archivo debe contener al menos una fila de headers y una de datos.");
-    }
-    const headers = (data[0] as string[])
-      .map((h) => String(h || "").trim())
-      .filter((h) => h !== "");
+
     if (headers.length === 0) {
       throw createHttpError(400, "No se encontraron headers válidos en el archivo.");
     }
-    const previewData: Record<string, any>[] = [];
-    for (let i = 1; i < Math.min(data.length, 6); i++) {
-      const row = data[i] as any[];
-      const rowData: Record<string, any> = {};
-      headers.forEach((header, index) => {
-        rowData[header] = row[index] !== undefined ? String(row[index]) : "";
-      });
-      previewData.push(rowData);
-    }
+
     const suggestedMapping = this.suggestMapping(headers);
+
     return {
       headers,
       previewData,
-      totalRows: data.length - 1,
+      totalRows: totalRows > 0 ? totalRows : 0, 
       suggestedMapping,
     };
   }
+
+  private async countFileLines(filePath: string): Promise<number> {
+    return new Promise((resolve, reject) => {
+      let lineCount = 0;
+      fs.createReadStream(filePath)
+        .on("data", (buffer: Buffer) => {
+          let idx = -1;
+          while ((idx = buffer.indexOf(10, idx + 1)) !== -1) {
+            lineCount++;
+          }
+        })
+        .on("end", () => {
+          
+          resolve(lineCount + 1);
+        })
+        .on("error", reject);
+    });
+  }
+
   private suggestMapping(fileHeaders: string[]): Record<string, string> {
     const mapping: Record<string, string> = {};
     for (const header of fileHeaders) {
@@ -126,252 +155,386 @@ class ImportService {
     }
     return mapping;
   }
+
   async validateImport(
-    fileBuffer: Buffer,
-    fileName: string,
+    filePath: string,
+    originalName: string,
     mimeType: string,
     columnMapping: ColumnMapping,
     businessId: string
   ): Promise<ValidationResult> {
-    const extension = fileName.split(".").pop()?.toLowerCase();
-    let data: any[][] = [];
-    if (extension === "csv" || mimeType === "text/csv") {
-      const content = fileBuffer.toString("utf-8");
-      data = parse(content, { skip_empty_lines: true, relax_column_count: true });
-    } else {
-      const workbook = XLSX.read(fileBuffer, { type: "buffer" });
-      const firstSheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[firstSheetName];
-      data = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
-    }
-    const headers = (data[0] as string[]).map((h) => String(h || "").trim());
-    const headerIndexMap: Record<string, number> = {};
-    headers.forEach((h, i) => (headerIndexMap[h] = i));
-    const productNames: string[] = [];
-    for (let rowIndex = 1; rowIndex < data.length; rowIndex++) {
-      const row = data[rowIndex] as any[];
-      const nameColumn = Object.entries(columnMapping).find(([_, sysKey]) => sysKey === "name")?.[0];
-      if (nameColumn) {
-        const colIndex = headerIndexMap[nameColumn];
-        if (colIndex !== undefined) {
-          const name = String(row[colIndex] || "").trim();
-          if (name) {
-            productNames.push(name);
+    const extension = originalName.split(".").pop()?.toLowerCase();
+    
+    
+    const duplicatesInDbMap = new Map<string, { name: string; existingName: string }>();
+    
+    
+    const nameColumnHeader = Object.keys(columnMapping).find(key => columnMapping[key] === "name") || "name";
+
+    
+    const BATCH_SIZE = 5000;
+    
+    const checkBatch = async (batchItems: { normalized: string; original: string }[]) => {
+      if (batchItems.length === 0) return;
+      
+      
+      const uniqueNames = [...new Set(batchItems.map(i => i.original))];
+      
+      try {
+        const existing = await prisma.products.findMany({
+          where: {
+            businessId,
+            name: { in: uniqueNames },
+          },
+          select: { name: true }
+        });
+        
+        if (existing.length === 0) return;
+        
+        
+        const existingMap = new Map<string, string>();
+        for (const p of existing) {
+          existingMap.set(normalizeProductName(p.name), p.name);
+        }
+        
+        
+        for (const item of batchItems) {
+          if (existingMap.has(item.normalized) && !duplicatesInDbMap.has(item.normalized)) {
+            duplicatesInDbMap.set(item.normalized, { 
+              name: item.original, 
+              existingName: existingMap.get(item.normalized)! 
+            });
           }
         }
+      } catch (e) {
+        console.error("Batch check error", e);
       }
-    }
-    const existingProducts = await prisma.products.findMany({
-      where: {
-        businessId,
-        state: { not: ProductState.DELETED },
-      },
-      select: { name: true },
-    });
-    const existingNormalizedMap = new Map<string, string>();
-    existingProducts.forEach((p) => {
-      existingNormalizedMap.set(normalizeProductName(p.name), p.name);
-    });
-    const duplicatesInDb: { name: string; existingName: string }[] = [];
-    const normalizedNamesInList = new Map<string, { original: string; count: number }>();
-    const seenDuplicates = new Set<string>();
-    for (const name of productNames) {
+    };
+
+    let totalProducts = 0;
+    const seenInFile = new Map<string, { original: string, count: number }>();
+    let batch: { normalized: string, original: string }[] = [];
+
+    
+    const processRow = (row: any) => {
+      const name = String(row[nameColumnHeader] ?? "").trim();
+      if (!name) return;
+      
+      totalProducts++;
       const normalized = normalizeProductName(name);
-      const existingName = existingNormalizedMap.get(normalized);
-      if (existingName && !seenDuplicates.has(normalized)) {
-        duplicatesInDb.push({ name, existingName });
-        seenDuplicates.add(normalized);
-      }
-      const existing = normalizedNamesInList.get(normalized);
+      
+      const existing = seenInFile.get(normalized);
       if (existing) {
         existing.count++;
       } else {
-        normalizedNamesInList.set(normalized, { original: name, count: 1 });
+        seenInFile.set(normalized, { original: name, count: 1 });
+        
+        batch.push({ normalized, original: name });
+      }
+    };
+
+    if (extension === "csv" || mimeType === "text/csv") {
+      const parser = fs.createReadStream(filePath).pipe(
+        parseStream({
+          delimiter: [",", ";", "\t", "|"], 
+          columns: true,
+          skip_empty_lines: true,
+          relax_column_count: true,
+          trim: true
+        })
+      );
+      
+      for await (const row of parser) {
+        processRow(row);
+        
+        if (batch.length >= BATCH_SIZE) {
+          await checkBatch(batch);
+          batch = [];
+        }
+      }
+    } else {
+      const workbook = XLSX.readFile(filePath);
+      const data = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]) as any[];
+      
+      for (const row of data) {
+        processRow(row);
+        
+        if (batch.length >= BATCH_SIZE) {
+          await checkBatch(batch);
+          batch = [];
+        }
       }
     }
+
+    
+    await checkBatch(batch);
+    
+    
     const duplicatesInList: { name: string; count: number }[] = [];
-    normalizedNamesInList.forEach((value) => {
-      if (value.count > 1) {
-        duplicatesInList.push({ name: value.original, count: value.count });
+    for (const [_, val] of seenInFile) {
+      if (val.count > 1) {
+        duplicatesInList.push({ name: val.original, count: val.count });
       }
-    });
+    }
+
+    
+    const duplicatesInDb = Array.from(duplicatesInDbMap.values());
+
     return {
-      totalProducts: productNames.length,
-      duplicatesInDb,
-      duplicatesInList,
+      totalProducts,
+      duplicatesInDb: duplicatesInDb.slice(0, 100),
+      duplicatesInList: duplicatesInList.slice(0, 100),
       hasDuplicates: duplicatesInDb.length > 0 || duplicatesInList.length > 0,
     };
   }
+
   async processImport(
-    fileBuffer: Buffer,
-    fileName: string,
+    filePath: string,
+    originalName: string,
     mimeType: string,
     columnMapping: ColumnMapping,
     businessId: string,
     skipDuplicates: boolean = false
   ): Promise<ImportResult> {
-    const extension = fileName.split(".").pop()?.toLowerCase();
-    let data: any[][] = [];
-    if (extension === "csv" || mimeType === "text/csv") {
-      const content = fileBuffer.toString("utf-8");
-      data = parse(content, { skip_empty_lines: true, relax_column_count: true });
-    } else {
-      const workbook = XLSX.read(fileBuffer, { type: "buffer" });
-      const firstSheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[firstSheetName];
-      data = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
+    const extension = originalName.split(".").pop()?.toLowerCase();
+    
+    
+    const reverseMapping: Record<string, string> = {};
+    for (const [fileHeader, systemKey] of Object.entries(columnMapping)) {
+      reverseMapping[systemKey] = fileHeader;
     }
-    const headers = (data[0] as string[]).map((h) => String(h || "").trim());
-    const headerIndexMap: Record<string, number> = {};
-    headers.forEach((h, i) => (headerIndexMap[h] = i));
+    
     const existingCategories = await prisma.categories.findMany({
       where: { businessId },
       select: { id: true, name: true },
     });
     const categoryMap = new Map(existingCategories.map((c) => [c.name.toLowerCase(), c.id]));
+
     const existingSuppliers = await prisma.providers.findMany({
       where: { businessId },
       select: { id: true, name: true },
     });
     const supplierMap = new Map(existingSuppliers.map((s) => [s.name.toLowerCase(), s.id]));
-    let existingNormalizedNames = new Set<string>();
-    if (skipDuplicates) {
-      const existingProducts = await prisma.products.findMany({
-        where: {
-          businessId,
-          state: { not: ProductState.DELETED },
-        },
-        select: { name: true },
-      });
-      existingNormalizedNames = new Set(existingProducts.map((p) => normalizeProductName(p.name)));
-    }
-    const importedNormalizedNames = new Set<string>();
+
     const result: ImportResult = {
       success: 0,
       failed: 0,
       skipped: 0,
       errors: [],
     };
-    const productsToCreate: Prisma.ProductsCreateManyInput[] = [];
-    for (let rowIndex = 1; rowIndex < data.length; rowIndex++) {
-      const row = data[rowIndex] as any[];
-      try {
-        const getValue = (systemKey: string): string => {
-          const fileColumn = Object.entries(columnMapping).find(
-            ([_, sysKey]) => sysKey === systemKey
-          )?.[0];
-          if (!fileColumn) return "";
-          const colIndex = headerIndexMap[fileColumn];
-          if (colIndex === undefined) return "";
-          return String(row[colIndex] || "").trim();
+    
+    
+    const BATCH_SIZE = 5000;
+    let rowsBatch: { row: any; rowIndex: number }[] = [];
+    
+    
+    const skuBase = Date.now().toString(36);
+    let skuCounter = 0;
+
+    const processBatch = async () => {
+        if (rowsBatch.length === 0) return;
+
+        const batchCategories = new Set<string>();
+        const batchSuppliers = new Set<string>();
+        const rowsToProcess: { row: any; rowIndex: number; name: string; category: string; supplier: string }[] = [];
+
+        
+        const getValue = (row: any, systemKey: string): string => {
+          const fileHeader = reverseMapping[systemKey];
+          if (!fileHeader) return "";
+          return String(row[fileHeader] ?? "").trim();
         };
-        const name = getValue("name");
-        const salePriceStr = getValue("sale_price");
-        if (!name) {
-          throw new Error("El nombre del producto es requerido");
+
+        for (const { row, rowIndex } of rowsBatch) {
+            const name = getValue(row, "name");
+            if (!name) continue; 
+            
+            const category = getValue(row, "category");
+            if (category) batchCategories.add(category);
+            
+            const supplier = getValue(row, "supplier");
+            if (supplier) batchSuppliers.add(supplier);
+            
+            rowsToProcess.push({ row, rowIndex, name, category, supplier });
         }
-        const normalizedName = normalizeProductName(name);
-        if (skipDuplicates) {
-          if (existingNormalizedNames.has(normalizedName)) {
-            result.skipped++;
-            continue;
-          }
-          if (importedNormalizedNames.has(normalizedName)) {
-            result.skipped++;
-            continue;
-          }
-        }
-        const salePrice = parseFloat(salePriceStr.replace(/[^0-9.-]/g, ""));
-        if (isNaN(salePrice) || salePrice < 0) {
-          throw new Error("El precio de venta debe ser un número válido");
-        }
-        const costPriceStr = getValue("cost_price");
-        const costPrice = costPriceStr ? parseFloat(costPriceStr.replace(/[^0-9.-]/g, "")) : null;
-        const stockStr = getValue("stock");
-        const stock = stockStr ? parseInt(stockStr.replace(/[^0-9-]/g, ""), 10) : 0;
-        const minStockStr = getValue("min_stock");
-        const minStock = minStockStr ? parseInt(minStockStr.replace(/[^0-9-]/g, ""), 10) : null;
-        let categoryId: string | null = null;
-        const categoryName = getValue("category");
-        if (categoryName) {
-          const existingCatId = categoryMap.get(categoryName.toLowerCase());
-          if (existingCatId) {
-            categoryId = existingCatId;
-          } else {
-            const newCategory = await prisma.categories.create({
-              data: { name: categoryName, businessId },
+
+        
+        const newCategories = Array.from(batchCategories).filter(c => !categoryMap.has(c.toLowerCase()));
+        if (newCategories.length > 0) {
+            await prisma.categories.createMany({
+                data: newCategories.map(name => ({ name, businessId })),
+                skipDuplicates: true
             });
-            categoryMap.set(categoryName.toLowerCase(), newCategory.id);
-            categoryId = newCategory.id;
-          }
-        }
-        let supplierId: string | null = null;
-        const supplierName = getValue("supplier");
-        if (supplierName) {
-          const existingSupplierId = supplierMap.get(supplierName.toLowerCase());
-          if (existingSupplierId) {
-            supplierId = existingSupplierId;
-          } else {
-            const newSupplier = await prisma.providers.create({
-              data: { name: supplierName, businessId },
+            
+            const createdCats = await prisma.categories.findMany({ 
+              where: { businessId, name: { in: newCategories } },
+              select: { id: true, name: true }
             });
-            supplierMap.set(supplierName.toLowerCase(), newSupplier.id);
-            supplierId = newSupplier.id;
-          }
+            createdCats.forEach(c => categoryMap.set(c.name.toLowerCase(), c.id));
         }
-        let sku = getValue("sku");
-        if (!sku) {
-          sku = `SKU-${Date.now()}-${rowIndex}`;
+
+        const newSuppliers = Array.from(batchSuppliers).filter(s => !supplierMap.has(s.toLowerCase()));
+        if (newSuppliers.length > 0) {
+            await prisma.providers.createMany({
+                data: newSuppliers.map(name => ({ name, businessId })),
+                skipDuplicates: true
+            });
+            
+            const createdSups = await prisma.providers.findMany({ 
+              where: { businessId, name: { in: newSuppliers } },
+              select: { id: true, name: true }
+            });
+            createdSups.forEach(s => supplierMap.set(s.name.toLowerCase(), s.id));
         }
-        productsToCreate.push({
-          name: name.trim(),
-          sku,
-          bar_code: getValue("bar_code") || null,
-          description: getValue("description") || null,
-          cost_price: costPrice !== null && !isNaN(costPrice) ? costPrice : null,
-          sale_price: salePrice,
-          stock: isNaN(stock) ? 1 : stock,
-          min_stock: minStock !== null && !isNaN(minStock) ? minStock : undefined,
-          notes: getValue("notes") || null,
-          state: stock > 0 ? ProductState.ACTIVE : ProductState.OUT_OF_STOCK,
-          businessId,
-          categoryId,
-          supplierId,
-        });
-        importedNormalizedNames.add(normalizedName);
-        result.success++;
-      } catch (error) {
-        result.failed++;
-        result.errors.push({
-          row: rowIndex + 1,
-          error: error instanceof Error ? error.message : "Error desconocido",
-        });
-      }
+
+        const productsToInsert: Prisma.ProductsCreateManyInput[] = [];
+        const rowIndexMap: number[] = []; 
+
+        for (const { row, rowIndex, name, category, supplier } of rowsToProcess) {
+             try {
+                 const salePriceStr = getValue(row, "sale_price");
+                 const salePrice = parseFloat(salePriceStr.replace(/[^0-9.-]/g, ""));
+                 if (isNaN(salePrice) || salePrice < 0) {
+                      throw new Error(`Precio inválido para: ${name}`);
+                 }
+                 
+                 const costPriceStr = getValue(row, "cost_price");
+                 const costPrice = costPriceStr ? parseFloat(costPriceStr.replace(/[^0-9.-]/g, "")) : null;
+                 
+                 const stockStr = getValue(row, "stock");
+                 const stock = stockStr ? parseInt(stockStr.replace(/[^0-9-]/g, ""), 10) : 0;
+                 
+                 const minStockStr = getValue(row, "min_stock");
+                 const minStock = minStockStr ? parseInt(minStockStr.replace(/[^0-9-]/g, ""), 10) : null;
+    
+                 const categoryId = category ? categoryMap.get(category.toLowerCase()) ?? null : null;
+                 const supplierId = supplier ? supplierMap.get(supplier.toLowerCase()) ?? null : null;
+    
+                 let sku = getValue(row, "sku");
+                 if (!sku) {
+                   sku = `SKU-${skuBase}-${skuCounter++}`;
+                 }
+    
+                 productsToInsert.push({
+                     name: name.trim(),
+                     sku,
+                     bar_code: getValue(row, "bar_code") || null,
+                     description: getValue(row, "description") || null,
+                     cost_price: costPrice,
+                     sale_price: salePrice,
+                     stock: isNaN(stock) ? 0 : stock,
+                     min_stock: minStock || undefined,
+                     notes: getValue(row, "notes") || null,
+                     state: stock > 0 ? ProductState.ACTIVE : ProductState.OUT_OF_STOCK,
+                     businessId,
+                     categoryId,
+                     supplierId,
+                 });
+                 rowIndexMap.push(rowIndex);
+
+             } catch (error) {
+                 result.failed++;
+                 if (result.errors.length < 50) {
+                      result.errors.push({
+                         row: rowIndex,
+                         error: error instanceof Error ? error.message : "Error desconocido"
+                      });
+                 }
+             }
+        }
+
+        if (productsToInsert.length > 0) {
+            try {
+                const createResult = await prisma.products.createMany({
+                    data: productsToInsert,
+                    skipDuplicates: skipDuplicates 
+                });
+                result.success += createResult.count;
+                result.skipped += (productsToInsert.length - createResult.count);
+            } catch (error) {
+                console.error("Batch insert error:", error);
+                
+                for (let i = 0; i < productsToInsert.length; i++) {
+                    const p = productsToInsert[i];
+                    const rowIndex = rowIndexMap[i];
+                    try {
+                        await prisma.products.create({ data: p });
+                        result.success++;
+                    } catch (e) {
+                         if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+                             if (skipDuplicates) {
+                                result.skipped++;
+                             } else {
+                                result.failed++;
+                                if (result.errors.length < 50) {
+                                  result.errors.push({
+                                      row: rowIndex,
+                                      error: `Producto duplicado: ${p.name || p.sku}`
+                                  });
+                                }
+                             }
+                         } else {
+                             result.failed++;
+                         }
+                    }
+                }
+            }
+        }
+        
+        
+        rowsBatch = [];
+    };
+
+    try {
+        if (extension === "csv" || mimeType === "text/csv") {
+             const parser = fs.createReadStream(filePath).pipe(
+                parseStream({
+                  delimiter: [",", ";", "\t", "|"],
+                  columns: true,
+                  skip_empty_lines: true,
+                  relax_column_count: true,
+                  trim: true
+                })
+             );
+             
+             let rowIndex = 2;
+             try {
+                 for await (const row of parser) {
+                     rowsBatch.push({ row, rowIndex });
+                     rowIndex++;
+                     
+                     if (rowsBatch.length >= BATCH_SIZE) {
+                         await processBatch();
+                     }
+                 }
+             } catch (error) {
+                 console.error("CSV Parsing Error:", error);
+                 throw createHttpError(400, `Error al leer el archivo CSV en la fila ${rowIndex}: ${error instanceof Error ? error.message : "Formato inválido"}`);
+             }
+             await processBatch(); 
+             
+        } else {
+             const workbook = XLSX.readFile(filePath);
+             const sheet = workbook.Sheets[workbook.SheetNames[0]];
+             const data = XLSX.utils.sheet_to_json(sheet) as any[];
+             
+             let rowIndex = 2;
+             for (const row of data) {
+                 rowsBatch.push({ row, rowIndex });
+                 rowIndex++;
+                 if (rowsBatch.length >= BATCH_SIZE) {
+                     await processBatch();
+                 }
+             }
+             await processBatch();
+        }
+    } finally {
+        
     }
-    if (productsToCreate.length > 0) {
-      try {
-        await prisma.products.createMany({
-          data: productsToCreate,
-          skipDuplicates: true,
-        });
-      } catch (error) {
-        result.success = 0;
-        for (let i = 0; i < productsToCreate.length; i++) {
-          try {
-            await prisma.products.create({ data: productsToCreate[i] });
-            result.success++;
-          } catch (err) {
-            result.failed++;
-            result.errors.push({
-              row: i + 2,
-              error: err instanceof Error ? err.message : "Error al crear producto",
-            });
-          }
-        }
-      }
-    }
+
     return result;
   }
+
   getSystemColumns() {
     return SYSTEM_PRODUCT_COLUMNS;
   }

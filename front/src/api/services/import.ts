@@ -35,13 +35,13 @@ export interface ColumnMapping {
 }
 
 export const importApi = {
-  // Obtener columnas del sistema
+  
   getSystemColumns: async (): Promise<SystemColumn[]> => {
     const response = await client.get<{ success: boolean; data: SystemColumn[] }>('/import/columns');
     return response.data.data;
   },
 
-  // Analizar archivo y obtener headers
+  
   analyzeFile: async (file: File): Promise<AnalyzeResult> => {
     const formData = new FormData();
     formData.append('file', file);
@@ -53,21 +53,23 @@ export const importApi = {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
+        timeout: 600000, 
       }
     );
     return response.data.data;
   },
 
-  // Validar importación (detectar duplicados)
+  
   validateImport: async (sessionId: string, columnMapping: ColumnMapping): Promise<ValidationResult> => {
     const response = await client.post<{ success: boolean; data: ValidationResult }>(
       '/import/validate',
-      { sessionId, columnMapping }
+      { sessionId, columnMapping },
+      { timeout: 600000 } 
     );
     return response.data.data;
   },
 
-  // Procesar importación
+  
   processImport: async (
     sessionId: string,
     columnMapping: ColumnMapping,
@@ -75,12 +77,13 @@ export const importApi = {
   ): Promise<ImportResult> => {
     const response = await client.post<{ success: boolean; data: ImportResult }>(
       '/import/process',
-      { sessionId, columnMapping, skipDuplicates }
+      { sessionId, columnMapping, skipDuplicates },
+      { timeout: 600000 } 
     );
     return response.data.data;
   },
 
-  // Cancelar importación
+  
   cancelImport: async (sessionId: string): Promise<void> => {
     await client.post('/import/cancel', { sessionId });
   },

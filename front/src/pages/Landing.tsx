@@ -49,26 +49,6 @@ const Landing = () => {
   ];
 
 
-  //   {
-  //     name: "Carlos Mendoza",
-  //     role: "Propietario, Ferretería El Constructor",
-  //     content: "Bunker transformó mi negocio. Reduje errores de inventario en un 90% y las ventas aumentaron 35% gracias a los reportes.",
-  //     rating: 5
-  //   },
-  //   {
-  //     name: "María González",
-  //     role: "Gerente, Minimarket Express",
-  //     content: "La facilidad de uso es increíble. Mi equipo aprendió a usarlo en menos de una hora. El soporte es excepcional.",
-  //     rating: 5
-  //   },
-  //   {
-  //     name: "Roberto Silva",
-  //     role: "Director, Distribuidora Silva",
-  //     content: "Manejamos 5 sucursales con Bunker. La sincronización en tiempo real nos da control total del negocio.",
-  //     rating: 5
-  //   }
-  // ];
-
   const plans = [
     {
       name: "Plan Estándar",
@@ -101,16 +81,10 @@ const Landing = () => {
     }
   ];
 
-  // const stats = [
-  //   { value: "2,500+", label: "Negocios activos" },
-  //   { value: "15M+", label: "Ventas procesadas" },
-  //   { value: "99.9%", label: "Uptime garantizado" },
-  //   { value: "4.9/5", label: "Calificación usuarios" }
-  // ];
-
+  
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
+      {}
       <header className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -124,9 +98,9 @@ const Landing = () => {
             <a href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               Características
             </a>
-            {/* <a href="#testimonials" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              Testimonios
-            </a> */}
+            {
+
+}
             <a href="#pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               Precios
             </a>
@@ -145,16 +119,16 @@ const Landing = () => {
         </div>
       </header>
 
-      {/* Hero Section */}
+      {}
       <section className="pt-32 pb-20 px-4 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent" />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/10 rounded-full blur-3xl" />
         
         <div className="container mx-auto relative">
           <div className="max-w-4xl mx-auto text-center">
-            {/* <Badge variant="secondary" className="mb-6 bg-primary/10 text-primary border-primary/20">
-              🚀 Nuevo: Integración con facturación electrónica
-            </Badge> */}
+            {
+
+}
             
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-6">
               El Sistema POS que tu
@@ -179,22 +153,16 @@ const Landing = () => {
               </Button>
             </div>
 
-            {/* Stats */}
-            {/* <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-3xl mx-auto">
-              {stats.map((stat, index) => (
-                <div key={index} className="text-center">
-                  <div className="text-3xl md:text-4xl font-bold text-primary mb-1">
-                    {stat.value}
-                  </div>
-                  <div className="text-sm text-muted-foreground">{stat.label}</div>
-                </div>
-              ))}
-            </div> */}
+            {}
+            {
+
+
+}
           </div>
         </div>
       </section>
 
-      {/* Features Section */}
+      {}
       <section id="features" className="py-20 px-4 bg-muted/30">
         <div className="container mx-auto">
           <div className="text-center max-w-2xl mx-auto mb-16">
@@ -223,7 +191,7 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* Benefits Section */}
+      {}
       <section className="py-20 px-4">
         <div className="container mx-auto">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
@@ -301,50 +269,12 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* Testimonials Section
-      <section id="testimonials" className="py-20 px-4 bg-muted/30">
-        <div className="container mx-auto">
-          <div className="text-center max-w-2xl mx-auto mb-16">
-            <Badge variant="secondary" className="mb-4">Testimonios</Badge>
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Miles de negocios confían en Bunker
-            </h2>
-            <p className="text-muted-foreground">
-              Descubre por qué somos la elección preferida de emprendedores y empresas
-            </p>
-          </div>
+      {
 
-          <div className="grid md:grid-cols-3 gap-6">
-            {testimonials.map((testimonial, index) => (
-              <Card key={index} className="bg-card border-border/50">
-                <CardContent className="p-6">
-                  <div className="flex gap-1 mb-4">
-                    {[...Array(testimonial.rating)].map((_, i) => (
-                      <Star key={i} className="w-4 h-4 fill-primary text-primary" />
-                    ))}
-                  </div>
-                  <p className="text-muted-foreground mb-6 text-sm leading-relaxed">
-                    "{testimonial.content}"
-                  </p>
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                      <span className="text-sm font-semibold text-primary">
-                        {testimonial.name.charAt(0)}
-                      </span>
-                    </div>
-                    <div>
-                      <div className="font-semibold text-sm">{testimonial.name}</div>
-                      <div className="text-xs text-muted-foreground">{testimonial.role}</div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section> */}
 
-      {/* Pricing Section */}
+}
+
+      {}
       <section id="pricing" className="py-20 px-4">
         <div className="container mx-auto">
           <div className="text-center max-w-2xl mx-auto mb-16">
@@ -421,7 +351,7 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* CTA Section */}
+      {}
       <section className="py-20 px-4">
         <div className="container mx-auto">
           <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-primary/20 via-primary/10 to-primary/20 border border-primary/20 p-12 md:p-16">
@@ -453,7 +383,7 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* Footer */}
+      {}
       <footer className="border-t border-border py-12 px-4">
         <div className="container mx-auto">
           <div className="grid md:grid-cols-4 gap-8 mb-8">
@@ -474,20 +404,15 @@ const Landing = () => {
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li><a href="#features" className="hover:text-foreground transition-colors">Características</a></li>
                 <li><a href="#pricing" className="hover:text-foreground transition-colors">Precios</a></li>
-                {/* <li><a href="#" className="hover:text-foreground transition-colors">Integraciones</a></li>
-                <li><a href="#" className="hover:text-foreground transition-colors">API</a></li> */}
+                {
+}
               </ul>
             </div>
             
-            {/* <div>
-              <h4 className="font-semibold mb-4">Recursos</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><a href="#" className="hover:text-foreground transition-colors">Centro de Ayuda</a></li>
-                <li><a href="#" className="hover:text-foreground transition-colors">Blog</a></li>
-                <li><a href="#" className="hover:text-foreground transition-colors">Guías</a></li>
-                <li><a href="#" className="hover:text-foreground transition-colors">Webinars</a></li>
-              </ul>
-            </div> */}
+            {
+
+
+}
             
             <div>
               <h4 className="font-semibold mb-4">Empresa</h4>
@@ -504,11 +429,10 @@ const Landing = () => {
             <p className="text-sm text-muted-foreground">
               © {new Date().getFullYear()} Bunker. Todos los derechos reservados.
             </p>
-            {/* <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <a href="#" className="hover:text-foreground transition-colors">Twitter</a>
-              <a href="#" className="hover:text-foreground transition-colors">LinkedIn</a>
-              <a href="#" className="hover:text-foreground transition-colors">YouTube</a>
-            </div> */}
+            {
+
+
+}
           </div>
         </div>
       </footer>

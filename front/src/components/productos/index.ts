@@ -1,5 +1,4 @@
-// Products Components
-// Components specific to the Products page
+
 
 export { StockAdjustmentDialog } from "./StockAdjustmentDialog";
 export { ProductFormDialog } from "./ProductFormDialog";

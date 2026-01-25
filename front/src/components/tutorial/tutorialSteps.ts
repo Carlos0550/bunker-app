@@ -1,7 +1,7 @@
 import { Step } from "react-joyride";
 import { TutorialView } from "@/store/useTutorialStore";
 
-// Pasos del tutorial para el Dashboard
+
 export const dashboardSteps: Step[] = [
   {
     target: "[data-tour='sidebar-nav']",
@@ -42,7 +42,7 @@ export const dashboardSteps: Step[] = [
   },
 ];
 
-// Pasos del tutorial para el POS (Punto de Venta)
+
 export const posSteps: Step[] = [
   {
     target: "[data-tour='pos-search']",
@@ -101,7 +101,7 @@ export const posSteps: Step[] = [
   },
 ];
 
-// Pasos del tutorial para Productos
+
 export const productosSteps: Step[] = [
   {
     target: "[data-tour='productos-tabs']",
@@ -142,7 +142,7 @@ export const productosSteps: Step[] = [
   },
 ];
 
-// Pasos del tutorial para Clientes
+
 export const clientesSteps: Step[] = [
   {
     target: "[data-tour='clientes-summary']",
@@ -195,7 +195,7 @@ export const clientesSteps: Step[] = [
   },
 ];
 
-// Pasos del tutorial para Reportes
+
 export const reportesSteps: Step[] = [
   {
     target: "[data-tour='reportes-period']",
@@ -218,7 +218,7 @@ export const reportesSteps: Step[] = [
   },
 ];
 
-// Pasos del tutorial para Configuración
+
 export const configuracionSteps: Step[] = [
   {
     target: "[data-tour='config-tabs']",
@@ -265,7 +265,7 @@ export const configuracionSteps: Step[] = [
   },
 ];
 
-// Pasos del tutorial para el Sidebar (navegación general)
+
 export const sidebarSteps: Step[] = [
   {
     target: "[data-tour='sidebar-dashboard']",
@@ -306,7 +306,7 @@ export const sidebarSteps: Step[] = [
   },
 ];
 
-// Mapa de pasos por vista
+
 export const tutorialStepsMap: Record<TutorialView, Step[]> = {
   dashboard: dashboardSteps,
   pos: posSteps,
@@ -317,7 +317,7 @@ export const tutorialStepsMap: Record<TutorialView, Step[]> = {
   sidebar: sidebarSteps,
 };
 
-// Helper para obtener pasos de una vista
+
 export const getStepsForView = (view: TutorialView): Step[] => {
   return tutorialStepsMap[view] || [];
 };

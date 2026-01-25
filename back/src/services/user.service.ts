@@ -21,32 +21,13 @@ import {
   sendUserCreatedEmail,
 } from "@/utils";
 import { emailService } from "@/services/email.service";
-interface RegisterData extends Prisma.UserCreateInput {
-  businessName: string;
-  businessAddress: string;
-  businessPhone?: string;
-  businessEmail?: string;
-}
-interface CreateAdminData {
-  name: string;
-  email: string;
-  password: string;
-  businessId: string;
-}
-interface CreateUserByAdminData {
-  name: string;
-  email: string;
-  role: number;
-  permissions?: string[];
-}
-interface UpdateUserData {
-  name?: string;
-  email?: string;
-  password?: string;
-  role?: number;
-  permissions?: string[];
-  status?: string;
-}
+import {
+  RegisterData,
+  CreateAdminData,
+  CreateUserByAdminData,
+  UpdateUserData,
+} from "@/types";
+
 export class UserService {
   private generateVerificationData() {
     const verificationToken = generateSecureToken(32);
@@ -314,7 +295,7 @@ export class UserService {
       ...userWithoutSensitiveData
     } = user;
 
-    // Generate signed URL for profile image if exists
+    
     let profilePhoto: string | null = null;
     if (user.profileImage) {
       try {
@@ -342,7 +323,7 @@ export class UserService {
     }
     const { password, verificationToken, ...userWithoutSensitiveData } = user;
 
-    // Generate signed URL for profile image if exists
+    
     let profilePhoto: string | null = null;
     if (user.profileImage) {
       try {

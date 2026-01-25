@@ -20,7 +20,7 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [isRecovering, setIsRecovering] = useState(false);
 
-  // Recuperar la ruta a la que el usuario intentaba ir
+  
   const from = location.state?.from?.pathname || "/dashboard";
 
   const handleRecoverPassword = async (e: React.FormEvent) => {
@@ -77,11 +77,11 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex">
-      {/* Left Panel - Branding */}
+      {}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary/20 via-background to-background relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-primary/30 via-transparent to-transparent" />
         
-        {/* Grid Pattern */}
+        {}
         <div className="absolute inset-0 opacity-5">
           <div className="h-full w-full" style={{
             backgroundImage: `linear-gradient(hsl(var(--primary) / 0.3) 1px, transparent 1px),
@@ -91,7 +91,7 @@ export default function Login() {
         </div>
 
         <div className="relative z-10 flex flex-col justify-between p-12 w-full">
-          {/* Logo */}
+          {}
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center">
               <Package className="w-6 h-6 text-primary" />
@@ -102,7 +102,7 @@ export default function Login() {
             </div>
           </div>
 
-          {/* Center Content */}
+          {}
           <div className="space-y-6">
             <h1 className="text-4xl xl:text-5xl font-bold text-foreground leading-tight">
               Sistema Integral de
@@ -113,7 +113,7 @@ export default function Login() {
               segura y eficiente.
             </p>
             
-            {/* Features */}
+            {}
             <div className="grid grid-cols-2 gap-4 pt-4">
               {[
                 { label: "Control de Stock", value: "Tiempo Real" },
@@ -129,17 +129,17 @@ export default function Login() {
             </div>
           </div>
 
-          {/* Footer */}
+          {}
           <p className="text-sm text-muted-foreground">
             © 2024 Bunker App. Todos los derechos reservados.
           </p>
         </div>
       </div>
 
-      {/* Right Panel - Login Form */}
+      {}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-background">
         <div className="w-full max-w-md space-y-8">
-          {/* Mobile Logo */}
+          {}
           <div className="lg:hidden flex items-center justify-center gap-3 mb-8">
             <div className="w-10 h-10 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center">
               <Package className="w-5 h-5 text-primary" />
@@ -150,7 +150,7 @@ export default function Login() {
             </div>
           </div>
 
-          {/* Header */}
+          {}
           <div className="text-center lg:text-left">
             <h2 className="text-3xl font-bold text-foreground">
               {isRecovering ? "Recuperar Contraseña" : "Bienvenido"}
@@ -162,7 +162,7 @@ export default function Login() {
             </p>
           </div>
 
-          {/* Form */}
+          {}
           <form onSubmit={isRecovering ? handleRecoverPassword : handleLogin} className="space-y-6">
             <div className="space-y-4">
               <div className="space-y-2">

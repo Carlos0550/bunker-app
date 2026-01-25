@@ -69,7 +69,7 @@ export function ManualProductsTab({
 
   return (
     <div className="space-y-4">
-      {/* Info card */}
+      {}
       <div className="bunker-card p-4 bg-blue-500/5 border-blue-500/20">
         <div className="flex items-start gap-3">
           <HelpCircle className="w-5 h-5 text-blue-400 mt-0.5" />
@@ -116,7 +116,7 @@ export function ManualProductsTab({
                         <p className="text-xs text-muted-foreground font-mono truncate max-w-[150px]">
                           {mp.originalText}
                         </p>
-                        {/* Mostrar info adicional en móvil */}
+                        {}
                         <div className="sm:hidden mt-1 flex items-center gap-2 text-xs text-muted-foreground">
                           <span>x{mp.quantity}</span>
                           <span>•</span>

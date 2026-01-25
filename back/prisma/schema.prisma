@@ -277,10 +277,10 @@ model Products {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
+  @@unique([businessId, name])
+  @@unique([businessId, sku])
   @@index([businessId, state])
-  @@index([businessId, name])
   @@index([bar_code])
-  @@index([sku])
 }
 
 // ==================== SALES ====================

@@ -68,13 +68,13 @@ export interface RecentSale {
 }
 
 export const analyticsApi = {
-  // Dashboard stats
+  
   getDashboardStats: async (): Promise<DashboardStats> => {
     const response = await client.get<{ success: boolean; data: DashboardStats }>('/analytics/dashboard');
     return response.data.data;
   },
 
-  // Sales summary
+  
   getSalesSummary: async (
     period: 'today' | 'yesterday' | 'week' | 'month' | 'custom' = 'today',
     startDate?: string,
@@ -90,7 +90,7 @@ export const analyticsApi = {
     return response.data.data;
   },
 
-  // Top products
+  
   getTopProducts: async (limit: number = 10, period?: string): Promise<TopProduct[]> => {
     const params = new URLSearchParams({ limit: String(limit) });
     if (period) params.append('period', period);
@@ -101,7 +101,7 @@ export const analyticsApi = {
     return response.data.data;
   },
 
-  // Low stock products
+  
   getLowStockProducts: async (): Promise<LowStockProduct[]> => {
     const response = await client.get<{ success: boolean; data: LowStockProduct[] }>(
       '/analytics/low-stock-products'
@@ -109,7 +109,7 @@ export const analyticsApi = {
     return response.data.data;
   },
 
-  // Sales chart (supports period filter)
+  
   getSalesChart: async (period: 'today' | 'yesterday' | 'week' | 'month' = 'week'): Promise<ChartDataPoint[]> => {
     const response = await client.get<{ success: boolean; data: ChartDataPoint[] }>(
       `/analytics/weekly-chart?period=${period}`
@@ -117,7 +117,7 @@ export const analyticsApi = {
     return response.data.data;
   },
 
-  // Weekly sales chart (legacy, for dashboard)
+  
   getWeeklySalesChart: async (): Promise<ChartDataPoint[]> => {
     const response = await client.get<{ success: boolean; data: ChartDataPoint[] }>(
       '/analytics/weekly-chart'
@@ -125,7 +125,7 @@ export const analyticsApi = {
     return response.data.data;
   },
 
-  // Recent sales
+  
   getRecentSales: async (limit: number = 5): Promise<RecentSale[]> => {
     const response = await client.get<{ success: boolean; data: RecentSale[] }>(
       `/analytics/recent-sales?limit=${limit}`

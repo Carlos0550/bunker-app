@@ -4,16 +4,16 @@ import { persist } from "zustand/middleware";
 export type TutorialView = "dashboard" | "pos" | "productos" | "clientes" | "reportes" | "configuracion" | "sidebar";
 
 interface TutorialState {
-  // Record de vistas que el usuario ya ha visto
+  
   seenTutorials: Record<TutorialView, boolean>;
-  // Vista del tutorial actual que está corriendo
+  
   currentTour: TutorialView | null;
-  // Si el tutorial está activo
+  
   isRunning: boolean;
-  // Índice del paso actual
+  
   stepIndex: number;
   
-  // Acciones
+  
   startTutorial: (view: TutorialView) => void;
   stopTutorial: () => void;
   markAsSeen: (view: TutorialView) => void;

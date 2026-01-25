@@ -23,13 +23,7 @@ interface SaleSuccessDialogProps {
   businessPhone?: string;
 }
 
-const formatCurrency = (value: number) => {
-  return new Intl.NumberFormat("es-AR", {
-    style: "currency",
-    currency: "ARS",
-    minimumFractionDigits: 0,
-  }).format(value);
-};
+import { formatCurrency } from "@/utils/helpers";
 
 export function SaleSuccessDialog({
   open,
@@ -68,7 +62,7 @@ export function SaleSuccessDialog({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          {/* Sale Summary */}
+          {}
           <div className="bg-secondary/30 rounded-lg p-4 space-y-3">
             <div className="flex justify-between items-center">
               <span className="text-sm text-muted-foreground">Ticket</span>

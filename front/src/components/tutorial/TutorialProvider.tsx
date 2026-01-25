@@ -8,7 +8,7 @@ interface TutorialProviderProps {
   children: React.ReactNode;
 }
 
-// Mapeo de rutas a vistas del tutorial
+
 const routeToView: Record<string, TutorialView> = {
   "/dashboard": "dashboard",
   "/pos": "pos",
@@ -18,15 +18,27 @@ const routeToView: Record<string, TutorialView> = {
   "/configuracion": "configuracion",
 };
 
-// Función para verificar si un elemento existe en el DOM
+
 const elementExists = (target: string | HTMLElement): boolean => {
+  let element: HTMLElement | null = null;
+  
   if (typeof target === "string") {
-    return document.querySelector(target) !== null;
+    element = document.querySelector(target) as HTMLElement;
+  } else {
+    element = target;
   }
-  return target !== null;
+
+  
+  if (!element) return false;
+  
+  
+  if (window.getComputedStyle(element).display === "none") return false;
+  if (window.getComputedStyle(element).visibility === "hidden") return false;
+  
+  return true;
 };
 
-// Filtrar pasos que tienen elementos existentes en el DOM
+
 const filterValidSteps = (steps: Step[]): Step[] => {
   return steps.filter((step) => {
     const target = step.target;
@@ -48,14 +60,14 @@ export function TutorialProvider({ children }: TutorialProviderProps) {
 
   const [validatedSteps, setValidatedSteps] = useState<Step[]>([]);
 
-  // Obtener la vista actual basada en la ruta
+  
   const currentView = routeToView[location.pathname];
   const allSteps = useMemo(() => currentTour ? getStepsForView(currentTour) : [], [currentTour]);
 
-  // Filtrar pasos válidos cuando cambian los steps o cuando se inicia el tutorial
+  
   useEffect(() => {
     if (isRunning && allSteps.length > 0) {
-      // Dar tiempo para que el DOM se actualice
+      
       const timer = setTimeout(() => {
         const valid = filterValidSteps(allSteps);
         setValidatedSteps(valid);
@@ -66,10 +78,10 @@ export function TutorialProvider({ children }: TutorialProviderProps) {
     }
   }, [isRunning, allSteps]);
 
-  // Auto-iniciar tutorial para nuevas vistas
+  
   useEffect(() => {
     if (currentView && !hasSeenTutorial(currentView) && !isRunning) {
-      // Delay más largo para asegurar que los elementos estén renderizados
+      
       const timer = setTimeout(() => {
         startTutorial(currentView);
       }, 1000);
@@ -77,12 +89,12 @@ export function TutorialProvider({ children }: TutorialProviderProps) {
     }
   }, [currentView, hasSeenTutorial, isRunning, startTutorial]);
 
-  // Callback de Joyride
+  
   const handleJoyrideCallback = useCallback(
     (data: CallBackProps) => {
       const { status, type, index, action } = data;
 
-      // Si el elemento no se encuentra, saltar al siguiente
+      
       if (type === EVENTS.TARGET_NOT_FOUND) {
         const nextIndex = index + 1;
         if (nextIndex < validatedSteps.length) {
@@ -93,18 +105,18 @@ export function TutorialProvider({ children }: TutorialProviderProps) {
         return;
       }
 
-      // Manejo de navegación
+      
       if (type === EVENTS.STEP_AFTER) {
         const nextIndex = index + (action === ACTIONS.PREV ? -1 : 1);
         setStepIndex(nextIndex);
       }
 
-      // Manejo de finalización
+      
       if (status === STATUS.FINISHED || status === STATUS.SKIPPED) {
         stopTutorial();
       }
 
-      // Manejo de cierre manual
+      
       if (action === ACTIONS.CLOSE) {
         stopTutorial();
       }
@@ -112,7 +124,7 @@ export function TutorialProvider({ children }: TutorialProviderProps) {
     [setStepIndex, stopTutorial, validatedSteps.length]
   );
 
-  // Solo mostrar Joyride si hay pasos válidos
+  
   const shouldShowTutorial = isRunning && validatedSteps.length > 0;
 
   return (
@@ -141,7 +153,7 @@ export function TutorialProvider({ children }: TutorialProviderProps) {
             arrowColor: "hsl(var(--card))",
             backgroundColor: "hsl(var(--card))",
             overlayColor: "rgba(0, 0, 0, 0.75)",
-            primaryColor: "hsl(45, 100%, 51%)", // Color primary amarillo
+            primaryColor: "hsl(45, 100%, 51%)", 
             textColor: "hsl(var(--foreground))",
             zIndex: 10000,
           },
@@ -184,7 +196,7 @@ export function TutorialProvider({ children }: TutorialProviderProps) {
             borderRadius: "8px",
           },
           beacon: {
-            display: "none", // Ocultamos beacons ya que usamos disableBeacon en steps
+            display: "none", 
           },
         }}
         floaterProps={{

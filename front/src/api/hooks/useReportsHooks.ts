@@ -3,9 +3,6 @@ import { analyticsApi } from "@/api/services/analytics";
 
 type Period = "today" | "yesterday" | "week" | "month";
 
-// ============================================================================
-// Query Hooks
-// ============================================================================
 
 export function useSalesSummary(
   period: Period,

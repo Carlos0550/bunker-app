@@ -9,6 +9,7 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { capitalizeString } from "@/hooks/use-utils";
 import { useQuery } from "@tanstack/react-query";
 import { analyticsApi } from "@/api/services/analytics";
+import { formatCurrency } from "@/utils/helpers";
 
 export default function Dashboard() {
   const { user } = useAuthStore((state) => state);
@@ -16,7 +17,7 @@ export default function Dashboard() {
   const { data: stats, isLoading: loadingStats } = useQuery({
     queryKey: ["dashboardStats"],
     queryFn: () => analyticsApi.getDashboardStats(),
-    refetchInterval: 60000, // Refrescar cada minuto
+    refetchInterval: 60000, 
   });
 
   const { data: chartData, isLoading: loadingChart } = useQuery({
@@ -44,7 +45,7 @@ export default function Dashboard() {
   return (
     <MainLayout title="Dashboard">
       <div className="space-y-6">
-        {/* Header */}
+        {}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl lg:text-3xl font-bold text-foreground">
@@ -65,7 +66,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Stats Grid */}
+        {}
         {loadingStats ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" data-tour="dashboard-stats">
             {[1, 2, 3, 4].map((i) => (
@@ -86,7 +87,7 @@ export default function Dashboard() {
             />
             <StatCard
               title="Ingresos Hoy"
-              value={`$${(stats?.todayRevenue || 0).toLocaleString()}`}
+              value={formatCurrency(stats?.todayRevenue || 0)}
               icon={DollarSign}
               change={stats?.monthlyGrowth || 0}
               changeLabel="este mes"
@@ -107,7 +108,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Main Content Grid */}
+        {}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2" data-tour="dashboard-chart">
             <SalesChart data={chartData || []} isLoading={loadingChart} />
@@ -117,7 +118,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Bottom Grid */}
+        {}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div data-tour="dashboard-recent">
             <RecentSales sales={recentSales || []} isLoading={loadingRecentSales} />

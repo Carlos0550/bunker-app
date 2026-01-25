@@ -60,7 +60,7 @@ export interface PaymentHistoryResponse {
 }
 
 export const subscriptionApi = {
-  // Obtener plan actual
+  
   getCurrentPlan: async (): Promise<CurrentPlanData> => {
     const response = await client.get<{ success: boolean; data: CurrentPlanData }>(
       '/subscription/current'
@@ -68,7 +68,7 @@ export const subscriptionApi = {
     return response.data.data;
   },
 
-  // Obtener historial de pagos
+  
   getPaymentHistory: async (page = 1, limit = 10): Promise<PaymentHistoryResponse> => {
     const response = await client.get<{ success: boolean; data: PaymentHistory[]; pagination: any }>(
       `/subscription/payments?page=${page}&limit=${limit}`
@@ -76,7 +76,7 @@ export const subscriptionApi = {
     return { data: response.data.data, pagination: response.data.pagination };
   },
 
-  // Obtener planes disponibles
+  
   getAvailablePlans: async (): Promise<Plan[]> => {
     const response = await client.get<{ success: boolean; data: Plan[] }>(
       '/subscription/plans'
@@ -84,7 +84,7 @@ export const subscriptionApi = {
     return response.data.data;
   },
 
-  // Cambiar plan
+  
   changePlan: async (planId: string): Promise<{ success: boolean; message: string; newPlan: Plan }> => {
     const response = await client.post<{ success: boolean; data: { success: boolean; message: string; newPlan: Plan } }>(
       '/subscription/change-plan',
@@ -93,7 +93,7 @@ export const subscriptionApi = {
     return response.data.data;
   },
 
-  // Crear preferencia de pago en Mercado Pago
+  
   createMercadoPagoPreference: async (planId: string): Promise<{ preferenceId: string; initPoint: string; sandboxInitPoint: string }> => {
     const response = await client.post<{ success: boolean; data: { preferenceId: string; initPoint: string; sandboxInitPoint: string } }>(
       '/subscription/mercadopago/create-preference',
@@ -102,7 +102,7 @@ export const subscriptionApi = {
     return response.data.data;
   },
 
-  // Registrar pago manual (Super Admin)
+  
   registerManualPayment: async (data: { businessId: string; amount: number; months: number; notes?: string }): Promise<any> => {
     const response = await client.post(
       '/subscription/manual-payment',

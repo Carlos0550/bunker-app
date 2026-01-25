@@ -1,17 +1,8 @@
 import { prisma } from "@/config/db";
 import { Prisma, AccountStatus, PaymentMethod, SaleStatus } from "@prisma/client";
 import createHttpError from "http-errors";
-interface CreateCustomerData {
-  identifier: string;
-  name: string;
-  phone?: string;
-  email?: string;
-  address?: string;
-}
-interface BusinessCustomerData {
-  creditLimit?: number;
-  notes?: string;
-}
+import { CreateCustomerData, BusinessCustomerData } from "@/types";
+
 class CustomerService {
   async createOrLinkCustomer(
     businessId: string,
@@ -420,7 +411,7 @@ class CustomerService {
   }
 
   async updateAccountNotes(accountId: string, businessId: string, notes: string) {
-    // Verificar que la cuenta pertenece al negocio
+    
     const account = await prisma.currentAccount.findFirst({
       where: {
         id: accountId,
@@ -438,7 +429,6 @@ class CustomerService {
     });
   }
 
-  // ==================== SALE ITEMS MANAGEMENT ====================
   
   async getSaleItems(saleId: string, businessId: string) {
     const sale = await prisma.sale.findFirst({
@@ -496,7 +486,7 @@ class CustomerService {
     }
 
     return await prisma.$transaction(async (tx) => {
-      // Crear el nuevo item
+      
       const newItem = await tx.saleItem.create({
         data: {
           saleId,
@@ -510,7 +500,7 @@ class CustomerService {
         },
       });
 
-      // Recalcular totales de la venta
+      
       const allItems = [...sale.items, newItem];
       const newSubtotal = allItems.reduce((sum, item) => sum + item.totalPrice, 0);
       const newTaxAmount = newSubtotal * sale.taxRate;
@@ -523,7 +513,7 @@ class CustomerService {
         newTotal -= discount;
       }
 
-      // Actualizar la venta
+      
       const updatedSale = await tx.sale.update({
         where: { id: saleId },
         data: {
@@ -533,13 +523,13 @@ class CustomerService {
         },
       });
 
-      // Actualizar la cuenta corriente si existe
+      
       if (sale.currentAccount) {
         const difference = newTotal - sale.total;
         const newBalance = sale.currentAccount.currentBalance + difference;
         const newOriginalAmount = sale.currentAccount.originalAmount + difference;
         
-        // Determinar el nuevo estado basado en el balance
+        
         let newStatus: 'PENDING' | 'PARTIAL' | 'PAID';
         if (newBalance <= 0) {
           newStatus = 'PAID';
@@ -555,7 +545,7 @@ class CustomerService {
             originalAmount: newOriginalAmount,
             currentBalance: newBalance,
             status: newStatus,
-            // Si vuelve a tener deuda, quitar la fecha de pago
+            
             ...(newBalance > 0 && { paidAt: null }),
           },
         });
@@ -597,7 +587,7 @@ class CustomerService {
     return await prisma.$transaction(async (tx) => {
       const oldTotal = item.sale.total;
 
-      // Actualizar el item
+      
       const updatedItem = await tx.saleItem.update({
         where: { id: itemId },
         data: {
@@ -610,7 +600,7 @@ class CustomerService {
         },
       });
 
-      // Recalcular totales de la venta
+      
       const allItems = item.sale.items.map(i => 
         i.id === itemId ? updatedItem : i
       );
@@ -625,7 +615,7 @@ class CustomerService {
         newTotal -= discount;
       }
 
-      // Actualizar la venta
+      
       const updatedSale = await tx.sale.update({
         where: { id: item.sale.id },
         data: {
@@ -635,13 +625,13 @@ class CustomerService {
         },
       });
 
-      // Actualizar la cuenta corriente si existe
+      
       if (item.sale.currentAccount) {
         const difference = newTotal - oldTotal;
         const newBalance = item.sale.currentAccount.currentBalance + difference;
         const newOriginalAmount = item.sale.currentAccount.originalAmount + difference;
         
-        // Determinar el nuevo estado basado en el balance
+        
         let newStatus: 'PENDING' | 'PARTIAL' | 'PAID';
         if (newBalance <= 0) {
           newStatus = 'PAID';
@@ -657,7 +647,7 @@ class CustomerService {
             originalAmount: newOriginalAmount,
             currentBalance: newBalance,
             status: newStatus,
-            // Si vuelve a tener deuda, quitar la fecha de pago
+            
             ...(newBalance > 0 && { paidAt: null }),
           },
         });
@@ -698,12 +688,12 @@ class CustomerService {
     return await prisma.$transaction(async (tx) => {
       const oldTotal = item.sale.total;
 
-      // Eliminar el item
+      
       await tx.saleItem.delete({
         where: { id: itemId },
       });
 
-      // Recalcular totales de la venta
+      
       const remainingItems = item.sale.items.filter(i => i.id !== itemId);
       const newSubtotal = remainingItems.reduce((sum, i) => sum + i.totalPrice, 0);
       const newTaxAmount = newSubtotal * item.sale.taxRate;
@@ -716,7 +706,7 @@ class CustomerService {
         newTotal -= discount;
       }
 
-      // Actualizar la venta
+      
       const updatedSale = await tx.sale.update({
         where: { id: item.sale.id },
         data: {
@@ -726,13 +716,13 @@ class CustomerService {
         },
       });
 
-      // Actualizar la cuenta corriente si existe
+      
       if (item.sale.currentAccount) {
         const difference = newTotal - oldTotal;
         const newBalance = item.sale.currentAccount.currentBalance + difference;
         const newOriginalAmount = item.sale.currentAccount.originalAmount + difference;
         
-        // Determinar el nuevo estado basado en el balance
+        
         let newStatus: 'PENDING' | 'PARTIAL' | 'PAID';
         if (newBalance <= 0) {
           newStatus = 'PAID';
@@ -748,7 +738,7 @@ class CustomerService {
             originalAmount: newOriginalAmount,
             currentBalance: newBalance,
             status: newStatus,
-            // Si vuelve a tener deuda, quitar la fecha de pago
+            
             ...(newBalance > 0 && { paidAt: null }),
           },
         });

@@ -10,13 +10,7 @@ interface PrintReceiptOptions {
   showLogo?: boolean;
 }
 
-const formatCurrency = (value: number) => {
-  return new Intl.NumberFormat("es-AR", {
-    style: "currency",
-    currency: "ARS",
-    minimumFractionDigits: 0,
-  }).format(value);
-};
+import { formatCurrency } from "@/utils/helpers";
 
 const getPaymentMethodLabel = (method: string) => {
   switch (method) {
@@ -286,7 +280,7 @@ export function generateReceiptHTML(options: PrintReceiptOptions): string {
 export function printReceipt(options: PrintReceiptOptions): void {
   const html = generateReceiptHTML(options);
 
-  // Create a hidden iframe for printing
+  
   const printFrame = document.createElement("iframe");
   printFrame.style.position = "absolute";
   printFrame.style.top = "-10000px";
@@ -301,13 +295,13 @@ export function printReceipt(options: PrintReceiptOptions): void {
     frameDoc.write(html);
     frameDoc.close();
 
-    // Wait for content to load then print
+    
     printFrame.onload = () => {
       setTimeout(() => {
         printFrame.contentWindow?.focus();
         printFrame.contentWindow?.print();
 
-        // Remove iframe after printing
+        
         setTimeout(() => {
           document.body.removeChild(printFrame);
         }, 1000);
@@ -316,7 +310,7 @@ export function printReceipt(options: PrintReceiptOptions): void {
   }
 }
 
-// Check if printing is supported
+
 export function isPrintingSupported(): boolean {
   return typeof window !== "undefined" && typeof window.print === "function";
 }

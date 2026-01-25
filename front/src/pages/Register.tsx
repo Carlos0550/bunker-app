@@ -60,11 +60,11 @@ export default function Register() {
 
   return (
     <div className="min-h-screen flex">
-      {/* Left Panel - Branding (Igual que Login) */}
+      {}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary/20 via-background to-background relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-primary/30 via-transparent to-transparent" />
         
-        {/* Grid Pattern */}
+        {}
         <div className="absolute inset-0 opacity-5">
           <div className="h-full w-full" style={{
             backgroundImage: `linear-gradient(hsl(var(--primary) / 0.3) 1px, transparent 1px),
@@ -74,7 +74,7 @@ export default function Register() {
         </div>
 
         <div className="relative z-10 flex flex-col justify-between p-12 w-full">
-          {/* Logo */}
+          {}
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center">
               <Package className="w-6 h-6 text-primary" />
@@ -85,7 +85,7 @@ export default function Register() {
             </div>
           </div>
 
-          {/* Center Content */}
+          {}
           <div className="space-y-6">
             <h1 className="text-4xl xl:text-5xl font-bold text-foreground leading-tight">
               Comienza tu
@@ -97,17 +97,17 @@ export default function Register() {
             </p>
           </div>
 
-          {/* Footer */}
+          {}
           <p className="text-sm text-muted-foreground">
             © 2024 Bunker App. Todos los derechos reservados.
           </p>
         </div>
       </div>
 
-      {/* Right Panel - Register Form */}
+      {}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-background overflow-y-auto">
         <div className="w-full max-w-md space-y-8">
-          {/* Mobile Logo */}
+          {}
           <div className="lg:hidden flex items-center justify-center gap-3 mb-8">
             <div className="w-10 h-10 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center">
               <Package className="w-5 h-5 text-primary" />
@@ -118,7 +118,7 @@ export default function Register() {
             </div>
           </div>
 
-          {/* Header */}
+          {}
           <div className="text-center lg:text-left">
             <h2 className="text-3xl font-bold text-foreground">Crea tu cuenta</h2>
             <p className="mt-2 text-muted-foreground">
@@ -126,10 +126,10 @@ export default function Register() {
             </p>
           </div>
 
-          {/* Form */}
+          {}
           <form onSubmit={handleRegister} className="space-y-6">
             
-            {/* Sección: Datos del Negocio */}
+            {}
             <div className="space-y-4">
               <div className="flex items-center gap-2 text-primary font-semibold border-b pb-2">
                 <Building2 className="w-5 h-5" />
@@ -181,7 +181,7 @@ export default function Register() {
               </div>
             </div>
 
-            {/* Sección: Datos del Administrador */}
+            {}
             <div className="space-y-4 pt-2">
               <div className="flex items-center gap-2 text-primary font-semibold border-b pb-2">
                 <User className="w-5 h-5" />

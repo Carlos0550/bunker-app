@@ -85,7 +85,7 @@ export interface ParsedManualProduct {
 }
 
 export const salesApi = {
-  // Crear venta
+  
   createSale: async (data: CreateSaleData): Promise<Sale> => {
     const response = await client.post<{ success: boolean; data: Sale }>(
       "/sales",
@@ -94,7 +94,7 @@ export const salesApi = {
     return response.data.data;
   },
 
-  // Obtener ventas
+  
   getSales: async (
     params: {
       page?: number;
@@ -122,7 +122,7 @@ export const salesApi = {
     return { data: response.data.data, pagination: response.data.pagination };
   },
 
-  // Obtener una venta
+  
   getSale: async (id: string): Promise<Sale> => {
     const response = await client.get<{ success: boolean; data: Sale }>(
       `/sales/${id}`,
@@ -130,12 +130,12 @@ export const salesApi = {
     return response.data.data;
   },
 
-  // Cancelar venta
+  
   cancelSale: async (id: string): Promise<void> => {
     await client.post(`/sales/${id}/cancel`);
   },
 
-  // Actualizar venta
+  
   updateSale: async (
     id: string,
     data: Partial<CreateSaleData>,
@@ -147,12 +147,12 @@ export const salesApi = {
     return response.data.data;
   },
 
-  // Eliminar venta
+  
   deleteSale: async (id: string): Promise<void> => {
     await client.delete(`/sales/${id}`);
   },
 
-  // Parsear texto de producto manual
+  
   parseManualProductText: async (
     text: string,
   ): Promise<ParsedManualProduct | null> => {
@@ -167,7 +167,7 @@ export const salesApi = {
     }
   },
 
-  // Crear producto manual
+  
   createManualProduct: async (data: {
     originalText: string;
     name: string;
@@ -181,7 +181,7 @@ export const salesApi = {
     return response.data.data;
   },
 
-  // Obtener productos manuales
+  
   getManualProducts: async (status?: string): Promise<ManualProduct[]> => {
     const params = status ? `?status=${status}` : "";
     const response = await client.get<{
@@ -191,12 +191,12 @@ export const salesApi = {
     return response.data.data;
   },
 
-  // Vincular producto manual
+  
   linkManualProduct: async (id: string, productId: string): Promise<void> => {
     await client.post(`/sales/manual-products/${id}/link`, { productId });
   },
 
-  // Convertir producto manual
+  
   convertManualProduct: async (
     id: string,
     additionalData?: any,
@@ -208,12 +208,12 @@ export const salesApi = {
     return response.data.data;
   },
 
-  // Ignorar producto manual
+  
   ignoreManualProduct: async (id: string): Promise<void> => {
     await client.post(`/sales/manual-products/${id}/ignore`);
   },
 
-  // Actualizar producto manual
+  
   updateManualProduct: async (
     id: string,
     data: { name?: string; quantity?: number; price?: number; status?: string },
