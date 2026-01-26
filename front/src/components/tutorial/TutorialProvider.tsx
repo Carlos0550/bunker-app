@@ -70,13 +70,18 @@ export function TutorialProvider({ children }: TutorialProviderProps) {
       
       const timer = setTimeout(() => {
         const valid = filterValidSteps(allSteps);
-        setValidatedSteps(valid);
-      }, 100);
+        if (valid.length === 0) {
+          
+          stopTutorial();
+        } else {
+          setValidatedSteps(valid);
+        }
+      }, 500);
       return () => clearTimeout(timer);
     } else {
       setValidatedSteps([]);
     }
-  }, [isRunning, allSteps]);
+  }, [isRunning, allSteps, stopTutorial]);
 
   
   useEffect(() => {
@@ -138,6 +143,7 @@ export function TutorialProvider({ children }: TutorialProviderProps) {
         showProgress
         showSkipButton
         disableOverlayClose
+        disableScrollParentFix
         spotlightClicks
         callback={handleJoyrideCallback}
         locale={{
