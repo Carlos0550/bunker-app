@@ -469,14 +469,14 @@ export default function POS() {
     <MainLayout title="Punto de Venta">
       <div className="relative">
         {}
-        <div className="lg:mr-[420px] flex flex-col gap-4">
+        <div className="lg:mr-[520px] flex flex-col gap-4 h-[calc(100vh-6rem)] overflow-y-auto scrollbar-hide pb-4">
           <ManualProductInput
               value={manualInput}
               onChange={setManualInput}
               onSubmit={handleManualInput}
               onShowHelp={() => setShowManualHelp(true)}
             />
-          <div className="flex flex-col gap-4 min-h-[calc(100vh-8rem)]">
+          <div className="flex flex-col gap-4">
             <ProductSearch
               searchTerm={searchTerm}
               onSearchChange={setSearchTerm}
@@ -505,7 +505,7 @@ export default function POS() {
 
         {}
         <div className={`
-          lg:fixed lg:top-20 lg:right-6 lg:w-[400px] lg:max-h-[calc(100vh-7rem)]
+          lg:fixed lg:top-24 lg:right-6 lg:w-[500px] lg:h-[calc(100vh-7rem)]
           ${showCartModal ? 'block' : 'hidden lg:block'}
         `}>
           {}
@@ -518,7 +518,7 @@ export default function POS() {
 
           {}
           <div className={`
-            bunker-card flex flex-col overflow-hidden
+            bunker-card flex flex-col overflow-hidden h-full
             lg:relative
             ${showCartModal ? 'fixed inset-x-4 top-20 bottom-4 z-50 max-h-[calc(100vh-7rem)]' : ''}
           `} data-tour="pos-cart">

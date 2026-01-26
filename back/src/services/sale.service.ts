@@ -75,114 +75,123 @@ class SaleService {
     const taxAmount = (subtotal - discountAmount) * taxRate;
     const total = subtotal - discountAmount + taxAmount;
     const saleNumber = await this.generateSaleNumber(businessId);
-    const sale = await prisma.$transaction(async (tx) => {
-      const newSale = await tx.sale.create({
-        data: {
-          saleNumber,
-          businessId,
-          userId,
-          customerId: data.customerId || null,
-          subtotal,
-          taxRate,
-          taxAmount,
-          discountType: data.discountType || null,
-          discountValue: data.discountValue || null,
-          total,
-          
-          paymentMethod: data.isCredit
-            ? PaymentMethod.CREDIT
-            : data.paymentMethod,
-          status: data.isCredit ? SaleStatus.PENDING : SaleStatus.COMPLETED,
-          isCredit: data.isCredit || false,
-          notes: data.notes || null,
-          items: {
-            create: itemsData,
-          },
-        },
-        include: {
-          items: true,
-          customer: true,
-          user: {
-            select: { id: true, name: true, email: true },
-          },
-        },
-      });
-      if (!data.isCredit) {
-        for (const item of data.items) {
-          if (!item.isManual && item.productId) {
-            
-            const currentProduct = await tx.products.findUnique({
-              where: { id: item.productId },
-            });
+    const sale = await prisma.$transaction(
+      async (tx) => {
+        const newSale = await tx.sale.create({
+          data: {
+            saleNumber,
+            businessId,
+            userId,
+            customerId: data.customerId || null,
+            subtotal,
+            taxRate,
+            taxAmount,
+            discountType: data.discountType || null,
+            discountValue: data.discountValue || null,
+            total,
 
-            if (currentProduct) {
-              
-              if (currentProduct.stock < item.quantity) {
-                const neededToSatisfySale =
-                  item.quantity - currentProduct.stock;
-                const quantityToAdd =
-                  neededToSatisfySale + (currentProduct.min_stock || 0) + 1;
+            paymentMethod: data.isCredit
+              ? PaymentMethod.CREDIT
+              : data.paymentMethod,
+            status: data.isCredit ? SaleStatus.PENDING : SaleStatus.COMPLETED,
+            isCredit: data.isCredit || false,
+            notes: data.notes || null,
+            items: {
+              create: itemsData,
+            },
+          },
+          include: {
+            items: true,
+            customer: true,
+            user: {
+              select: { id: true, name: true, email: true },
+            },
+          },
+        });
+        if (!data.isCredit) {
+          
+          const productItems = data.items.filter(
+            (item) => !item.isManual && item.productId
+          );
+
+          if (productItems.length > 0) {
+            
+            const productIds = productItems.map((item) => item.productId!);
+            const products = await tx.products.findMany({
+              where: { id: { in: productIds } },
+            });
+            const productMap = new Map(products.map((p) => [p.id, p]));
+
+            
+            await Promise.all(
+              productItems.map(async (item) => {
+                const currentProduct = productMap.get(item.productId!);
+                if (!currentProduct) return;
+
+                let newStock = currentProduct.stock - item.quantity;
+                let newState = currentProduct.state;
+
+                
+                if (currentProduct.stock < item.quantity) {
+                  const neededToSatisfySale =
+                    item.quantity - currentProduct.stock;
+                  const quantityToAdd =
+                    neededToSatisfySale + (currentProduct.min_stock || 0) + 1;
+                  newStock =
+                    currentProduct.stock + quantityToAdd - item.quantity;
+                  newState = ProductState.ACTIVE;
+                }
+
+                
+                if (newStock <= 0) {
+                  newState = ProductState.OUT_OF_STOCK;
+                }
+
+                
                 await tx.products.update({
                   where: { id: item.productId },
                   data: {
-                    stock: { increment: quantityToAdd },
-                    state: ProductState.ACTIVE,
+                    stock: newStock,
+                    state: newState,
                   },
                 });
-              }
-
-              
-              await tx.products.update({
-                where: { id: item.productId },
-                data: {
-                  stock: { decrement: item.quantity },
-                },
-              });
-
-              
-              const updatedProduct = await tx.products.findUnique({
-                where: { id: item.productId },
-              });
-
-              if (updatedProduct && updatedProduct.stock <= 0) {
-                await tx.products.update({
-                  where: { id: item.productId },
-                  data: { state: ProductState.OUT_OF_STOCK },
-                });
-              }
-            }
+              })
+            );
           }
         }
-      }
-      if (data.isCredit && data.customerId) {
-        let businessCustomer = await tx.businessCustomer.findUnique({
-          where: {
-            businessId_customerId: {
-              businessId,
-              customerId: data.customerId,
+        if (data.isCredit && data.customerId) {
+          let businessCustomer = await tx.businessCustomer.findUnique({
+            where: {
+              businessId_customerId: {
+                businessId,
+                customerId: data.customerId,
+              },
             },
-          },
-        });
-        if (!businessCustomer) {
-          businessCustomer = await tx.businessCustomer.create({
+          });
+          if (!businessCustomer) {
+            businessCustomer = await tx.businessCustomer.create({
+              data: {
+                businessId,
+                customerId: data.customerId,
+              },
+            });
+          }
+          await tx.currentAccount.create({
             data: {
-              businessId,
-              customerId: data.customerId,
+              businessCustomerId: businessCustomer.id,
+              saleId: newSale.id,
+              originalAmount: total,
+              currentBalance: total,
+              status: "PENDING",
             },
           });
         }
-        await tx.currentAccount.create({
-          data: {
-            businessCustomerId: businessCustomer.id,
-            saleId: newSale.id,
-            originalAmount: total,
-            currentBalance: total,
-            status: "PENDING",
-          },
-        });
+        return newSale;
+      },
+      {
+        timeout: 15000, 
       }
-      return newSale;
-    });
+    );
     return sale;
   }
   async getSales(

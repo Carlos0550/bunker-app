@@ -293,12 +293,6 @@ export const sidebarSteps: Step[] = [
     title: "Clientes",
   },
   {
-    target: "[data-tour='sidebar-reportes']",
-    content: "Reportes: Analiza el rendimiento de tu negocio con gráficos y estadísticas.",
-    placement: "right",
-    title: "Reportes",
-  },
-  {
     target: "[data-tour='sidebar-config']",
     content: "Configuración: Personaliza tu negocio y ajustes del sistema.",
     placement: "right",

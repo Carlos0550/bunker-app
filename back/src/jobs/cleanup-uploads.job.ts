@@ -36,7 +36,7 @@ async function emptyDirectory(dirPath: string): Promise<void> {
 async function processCleanupUploads(job: Job<CleanupUploadsData>): Promise<void> {
   logger.info({ message: "Starting uploads cleanup job", jobId: job.id });
   try {
-    // Verificamos si existe la carpeta uploads
+    
     try {
       await fs.access(UPLOADS_DIR);
       await emptyDirectory(UPLOADS_DIR);
@@ -84,7 +84,7 @@ export async function scheduleCleanupUploadsJob(): Promise<void> {
     }
   }
 
-  // Programar para cada media noche (00:00)
+  
   await queue.add(
     JOB_NAME,
     { scheduledAt: new Date().toISOString() },

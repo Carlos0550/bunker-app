@@ -41,7 +41,6 @@ const mainMenuItems = [
   { title: "Productos", url: "/productos", icon: Package, permission: Permission.PRODUCTOS, tourId: "sidebar-productos" },
   { title: "Ventas", url: "/reportes?tab=historial", icon: Receipt, permission: Permission.VENTAS, tourId: "sidebar-ventas" },
   { title: "Clientes", url: "/clientes", icon: Users, permission: Permission.CLIENTES, tourId: "sidebar-clientes" },
-  { title: "Reportes", url: "/reportes", icon: BarChart3, permission: Permission.REPORTES, tourId: "sidebar-reportes" },
 ];
 
 const adminOnlyItems = [

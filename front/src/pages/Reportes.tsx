@@ -729,9 +729,9 @@ export default function Reportes() {
         </Tabs>
       </div>
 
-      {}
+      
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-3xl">
           <DialogHeader className="flex flex-row items-center justify-between">
             <DialogTitle>
               {isEditing ? `Editando Venta #${selectedSale?.saleNumber}` : `Detalle de Venta #${selectedSale?.saleNumber}`}
@@ -792,7 +792,7 @@ export default function Reportes() {
                   {}
                   <div>
                     <h4 className="font-semibold mb-3">Productos</h4>
-                    <div className="block md:hidden space-y-2">
+                    <div className="block md:hidden space-y-2 max-h-[40vh] overflow-y-auto scrollbar-thin pr-2">
                       {selectedSale.items.map((item) => (
                         <div key={item.id} className="p-3 rounded-lg bg-secondary/30 border border-border/50">
                           <div className="flex items-start justify-between gap-2 mb-2">
@@ -811,9 +811,9 @@ export default function Reportes() {
                         </div>
                       ))}
                     </div>
-                    <div className="hidden md:block border rounded-lg overflow-hidden">
+                    <div className="hidden md:block border rounded-lg overflow-hidden h-auto max-h-[40vh] overflow-y-auto scrollbar-thin relative">
                       <Table>
-                        <TableHeader>
+                        <TableHeader className="sticky top-0 bg-background z-10 shadow-sm border-b">
                           <TableRow>
                             <TableHead>Producto</TableHead>
                             <TableHead className="text-center">Cantidad</TableHead>

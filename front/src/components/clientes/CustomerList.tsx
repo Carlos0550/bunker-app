@@ -53,10 +53,17 @@ export function CustomerList({
         ) : (
           <div className="p-2 space-y-1">
             {customers.map((bc) => (
-              <button
+              <div
                 key={bc.id}
                 onClick={() => onSelectCustomer(bc)}
-                className={`w-full p-3 rounded-lg text-left transition-colors ${
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    onSelectCustomer(bc);
+                  }
+                }}
+                className={`w-full p-3 rounded-lg text-left transition-colors cursor-pointer ${
                   selectedCustomerId === bc.id
                     ? "bg-primary/20 border border-primary/30"
                     : "hover:bg-secondary/50"
@@ -101,7 +108,7 @@ export function CustomerList({
                     )}
                   </div>
                 </div>
-              </button>
+              </div>
             ))}
           </div>
         )}
